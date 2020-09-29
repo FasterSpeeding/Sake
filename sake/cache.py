@@ -1,9 +1,10 @@
-import typing
+from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = ["Resource", "EmojiCache"]
 
 import abc
 import asyncio
+import typing
 
 import aioredis
 import aioredis.abc

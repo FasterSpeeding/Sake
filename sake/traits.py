@@ -1,4 +1,4 @@
-import typing
+from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
     "RESTAndDispatcherAware",
@@ -15,6 +15,10 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "VoiceStateCache",
 ]
 
+import typing
+
+from hikari import traits as _traits
+
 if typing.TYPE_CHECKING:
     from hikari import channels
     from hikari import emojis
@@ -22,14 +26,13 @@ if typing.TYPE_CHECKING:
     from hikari import invites
     from hikari import presences
     from hikari import snowflakes
-    from hikari import traits
     from hikari import users
     from hikari import voices
 
     from sake import views
 
 
-class RESTAndDispatcherAware(traits.DispatcherAware, traits.RESTAware, typing.Protocol):
+class RESTAndDispatcherAware(_traits.DispatcherAware, _traits.RESTAware, typing.Protocol):
     ...
 
 

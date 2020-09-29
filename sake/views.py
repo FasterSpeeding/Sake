@@ -1,8 +1,9 @@
-import typing
+from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = ("CacheView",)
 
 import abc
+import typing
 
 from hikari import iterators
 

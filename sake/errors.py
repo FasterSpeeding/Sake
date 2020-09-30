@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__: typing.Final[typing.Sequence[str]] = ("SakeException", "NotFound", "KeptAliveByReference")
+__all__: typing.Final[typing.Sequence[str]] = ["SakeException", "NotFound", "KeptAliveByReference"]
 
 import typing
 

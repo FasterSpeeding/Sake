@@ -232,11 +232,19 @@ class RoleCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-class UserCache(Resource, typing.Protocol):
+class UserCache(Resource, typing.Protocol):  # TODO: add this to more classes?
+    """The traits for a cache implementation which supports a user cache.
+
+    !!! note
+        Unlike other resources, user is read only and will only ever be
+        implemented as a part of another resource which references user objects
+        due to the fact that it doesn't match up to any specific events.
+    """
+
     __slots__: typing.Sequence[str] = ()
 
-    async def delete_user(self) -> None:
-        raise NotImplementedError
+    # async def delete_user(self) -> None:
+    #     raise NotImplementedError
 
     async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
         raise NotImplementedError
@@ -244,8 +252,8 @@ class UserCache(Resource, typing.Protocol):
     async def get_user_view(self) -> views.CacheView[snowflakes.Snowflake, users.User]:
         raise NotImplementedError
 
-    async def set_user(self, user: users.User) -> None:
-        raise NotImplementedError
+    # async def set_user(self, user: users.User) -> None:
+    #     raise NotImplementedError
 
 
 class VoiceStateCache(Resource, typing.Protocol):

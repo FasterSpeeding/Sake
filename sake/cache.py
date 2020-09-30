@@ -4,23 +4,39 @@ __all__: typing.Final[typing.Sequence[str]] = ["Resource", "EmojiCache"]
 
 import abc
 import asyncio
+import enum
 import typing
 
 import aioredis
-import aioredis.abc
 from hikari import guilds
 from hikari import users
 from hikari.events import guild_events
 from hikari.events import member_events
 
+from sake import conversion
 from sake import traits
 from sake import views
 
 if typing.TYPE_CHECKING:
+    import ssl as ssl_
     import types
 
+    import aioredis.abc
     from hikari import emojis
     from hikari import snowflakes
+
+
+class ResourceIndex(enum.IntEnum):
+    EMOJI = 0
+    GUILD = 1
+    GUILD_CHANNEL = 2
+    INVITE = 3
+    ME = 4
+    MEMBER = 5
+    PRESENCE = 6
+    ROLE = 7
+    USER = 8
+    VOICE_STATE = 9
 
 
 ResourceT = typing.TypeVar("ResourceT", bound="Resource")
@@ -34,20 +50,16 @@ class Resource(traits.Resource, abc.ABC):
         "_database",
         "_password",
         "_ssl",
-        "_encoding",
-        "_connection_cls",
     )
 
     def __init__(
         self,
         app: traits.RESTAndDispatcherAware,
         *,
-        address: str,
+        address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
         database: typing.Optional[int] = None,
         password: typing.Optional[str] = None,
-        ssl: bool = True,
-        encoding: typing.Optional[str] = None,
-        connection_cls: typing.Optional[aioredis.abc.AbcConnection] = None,
+        ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
     ) -> None:
         self._address = address
         self._app = app
@@ -55,8 +67,6 @@ class Resource(traits.Resource, abc.ABC):
         self._database = database
         self._password = password
         self._ssl = ssl
-        self._encoding = encoding
-        self._connection_cls = connection_cls
 
     @property
     def app(self) -> traits.RESTAndDispatcherAware:
@@ -96,53 +106,88 @@ class Resource(traits.Resource, abc.ABC):
             db=self._database,
             password=self._password,
             ssl=self._ssl,
-            encoding=self._encoding,
-            # minsize
-            # maxsize
-            # parser
-            # loop
-            # create_connection_timeout
-            # pool_cls=
-            connection_cls=self._connection_cls,
+            encoding="utf-8",
         )
         self.subscribe_listener()
 
     async def close(self) -> None:
         if self._connection is not None:
             await self._connection.close()
+            self._connection = None
 
         self.unsubscribe_listener()
 
 
-class _PrivateUserCache(Resource):
+class UserCache(Resource, traits.UserCache):
+    __slots__: typing.Sequence[str] = ("_user_client",)
+
+    def __init__(
+        self,
+        app: traits.RESTAndDispatcherAware,
+        *,
+        address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
+        database: typing.Optional[int] = None,
+        password: typing.Optional[str] = None,
+        ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
+        # encoding: typing.Optional[str] = None,
+    ) -> None:
+        super().__init__(app, address=address, database=database, password=password, ssl=ssl)  # , encoding=encoding)
+        self._user_client: typing.Optional[aioredis.Redis] = None
+
+    async def open(self) -> None:
+        await super().open()
+        self._user_client = aioredis.Redis(self._connection)
+
+    async def close(self) -> None:
+        await super().close()
+        self._user_client = None
+
     def subscribe_listener(self) -> None:
+        # The users cache is a special case as it doesn't directly map to any events.
         super().subscribe_listener()
 
     def unsubscribe_listener(self) -> None:
+        # The users cache is a special case as it doesn't directly map to any events.
         super().unsubscribe_listener()
 
-    async def _delete_user(self) -> None:
+    async def _delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
+        raise self._user_client.delete(int(user_id))
+
+    async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
+        data = await self._user_client.hgetall(int(user_id))
+        return conversion.deserialize_user(data, app=self.app)
+
+    async def get_user_view(self) -> views.CacheView[snowflakes.Snowflake, users.User]:
         raise NotImplementedError
 
-    async def _get_user(self) -> users.User:
-        raise NotImplementedError
-
-    async def _set_user(self) -> None:
-        raise NotImplementedError
+    async def _set_user(self, user: users.User) -> None:
+        await self._user_client.hmset_dict(int(user.id), conversion.serialize_user(user))
 
 
-class _PrivateMemberCache(_PrivateUserCache):
-    async def _delete_member(self) -> None:
-        raise NotImplementedError
+class EmojiCache(UserCache, traits.EmojiCache):
+    __slots__: typing.Sequence[str] = ("_emoji_client",)
 
-    async def _get_member(self) -> guilds.Member:
-        raise NotImplementedError
+    def __init__(
+        self,
+        app: traits.RESTAndDispatcherAware,
+        *,
+        address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
+        database: typing.Optional[int] = None,
+        password: typing.Optional[str] = None,
+        ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
+        # encoding: typing.Optional[str] = None,
+    ) -> None:
+        super().__init__(app, address=address, database=database, password=password, ssl=ssl)  # , encoding=encoding)
+        self._emoji_client: typing.Optional[aioredis.Redis] = None
 
-    async def _set_member(self) -> None:
-        raise NotImplementedError
+    async def open(self) -> None:
+        await super().open()
+        self._emoji_client = aioredis.Redis(self._connection)
 
+    async def close(self) -> None:
+        await super().close()
+        self._emoji_client = None
 
-class EmojiCache(Resource, traits.EmojiCache):
     def subscribe_listener(self) -> None:
         super().subscribe_listener()
         self.app.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
@@ -177,7 +222,9 @@ class EmojiCache(Resource, traits.EmojiCache):
         raise NotImplementedError
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish) -> emojis.KnownCustomEmoji:
-        raise NotImplementedError
+        data = await self._emoji_client.hgetall(int(emoji_id))
+        user = await self.get_user(int(data["user_id"])) if "user_id" in data else None
+        return conversion.deserialize_emoji(data, app=self.app, user=user)
 
     async def get_emoji_view(self) -> views.CacheView[snowflakes.Snowflake, emojis.KnownCustomEmoji]:
         raise NotImplementedError
@@ -188,4 +235,9 @@ class EmojiCache(Resource, traits.EmojiCache):
         raise NotImplementedError
 
     async def set_emoji(self, emoji: emojis.KnownCustomEmoji) -> None:
-        raise NotImplementedError
+        data = conversion.serialize_emoji(emoji)
+
+        if emoji.user is not None:
+            await self._set_user(emoji.user)
+
+        await self._emoji_client.hmset_dict(int(emoji.id), data)

@@ -5,6 +5,7 @@ __all__: typing.Final[typing.Sequence[str]] = ["Resource", "EmojiCache"]
 import abc
 import asyncio
 import enum
+import logging
 import typing
 
 import aioredis
@@ -26,6 +27,10 @@ if typing.TYPE_CHECKING:
     from hikari import snowflakes
 
 
+_LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake")
+ResourceT = typing.TypeVar("ResourceT", bound="Resource")
+
+
 class ResourceIndex(enum.IntEnum):
     EMOJI = 0
     GUILD = 1
@@ -37,9 +42,6 @@ class ResourceIndex(enum.IntEnum):
     ROLE = 7
     USER = 8
     VOICE_STATE = 9
-
-
-ResourceT = typing.TypeVar("ResourceT", bound="Resource")
 
 
 class Resource(traits.Resource, abc.ABC):
@@ -129,9 +131,8 @@ class UserCache(Resource, traits.UserCache):
         database: typing.Optional[int] = None,
         password: typing.Optional[str] = None,
         ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
-        # encoding: typing.Optional[str] = None,
     ) -> None:
-        super().__init__(app, address=address, database=database, password=password, ssl=ssl)  # , encoding=encoding)
+        super().__init__(app, address=address, database=database, password=password, ssl=ssl)
         self._user_client: typing.Optional[aioredis.Redis] = None
 
     async def open(self) -> None:
@@ -151,9 +152,15 @@ class UserCache(Resource, traits.UserCache):
         super().unsubscribe_listener()
 
     async def _delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
-        raise self._user_client.delete(int(user_id))
+        if self._user_client is None:
+            raise RuntimeError("Cannot remove entities from an inactive cache") from None
+
+        await self._user_client.delete(int(user_id))
 
     async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
+        if self._user_client is None:
+            raise RuntimeError("Cannot get entities from an inactive cache") from None
+
         data = await self._user_client.hgetall(int(user_id))
         return conversion.deserialize_user(data, app=self.app)
 
@@ -161,6 +168,9 @@ class UserCache(Resource, traits.UserCache):
         raise NotImplementedError
 
     async def _set_user(self, user: users.User) -> None:
+        if self._user_client is None:
+            raise RuntimeError("Cannot set entities on an inactive cache") from None
+
         await self._user_client.hmset_dict(int(user.id), conversion.serialize_user(user))
 
 
@@ -175,9 +185,8 @@ class EmojiCache(UserCache, traits.EmojiCache):
         database: typing.Optional[int] = None,
         password: typing.Optional[str] = None,
         ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
-        # encoding: typing.Optional[str] = None,
     ) -> None:
-        super().__init__(app, address=address, database=database, password=password, ssl=ssl)  # , encoding=encoding)
+        super().__init__(app, address=address, database=database, password=password, ssl=ssl)
         self._emoji_client: typing.Optional[aioredis.Redis] = None
 
     async def open(self) -> None:
@@ -192,36 +201,51 @@ class EmojiCache(UserCache, traits.EmojiCache):
         super().subscribe_listener()
         self.app.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
         self.app.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
-        self.app.dispatcher.subscribe(member_events.MemberDeleteEvent, self._on_member_remove)
+        self.app.dispatcher.subscribe(member_events.MemberDeleteEvent, self._on_member_delete)
 
     def unsubscribe_listener(self) -> None:
         super().unsubscribe_listener()
         self.app.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
         self.app.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
-        self.app.dispatcher.unsubscribe(member_events.MemberDeleteEvent, self._on_member_remove)
+        self.app.dispatcher.unsubscribe(member_events.MemberDeleteEvent, self._on_member_delete)
 
     async def _on_emojis_update(self, event: guild_events.EmojisUpdateEvent) -> None:
+        if self._emoji_client is None:
+            return _LOGGER.warning("A closed async cache received an emojis update event, this shouldn't happen")
+
         await self.clear_emojis_for_guild(event.guild_id)
 
-        await asyncio.gather(*(map(self.set_emoji, event.emojis)))
+        await asyncio.gather(*(map(self.set_emoji, event.emojis)))  # TODO: chained stuff in aioredis
 
     async def _on_guild_leave(self, event: guild_events.GuildLeaveEvent) -> None:
+        if self._emoji_client is None:
+            return _LOGGER.warning("A closed async cache received a guild leave event, this shouldn't happen")
+
         await self.clear_emojis_for_guild(event.guild_id)
 
-    async def _on_member_remove(self, event: member_events.MemberDeleteEvent) -> None:
+    async def _on_member_delete(self, event: member_events.MemberDeleteEvent) -> None:
+        if self._emoji_client is None:
+            return _LOGGER.warning("A closed async cache received a member delete event, this shouldn't happen")
+
         if event.user_id == self.app.me:  # TODO: is this sane?
             await self.clear_emojis_for_guild(event.guild_id)
 
-    async def clear_emojis(self) -> None:
+    async def clear_emojis(self) -> None:  # TODO: clear methods?
         raise NotImplementedError
 
     async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
+        if self._emoji_client is None:
+            raise RuntimeError("Cannot remove entities from an inactive cache") from None
+
+        await self._emoji_client.delete(int(emoji_id))
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish) -> emojis.KnownCustomEmoji:
+        if self._emoji_client is None:
+            raise RuntimeError("Cannot get entities from an inactive cache") from None
+
         data = await self._emoji_client.hgetall(int(emoji_id))
         user = await self.get_user(int(data["user_id"])) if "user_id" in data else None
         return conversion.deserialize_emoji(data, app=self.app, user=user)
@@ -235,9 +259,76 @@ class EmojiCache(UserCache, traits.EmojiCache):
         raise NotImplementedError
 
     async def set_emoji(self, emoji: emojis.KnownCustomEmoji) -> None:
+        if self._emoji_client is None:
+            raise RuntimeError("Cannot set entities in an inactive cache") from None
+
         data = conversion.serialize_emoji(emoji)
 
         if emoji.user is not None:
             await self._set_user(emoji.user)
 
         await self._emoji_client.hmset_dict(int(emoji.id), data)
+
+
+class GuildCache(Resource, traits.GuildCache):
+    __slots__: typing.Sequence[str] = ("_guild_client",)
+
+    def __init__(
+        self,
+        app: traits.RESTAndDispatcherAware,
+        *,
+        address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
+        database: typing.Optional[int] = None,
+        password: typing.Optional[str] = None,
+        ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
+    ) -> None:
+        super().__init__(app, address=address, database=database, password=password, ssl=ssl)
+        self._guild_client: typing.Optional[aioredis.Redis] = None
+
+    async def open(self) -> None:
+        await super().open()
+        self._guild_client = aioredis.Redis(self._connection)
+
+    async def close(self) -> None:
+        await super().close()
+        self._guild_client = None
+
+    def subscribe_listener(self) -> None:
+        self.app.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+
+    def unsubscribe_listener(self) -> None:
+        self.app.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+
+    async def _on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
+        if self._guild_client is None:
+            return _LOGGER.warning("A closed async cache received a guild visibility event, this shouldn't happen")
+
+        if isinstance(event, guild_events.GuildAvailableEvent):
+            data = conversion.serialize_guild(event.guild)
+            await self._guild_client.hmset_dict(int(event.guild_id), data)
+
+        elif isinstance(event, guild_events.GuildLeaveEvent):
+            await self._guild_client.delete(int(event.guild_id))
+
+    async def delete_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        if self._guild_client is None:
+            raise RuntimeError("Cannot remove entities from an inactive cache") from None
+
+        await self._guild_client.delete(int(guild_id))
+
+    async def get_guild(self, guild_id: snowflakes.Snowflakeish) -> guilds.GatewayGuild:
+        if self._guild_client is None:
+            raise RuntimeError("Cannot get entities from an inactive cache") from None
+
+        data = await self._guild_client.hgetall(int(guild_id))
+        return conversion.deserialize_guild(data, app=self.app)
+
+    async def get_guild_view(self) -> views.CacheView[snowflakes.Snowflake, guilds.GatewayGuild]:
+        raise NotImplementedError
+
+    async def set_guild(self, guild: guilds.GatewayGuild) -> None:
+        if self._guild_client is None:
+            raise RuntimeError("Cannot set entities in an inactive cache") from None
+
+        data = conversion.serialize_guild(guild)
+        await self._guild_client.hmset_dict(int(guild.id), data)

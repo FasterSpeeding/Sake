@@ -20,6 +20,7 @@ import typing
 from hikari import traits as _traits
 
 if typing.TYPE_CHECKING:
+    import aioredis
     from hikari import channels
     from hikari import emojis
     from hikari import guilds
@@ -43,13 +44,16 @@ class Resource(typing.Protocol):
     def app(self) -> RESTAndDispatcherAware:
         raise NotImplementedError
 
+    def subscribe_listener(self) -> None:
+        raise NotImplementedError
+
+    def unsubscribe_listener(self) -> None:
+        raise NotImplementedError
+
     async def open(self) -> None:
         raise NotImplementedError
 
     async def close(self) -> None:
-        raise NotImplementedError
-
-    async def get_active(self) -> bool:
         raise NotImplementedError
 
 

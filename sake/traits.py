@@ -1,7 +1,8 @@
+"""Traits for the cache resources defined by this standard."""
+
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
-    "RESTAndDispatcherAware",
     "Resource",
     "EmojiCache",
     "GuildCache",
@@ -17,43 +18,59 @@ __all__: typing.Final[typing.Sequence[str]] = [
 
 import typing
 
-from hikari import traits as _traits
-
 if typing.TYPE_CHECKING:
-    import aioredis
     from hikari import channels
     from hikari import emojis
     from hikari import guilds
     from hikari import invites
     from hikari import presences
     from hikari import snowflakes
+    from hikari import traits as _traits
     from hikari import users
     from hikari import voices
 
-    from sake import views
-
-
-class RESTAndDispatcherAware(_traits.DispatcherAware, _traits.RESTAware, typing.Protocol):
-    ...
+    from . import views
 
 
 class Resource(typing.Protocol):
+    """The basic interface which all cache resources should implement."""
+
     __slots__: typing.Sequence[str] = ()
 
-    @property
-    def app(self) -> RESTAndDispatcherAware:
+    def subscribe_listener(self, app: _traits.DispatcherAware) -> None:
+        """Register this resource's internal listener to a dispatcher aware app.
+
+        !!! note
+            Dependent on the implementation, this may be called by
+            `Resource.open` and may raise a `builtins.TypeError`if called
+            when this resource's listeners have already been registered.
+        """
         raise NotImplementedError
 
-    def subscribe_listener(self) -> None:
-        raise NotImplementedError
+    def unsubscribe_listener(self, app: _traits.DispatcherAware) -> None:
+        """Unregister this resource's internal listener to a dispatcher aware app.
 
-    def unsubscribe_listener(self) -> None:
+        !!! note
+            Dependent on the implementation, this may be called by
+            `Resource.close` and may raise a `builtins.TypeError`if called
+            when this resource's listeners haven't been registered yet.
+        """
         raise NotImplementedError
 
     async def open(self) -> None:
-        raise NotImplementedError
+        """Startup the resource(s) and allow them to connect to their relevant backend.
+
+        !!! note
+            This may call `Resource.subscribe_listener` in some implementations.
+
+        !!! note
+            This should pass without raising if called on an already opened
+            resource.
+        """
+        raise NotImplementedError  # TODO: connection errors.
 
     async def close(self) -> None:
+        """"""
         raise NotImplementedError
 
 
@@ -64,7 +81,7 @@ class EmojiCache(Resource, typing.Protocol):
         raise NotImplementedError
 
     async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
-        ...
+        raise NotImplementedError
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError

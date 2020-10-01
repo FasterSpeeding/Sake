@@ -14,9 +14,9 @@ from hikari import users
 from hikari.events import guild_events
 from hikari.events import member_events
 
-from sake import conversion
-from sake import traits
-from sake import views
+from . import conversion
+from . import traits
+from . import views
 
 if typing.TYPE_CHECKING:
     import ssl as ssl_
@@ -25,6 +25,7 @@ if typing.TYPE_CHECKING:
     import aioredis.abc
     from hikari import emojis as emojis_
     from hikari import snowflakes
+    from hikari import traits as hikari_traits
 
 
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake")
@@ -46,6 +47,16 @@ class ResourceIndex(enum.IntEnum):
 
 class ResourceBase(traits.Resource, abc.ABC):
     __slots__: typing.Sequence[str] = ()
+
+    @property
+    @abc.abstractmethod
+    def dispatcher(self) -> hikari_traits.DispatcherAware:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def rest(self) -> hikari_traits.RESTAware:
+        ...
 
     @abc.abstractmethod
     def subscribe_listener(self) -> None:
@@ -70,32 +81,39 @@ class ResourceBase(traits.Resource, abc.ABC):
 
 class ResourceClient(ResourceBase, abc.ABC):
     __slots__: typing.Sequence[str] = (
-        "_app",
         "_address",
         "_clients",
+        "_dispatch",
         "_password",
+        "_rest",
         "_ssl",
         "_started",
     )
 
     def __init__(
         self,
-        app: traits.RESTAndDispatcherAware,
+        dispatch: hikari_traits.DispatcherAware,
+        rest: hikari_traits.RESTAware,
         *,
         address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
         password: typing.Optional[str] = None,
         ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
     ) -> None:
         self._address = address
-        self._app = app
+        self._dispatch = dispatch
         self._clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
         self._password = password
+        self._rest = rest
         self._ssl = ssl
         self._started = False
 
     @property
-    def app(self) -> traits.RESTAndDispatcherAware:
-        return self._app
+    def dispatcher(self) -> hikari_traits.DispatcherAware:
+        return self._dispatch
+
+    @property
+    def rest(self) -> hikari_traits.RESTAware:
+        return self._rest
 
     async def destroy_connection(self, resource: ResourceIndex) -> None:
         if resource in self._clients:
@@ -103,7 +121,7 @@ class ResourceClient(ResourceBase, abc.ABC):
 
     async def get_connection(self, resource: ResourceIndex) -> aioredis.Redis:
         if not self._started:
-            raise RuntimeError("Cannot use an inactive client")
+            raise TypeError("Cannot use an inactive client")
 
         try:
             return self._clients[resource]
@@ -128,10 +146,8 @@ class ResourceClient(ResourceBase, abc.ABC):
     async def close(self) -> None:
         self._started = False
         self.unsubscribe_listener()
-        active_clients = self._clients
-        self._clients = {}
-        for client in active_clients.values():
-            await client.close()
+        for key in tuple(self._clients.keys()):
+            await self.destroy_connection(key)
 
     async def __aenter__(self: ResourceT) -> ResourceT:
         await self.open()
@@ -154,10 +170,6 @@ class ResourceClient(ResourceBase, abc.ABC):
 class UserCache(ResourceBase, traits.UserCache):
     __slots__: typing.Sequence[str] = ()
 
-    async def close(self) -> None:
-        await super().close()
-        await self.destroy_connection(ResourceIndex.USER)
-
     def subscribe_listener(self) -> None:
         # The users cache is a special case as it doesn't directly map to any events.
         super().subscribe_listener()
@@ -173,7 +185,7 @@ class UserCache(ResourceBase, traits.UserCache):
     async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
         client = await self.get_connection(ResourceIndex.USER)
         data = await client.hgetall(int(user_id))
-        return conversion.deserialize_user(data, app=self.app)
+        return conversion.deserialize_user(data, app=self.rest)
 
     async def get_user_view(self) -> views.CacheView[snowflakes.Snowflake, users.User]:
         raise NotImplementedError
@@ -188,19 +200,19 @@ class EmojiCache(UserCache, traits.EmojiCache):
 
     def subscribe_listener(self) -> None:
         super().subscribe_listener()
-        self.app.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-        self.app.dispatcher.subscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
-        self.app.dispatcher.subscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-        self.app.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
-        self.app.dispatcher.subscribe(member_events.MemberDeleteEvent, self._on_member_delete)
+        self.dispatcher.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
+        self.dispatcher.dispatcher.subscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
+        self.dispatcher.dispatcher.subscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
+        self.dispatcher.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+        #  TODO: can we also listen for member delete to manage this?
 
     def unsubscribe_listener(self) -> None:
         super().unsubscribe_listener()
-        self.app.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-        self.app.dispatcher.unsubscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
-        self.app.dispatcher.unsubscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-        self.app.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
-        self.app.dispatcher.unsubscribe(member_events.MemberDeleteEvent, self._on_member_delete)
+        self.dispatcher.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
+        self.dispatcher.dispatcher.unsubscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
+        self.dispatcher.dispatcher.unsubscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
+        self.dispatcher.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+        #  TODO: can we also listen for member delete to manage this?
 
     async def _bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
         client = await self.get_connection(ResourceIndex.EMOJI)
@@ -228,10 +240,6 @@ class EmojiCache(UserCache, traits.EmojiCache):
     async def _on_guild_leave(self, event: guild_events.GuildLeaveEvent) -> None:
         await self.clear_emojis_for_guild(event.guild_id)
 
-    async def _on_member_delete(self, event: member_events.MemberDeleteEvent) -> None:
-        if event.user_id == self.app.me:  # TODO: is this sane?
-            await self.clear_emojis_for_guild(event.guild_id)
-
     async def clear_emojis(self) -> None:  # TODO: clear methods?
         client = await self.get_connection(ResourceIndex.EMOJI)
         await client.flushdb()
@@ -247,7 +255,7 @@ class EmojiCache(UserCache, traits.EmojiCache):
         client = await self.get_connection(ResourceIndex.EMOJI)
         data = await client.hgetall(int(emoji_id))
         user = await self.get_user(int(data["user_id"])) if "user_id" in data else None
-        return conversion.deserialize_emoji(data, app=self.app, user=user)
+        return conversion.deserialize_emoji(data, app=self.rest, user=user)
 
     async def get_emoji_view(self) -> views.CacheView[snowflakes.Snowflake, emojis_.KnownCustomEmoji]:
         raise NotImplementedError
@@ -271,10 +279,12 @@ class GuildCache(ResourceBase, traits.GuildCache):
     __slots__: typing.Sequence[str] = ()
 
     def subscribe_listener(self) -> None:
-        self.app.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+        super().subscribe_listener()
+        self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
     def unsubscribe_listener(self) -> None:
-        self.app.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+        super().unsubscribe_listener()
+        self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
     async def _on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)
@@ -292,7 +302,7 @@ class GuildCache(ResourceBase, traits.GuildCache):
     async def get_guild(self, guild_id: snowflakes.Snowflakeish) -> guilds.GatewayGuild:
         client = await self.get_connection(ResourceIndex.GUILD)
         data = await client.hgetall(int(guild_id))
-        return conversion.deserialize_guild(data, app=self.app)
+        return conversion.deserialize_guild(data, app=self.rest)
 
     async def get_guild_view(self) -> views.CacheView[snowflakes.Snowflake, guilds.GatewayGuild]:
         raise NotImplementedError

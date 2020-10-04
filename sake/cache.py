@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__: typing.Final[typing.Sequence[str]] = ["ResourceBase", "EmojiCache"]
+__all__: typing.Final[typing.Sequence[str]] = ["ResourceClient", "EmojiCache", "FullCache", "GuildCache", "UserCache"]
 
 import abc
 import asyncio
@@ -29,7 +29,7 @@ if typing.TYPE_CHECKING:
 
 
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake")
-ResourceT = typing.TypeVar("ResourceT", bound="ResourceBase")
+ResourceT = typing.TypeVar("ResourceT", bound="ResourceClient")
 
 
 class ResourceIndex(enum.IntEnum):
@@ -45,41 +45,7 @@ class ResourceIndex(enum.IntEnum):
     VOICE_STATE = 9
 
 
-class ResourceBase(traits.Resource, abc.ABC):
-    __slots__: typing.Sequence[str] = ()
-
-    @property
-    @abc.abstractmethod  # As a note, this will only be set if this is actively hooked into event dispatchers
-    def dispatcher(self) -> typing.Optional[hikari_traits.DispatcherAware]:
-        ...
-
-    @property
-    @abc.abstractmethod  # unlike here where this is 100% required for building models.
-    def rest(self) -> hikari_traits.RESTAware:
-        ...
-
-    @abc.abstractmethod
-    def subscribe_listeners(self) -> None:
-        return None
-
-    @abc.abstractmethod
-    def unsubscribe_listeners(self) -> None:
-        return None
-
-    @abc.abstractmethod
-    async def destroy_connection(self, resource: ResourceIndex) -> None:
-        ...
-
-    @abc.abstractmethod
-    async def get_connection(self, resource: ResourceIndex) -> aioredis.Redis:
-        ...
-
-    @abc.abstractmethod
-    async def get_connection_status(self, resource: ResourceIndex) -> bool:
-        ...
-
-
-class ResourceClient(ResourceBase, abc.ABC):
+class ResourceClient(traits.Resource, abc.ABC):
     __slots__: typing.Sequence[str] = (
         "_address",
         "_clients",
@@ -107,11 +73,28 @@ class ResourceClient(ResourceBase, abc.ABC):
         self._ssl = ssl
         self._started = False
 
-    @property
+    async def __aenter__(self: ResourceT) -> ResourceT:
+        await self.open()
+        return self
+
+    async def __aexit__(
+        self, exc_type: typing.Type[Exception], exc_val: Exception, exc_tb: types.TracebackType
+    ) -> None:
+        await self.close()
+
+    def __enter__(self) -> typing.NoReturn:
+        # This is async only.
+        cls = type(self)
+        raise TypeError(f"{cls.__module__}.{cls.__qualname__} is async-only, did you mean 'async with'?") from None
+
+    def __exit__(self, exc_type: typing.Type[Exception], exc_val: Exception, exc_tb: types.TracebackType) -> None:
+        return None
+
+    @property  # As a note, this will only be set if this is actively hooked into event dispatchers
     def dispatcher(self) -> typing.Optional[hikari_traits.DispatcherAware]:
         return self._dispatch
 
-    @property
+    @property  # unlike here where this is 100% required for building models.
     def rest(self) -> hikari_traits.RESTAware:
         return self._rest
 
@@ -155,38 +138,33 @@ class ResourceClient(ResourceBase, abc.ABC):
             for key in tuple(self._clients.keys()):
                 await self.destroy_connection(key)
 
-    async def __aenter__(self: ResourceT) -> ResourceT:
-        await self.open()
-        return self
+    @abc.abstractmethod
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        return None
 
-    async def __aexit__(
-        self, exc_type: typing.Type[Exception], exc_val: Exception, exc_tb: types.TracebackType
-    ) -> None:
-        await self.close()
-
-    def __enter__(self) -> typing.NoReturn:
-        # This is async only.
-        cls = type(self)
-        raise TypeError(f"{cls.__module__}.{cls.__qualname__} is async-only, did you mean 'async with'?") from None
-
-    def __exit__(self, exc_type: typing.Type[Exception], exc_val: Exception, exc_tb: types.TracebackType) -> None:
+    @abc.abstractmethod
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
         return None
 
 
-class UserCache(ResourceBase, traits.UserCache):
+class UserCache(ResourceClient, traits.UserCache):
     __slots__: typing.Sequence[str] = ()
-
-    def subscribe_listeners(self) -> None:
-        # The users cache is a special case as it doesn't directly map to any events.
-        super().subscribe_listeners()
-
-    def unsubscribe_listeners(self) -> None:
-        # The users cache is a special case as it doesn't directly map to any events.
-        super().unsubscribe_listeners()
 
     async def _delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
         client = await self.get_connection(ResourceIndex.USER)
         await client.delete(int(user_id))
+
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        # The users cache is a special case as it doesn't directly map to any events.
+        super().subscribe_listeners()
+
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        # The users cache is a special case as it doesn't directly map to any events.
+        super().unsubscribe_listeners()
 
     async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
         client = await self.get_connection(ResourceIndex.USER)
@@ -203,24 +181,6 @@ class UserCache(ResourceBase, traits.UserCache):
 
 class EmojiCache(UserCache, traits.EmojiCache):
     __slots__: typing.Sequence[str] = ()
-
-    def subscribe_listeners(self) -> None:
-        super().subscribe_listeners()
-        if self.dispatcher is not None:
-            self.dispatcher.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
-            #  TODO: can we also listen for member delete to manage this?
-
-    def unsubscribe_listeners(self) -> None:
-        super().unsubscribe_listeners()
-        if self.dispatcher is not None:
-            self.dispatcher.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
-            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
-            #  TODO: can we also listen for member delete to manage this?
 
     async def _bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
         client = await self.get_connection(ResourceIndex.EMOJI)
@@ -247,6 +207,28 @@ class EmojiCache(UserCache, traits.EmojiCache):
 
     async def _on_guild_leave(self, event: guild_events.GuildLeaveEvent) -> None:
         await self.clear_emojis_for_guild(event.guild_id)
+
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().subscribe_listeners()
+        if self.dispatcher is not None:
+            self.dispatcher.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+            #  TODO: can we also listen for member delete to manage this?
+
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().unsubscribe_listeners()
+        if self.dispatcher is not None:
+            self.dispatcher.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
+            self.dispatcher.dispatcher.unsubscribe(
+                guild_events.GuildAvailableEvent, self._on_guild_available_and_update
+            )
+            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
+            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+            #  TODO: can we also listen for member delete to manage this?
 
     async def clear_emojis(self) -> None:  # TODO: clear methods?
         client = await self.get_connection(ResourceIndex.EMOJI)
@@ -283,18 +265,8 @@ class EmojiCache(UserCache, traits.EmojiCache):
         await client.hmset_dict(int(emoji.id), data)
 
 
-class GuildCache(ResourceBase, traits.GuildCache):
+class GuildCache(ResourceClient, traits.GuildCache):
     __slots__: typing.Sequence[str] = ()
-
-    def subscribe_listeners(self) -> None:
-        super().subscribe_listeners()
-        if self.dispatcher is not None:
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
-
-    def unsubscribe_listeners(self) -> None:
-        super().unsubscribe_listeners()
-        if self.dispatcher is not None:
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
     async def _on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)
@@ -304,6 +276,18 @@ class GuildCache(ResourceBase, traits.GuildCache):
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await client.delete(int(event.guild_id))
+
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().subscribe_listeners()
+        if self.dispatcher is not None:
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().unsubscribe_listeners()
+        if self.dispatcher is not None:
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
     async def delete_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)
@@ -323,5 +307,5 @@ class GuildCache(ResourceBase, traits.GuildCache):
         await client.hmset_dict(int(guild.id), data)
 
 
-class FullCache(ResourceClient, GuildCache, EmojiCache):
+class FullCache(GuildCache, EmojiCache):
     __slots__: typing.Sequence[str] = ()

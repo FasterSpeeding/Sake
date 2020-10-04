@@ -108,7 +108,7 @@ def deserialize_guild(data: typing.Mapping[str, str], *, app: traits.RESTAware) 
         premium_tier=guilds.GuildPremiumTier(int(data["premium_tier"])),
         preferred_locale=data["preferred_locale"],
         verification_level=guilds.GuildVerificationLevel(int(data["verification_level"])),
-        system_channel_flags=snowflakes.Snowflake(data["system_channel_flags"]),
+        system_channel_flags=guilds.GuildSystemChannelFlag(data["system_channel_flags"]),
         icon_hash=data.get("icon_hash"),
         splash_hash=data.get("splash_hash"),
         discovery_splash_hash=data.get("discovery_splash_hash"),

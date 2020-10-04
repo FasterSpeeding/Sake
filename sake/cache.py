@@ -29,10 +29,13 @@ if typing.TYPE_CHECKING:
 
 
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake")
+"""Type-Hint The logger instance used by this sake implementation."""
 ResourceT = typing.TypeVar("ResourceT", bound="ResourceClient")
+"""Type-Hint A type hint used to represent a resource client instance."""
 
 
 class ResourceIndex(enum.IntEnum):
+    """An enum of the indexes used to map cache resources to their redis databases."""
     EMOJI = 0
     GUILD = 1
     GUILD_CHANNEL = 2
@@ -46,6 +49,36 @@ class ResourceIndex(enum.IntEnum):
 
 
 class ResourceClient(traits.Resource, abc.ABC):
+    """A base client which all resources in this implementation will implement.
+
+    !!! note
+        This cannot be initialised by itself and is useless alone.
+
+    Parameters
+    ----------
+    rest : hikari.traits.RESTAware
+        The REST aware Hikari client to bind this resource client to.
+    address : typing.Union[str, typing.Tuple[str, typing.Union[str, int]]
+        The address to use to connect to the Redis backend server this
+        resource is linked to. This may either be a string url in the form
+        of `"redis://localhost:4242"` or a tuple of an address to a port
+        in the form of `("localhost", 4242)`.
+
+    Other Parameters
+    ----------------
+    dispatch : typing.Optional[hikari.traits.DispatchAware]
+        The dispatcher aware Hikari client to bind this resource client to.
+        This can be left as `builtins.None` to avoid this client from
+        automatically registering any event listeners.
+    password : typing.Optional[str]
+        The password to optionally use to connect ot the backend Redis
+        server.
+    ssl : typing.Union[ssl.SSLContext, builtins.bool, builtins.None]
+        The SSL context to use when connecting to the Redis backend server,
+        this may be a context object, bool value or None to leave default
+        behaviour (which will likely be no SSL).
+    """
+
     __slots__: typing.Sequence[str] = (
         "_address",
         "_clients",
@@ -92,17 +125,69 @@ class ResourceClient(traits.Resource, abc.ABC):
 
     @property  # As a note, this will only be set if this is actively hooked into event dispatchers
     def dispatcher(self) -> typing.Optional[hikari_traits.DispatcherAware]:
+        """The dispatcher this resource client is tied to, if set.
+
+        !!! note
+            If this is set then event listeners will be (de)registered
+            when this resource is opened/closed.
+
+        Returns
+        -------
+        typing.Optional[hikari.traits.DispatcherAware]
+            The dispatcher aware client this resource is tied to if set,
+            else `builtins.None`.
+        """
         return self._dispatch
 
     @property  # unlike here where this is 100% required for building models.
     def rest(self) -> hikari_traits.RESTAware:
+        """The REST aware client this resource client is tied to.
+
+        This is used to build models with a `app` attribute.
+
+        Returns
+        -------
+        hikari.traits.RESTAware
+            The REST aware client this resource is tied to.
+        """
         return self._rest
 
     async def destroy_connection(self, resource: ResourceIndex) -> None:
+        """Close the connection for a specific resource within this client.
+
+        Parameters
+        ----------
+        resource : ResourceIndex
+            The index of the resource
+
+        Raises
+        ------
+        LookupError
+            If the no instance was found for the resource specified.
+        """
         if resource in self._clients:
             await self._clients.pop(resource).close()
+        else:
+            raise LookupError(f"{resource!s} instance not found")
 
     async def get_connection(self, resource: ResourceIndex) -> aioredis.Redis:
+        """Get or create a connection for a specific resource.
+
+        Parameters
+        ----------
+        resource : ResourceIndex
+            The index of the resource to get a connection for.
+
+        Returns
+        -------
+        aioredis.Redis
+            The connection instance for the specified resource.
+
+        Raises
+        ------
+        TypeError
+            When this method is called on a closed client.
+        """
         if not self._started:
             raise TypeError("Cannot use an inactive client")
 
@@ -120,14 +205,28 @@ class ResourceClient(traits.Resource, abc.ABC):
             return pool
 
     async def get_connection_status(self, resource: ResourceIndex) -> bool:
+        """Get the status of the internal connection for a specific resource.
+
+        Parameters
+        ----------
+        resource : ResourceIndex
+            The index of the resource to get the status for.
+
+        Returns
+        -------
+        bool
+            Whether the client has an active connection for the specified resource.
+        """
         return resource in self._clients and not self._clients[resource].closed
 
     async def open(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
         if not self._started:
             self.subscribe_listeners()
             self._started = True
 
     async def close(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
         # We want to ensure that we both only do anything here if the client was already started when the method was
         # originally called and also that the client is marked as "closed" before this starts severing connections.
         was_started = self._started
@@ -152,10 +251,6 @@ class ResourceClient(traits.Resource, abc.ABC):
 class UserCache(ResourceClient, traits.UserCache):
     __slots__: typing.Sequence[str] = ()
 
-    async def _delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
-        client = await self.get_connection(ResourceIndex.USER)
-        await client.delete(int(user_id))
-
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         # The users cache is a special case as it doesn't directly map to any events.
@@ -166,15 +261,23 @@ class UserCache(ResourceClient, traits.UserCache):
         # The users cache is a special case as it doesn't directly map to any events.
         super().unsubscribe_listeners()
 
+    async def delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
+        # <<Inherited docstring from sake.traits.UserCache>>
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.delete(int(user_id))
+
     async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
+        # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
         data = await client.hgetall(int(user_id))
         return conversion.deserialize_user(data, app=self.rest)
 
     async def get_user_view(self) -> views.CacheView[snowflakes.Snowflake, users.User]:
+        # <<Inherited docstring from sake.traits.UserCache>>
         raise NotImplementedError
 
-    async def _set_user(self, user: users.User) -> None:
+    async def set_user(self, user: users.User) -> None:
+        # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
         await client.hmset_dict(int(user.id), conversion.serialize_user(user))
 
@@ -191,7 +294,7 @@ class EmojiCache(UserCache, traits.EmojiCache):
             transaction.hmset_dict(int(emoji), conversion.serialize_emoji(emoji))
 
             if emoji.user:
-                user_tasks.append(self._set_user(emoji.user))
+                user_tasks.append(self.set_user(emoji.user))
 
         await asyncio.gather(transaction.execute(), *user_tasks)
 
@@ -231,36 +334,43 @@ class EmojiCache(UserCache, traits.EmojiCache):
             #  TODO: can we also listen for member delete to manage this?
 
     async def clear_emojis(self) -> None:  # TODO: clear methods?
+        # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         await client.flushdb()
 
     async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        # <<Inherited docstring from sake.traits.EmojiCache>>
         raise NotImplementedError
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
+        # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         await client.delete(int(emoji_id))
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish) -> emojis_.KnownCustomEmoji:
+        # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         data = await client.hgetall(int(emoji_id))
         user = await self.get_user(int(data["user_id"])) if "user_id" in data else None
         return conversion.deserialize_emoji(data, app=self.rest, user=user)
 
     async def get_emoji_view(self) -> views.CacheView[snowflakes.Snowflake, emojis_.KnownCustomEmoji]:
+        # <<Inherited docstring from sake.traits.EmojiCache>>
         raise NotImplementedError
 
     async def get_emoji_view_for_guild(
         self, guild_id: snowflakes.Snowflakeish
     ) -> views.CacheView[snowflakes.Snowflake, emojis_.KnownCustomEmoji]:
+        # <<Inherited docstring from sake.traits.EmojiCache>>
         raise NotImplementedError
 
     async def set_emoji(self, emoji: emojis_.KnownCustomEmoji) -> None:
+        # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         data = conversion.serialize_emoji(emoji)
 
         if emoji.user is not None:
-            await self._set_user(emoji.user)
+            await self.set_user(emoji.user)
 
         await client.hmset_dict(int(emoji.id), data)
 
@@ -290,22 +400,28 @@ class GuildCache(ResourceClient, traits.GuildCache):
             self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
     async def delete_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
         await client.delete(int(guild_id))
 
     async def get_guild(self, guild_id: snowflakes.Snowflakeish) -> guilds.GatewayGuild:
+        # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
         data = await client.hgetall(int(guild_id))
         return conversion.deserialize_guild(data, app=self.rest)
 
     async def get_guild_view(self) -> views.CacheView[snowflakes.Snowflake, guilds.GatewayGuild]:
+        # <<Inherited docstring from sake.traits.GuildCache>>
         raise NotImplementedError
 
     async def set_guild(self, guild: guilds.GatewayGuild) -> None:
+        # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
         data = conversion.serialize_guild(guild)
         await client.hmset_dict(int(guild.id), data)
 
 
 class FullCache(GuildCache, EmojiCache):
+    """A class which implements all the defined cache resoruces."""
+
     __slots__: typing.Sequence[str] = ()

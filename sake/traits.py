@@ -280,8 +280,8 @@ class UserCache(Resource, typing.Protocol):  # TODO: add this to more classes?
 
     __slots__: typing.Sequence[str] = ()
 
-    # async def delete_user(self) -> None:
-    #     raise NotImplementedError
+    async def delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
 
     async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
         raise NotImplementedError
@@ -289,8 +289,8 @@ class UserCache(Resource, typing.Protocol):  # TODO: add this to more classes?
     async def get_user_view(self) -> views.CacheView[snowflakes.Snowflake, users.User]:
         raise NotImplementedError
 
-    # async def set_user(self, user: users.User) -> None:
-    #     raise NotImplementedError
+    async def set_user(self, user: users.User) -> None:
+        raise NotImplementedError
 
 
 class VoiceStateCache(Resource, typing.Protocol):

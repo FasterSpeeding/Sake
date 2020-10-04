@@ -14,9 +14,9 @@ from hikari import users
 from hikari.events import guild_events
 from hikari.events import member_events
 
-from . import conversion
-from . import traits
-from . import views
+from sake import conversion
+from sake import traits
+from sake import views
 
 if typing.TYPE_CHECKING:
     import ssl as ssl_
@@ -49,21 +49,21 @@ class ResourceBase(traits.Resource, abc.ABC):
     __slots__: typing.Sequence[str] = ()
 
     @property
-    @abc.abstractmethod
-    def dispatcher(self) -> hikari_traits.DispatcherAware:
+    @abc.abstractmethod  # As a note, this will only be set if this is actively hooked into event dispatchers
+    def dispatcher(self) -> typing.Optional[hikari_traits.DispatcherAware]:
         ...
 
     @property
-    @abc.abstractmethod
+    @abc.abstractmethod  # unlike here where this is 100% required for building models.
     def rest(self) -> hikari_traits.RESTAware:
         ...
 
     @abc.abstractmethod
-    def subscribe_listener(self) -> None:
+    def subscribe_listeners(self) -> None:
         return None
 
     @abc.abstractmethod
-    def unsubscribe_listener(self) -> None:
+    def unsubscribe_listeners(self) -> None:
         return None
 
     @abc.abstractmethod
@@ -92,8 +92,8 @@ class ResourceClient(ResourceBase, abc.ABC):
 
     def __init__(
         self,
-        dispatch: hikari_traits.DispatcherAware,
         rest: hikari_traits.RESTAware,
+        dispatch: typing.Optional[hikari_traits.DispatcherAware] = None,
         *,
         address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
         password: typing.Optional[str] = None,
@@ -108,7 +108,7 @@ class ResourceClient(ResourceBase, abc.ABC):
         self._started = False
 
     @property
-    def dispatcher(self) -> hikari_traits.DispatcherAware:
+    def dispatcher(self) -> typing.Optional[hikari_traits.DispatcherAware]:
         return self._dispatch
 
     @property
@@ -140,14 +140,20 @@ class ResourceClient(ResourceBase, abc.ABC):
         return resource in self._clients and not self._clients[resource].closed
 
     async def open(self) -> None:
-        self.subscribe_listener()
-        self._started = True
+        if not self._started:
+            self.subscribe_listeners()
+            self._started = True
 
     async def close(self) -> None:
+        # We want to ensure that we both only do anything here if the client was already started when the method was
+        # originally called and also that the client is marked as "closed" before this starts severing connections.
+        was_started = self._started
         self._started = False
-        self.unsubscribe_listener()
-        for key in tuple(self._clients.keys()):
-            await self.destroy_connection(key)
+
+        if was_started:
+            self.unsubscribe_listeners()
+            for key in tuple(self._clients.keys()):
+                await self.destroy_connection(key)
 
     async def __aenter__(self: ResourceT) -> ResourceT:
         await self.open()
@@ -170,13 +176,13 @@ class ResourceClient(ResourceBase, abc.ABC):
 class UserCache(ResourceBase, traits.UserCache):
     __slots__: typing.Sequence[str] = ()
 
-    def subscribe_listener(self) -> None:
+    def subscribe_listeners(self) -> None:
         # The users cache is a special case as it doesn't directly map to any events.
-        super().subscribe_listener()
+        super().subscribe_listeners()
 
-    def unsubscribe_listener(self) -> None:
+    def unsubscribe_listeners(self) -> None:
         # The users cache is a special case as it doesn't directly map to any events.
-        super().unsubscribe_listener()
+        super().unsubscribe_listeners()
 
     async def _delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
         client = await self.get_connection(ResourceIndex.USER)
@@ -198,21 +204,23 @@ class UserCache(ResourceBase, traits.UserCache):
 class EmojiCache(UserCache, traits.EmojiCache):
     __slots__: typing.Sequence[str] = ()
 
-    def subscribe_listener(self) -> None:
-        super().subscribe_listener()
-        self.dispatcher.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-        self.dispatcher.dispatcher.subscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
-        self.dispatcher.dispatcher.subscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-        self.dispatcher.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
-        #  TODO: can we also listen for member delete to manage this?
+    def subscribe_listeners(self) -> None:
+        super().subscribe_listeners()
+        if self.dispatcher is not None:
+            self.dispatcher.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+            #  TODO: can we also listen for member delete to manage this?
 
-    def unsubscribe_listener(self) -> None:
-        super().unsubscribe_listener()
-        self.dispatcher.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-        self.dispatcher.dispatcher.unsubscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
-        self.dispatcher.dispatcher.unsubscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-        self.dispatcher.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
-        #  TODO: can we also listen for member delete to manage this?
+    def unsubscribe_listeners(self) -> None:
+        super().unsubscribe_listeners()
+        if self.dispatcher is not None:
+            self.dispatcher.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
+            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
+            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
+            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+            #  TODO: can we also listen for member delete to manage this?
 
     async def _bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
         client = await self.get_connection(ResourceIndex.EMOJI)
@@ -278,13 +286,15 @@ class EmojiCache(UserCache, traits.EmojiCache):
 class GuildCache(ResourceBase, traits.GuildCache):
     __slots__: typing.Sequence[str] = ()
 
-    def subscribe_listener(self) -> None:
-        super().subscribe_listener()
-        self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+    def subscribe_listeners(self) -> None:
+        super().subscribe_listeners()
+        if self.dispatcher is not None:
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
-    def unsubscribe_listener(self) -> None:
-        super().unsubscribe_listener()
-        self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+    def unsubscribe_listeners(self) -> None:
+        super().unsubscribe_listeners()
+        if self.dispatcher is not None:
+            self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
     async def _on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)

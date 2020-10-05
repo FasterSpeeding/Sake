@@ -305,17 +305,8 @@ class EmojiCache(UserCache, traits.EmojiCache):
     __slots__: typing.Sequence[str] = ()
 
     async def _bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
-        client = await self.get_connection(ResourceIndex.EMOJI)
-        transaction = client.multi_exec()
-        user_tasks = []
-
-        for emoji in emojis:
-            transaction.hmset_dict(int(emoji), conversion.serialize_emoji(emoji))
-
-            if emoji.user:
-                user_tasks.append(self.set_user(emoji.user))
-
-        await asyncio.gather(transaction.execute(), *user_tasks)
+        #  This is generally quicker and less blocking than buffering requests.
+        await asyncio.gather(*map(self.set_emoji, emojis))
 
     async def _on_emojis_update(self, event: guild_events.EmojisUpdateEvent) -> None:
         await self.clear_emojis_for_guild(event.guild_id)

@@ -368,7 +368,7 @@ def serialize_user(user: users.User) -> RedisMapT:
         "is_system": int(user.is_system),
         "flags": int(user.flags),
     }
-    if user.avatar_hash is not user.avatar_hash is not None:
+    if user.avatar_hash is not None:
         data["avatar_hash"] = user.avatar_hash
 
     return data

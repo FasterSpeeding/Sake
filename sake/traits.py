@@ -186,7 +186,7 @@ class MeCache(Resource, typing.Protocol):  # TODO: is this necessary?
     async def get_me(self) -> users.OwnUser:
         raise NotImplementedError
 
-    async def set_me(self) -> None:
+    async def set_me(self, me: users.OwnUser) -> None:
         raise NotImplementedError
 
 

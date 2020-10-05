@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-__all__: typing.Final[typing.Sequence[str]] = ["ResourceClient", "EmojiCache", "FullCache", "GuildCache", "UserCache"]
+__all__: typing.Final[typing.Sequence[str]] = [
+    "ResourceClient",
+    "EmojiCache",
+    "FullCache",
+    "GuildCache",
+    "MeCache",
+    "UserCache",
+]
 
 import abc
 import asyncio
@@ -13,8 +20,11 @@ from hikari import guilds
 from hikari import users
 from hikari.events import guild_events
 from hikari.events import member_events
+from hikari.events import shard_events
+from hikari.events import user_events
 
 from sake import conversion
+from sake import errors
 from sake import traits
 from sake import views
 
@@ -36,16 +46,16 @@ ResourceT = typing.TypeVar("ResourceT", bound="ResourceClient")
 
 class ResourceIndex(enum.IntEnum):
     """An enum of the indexes used to map cache resources to their redis databases."""
+
     EMOJI = 0
     GUILD = 1
     GUILD_CHANNEL = 2
     INVITE = 3
-    ME = 4
-    MEMBER = 5
-    PRESENCE = 6
-    ROLE = 7
-    USER = 8
-    VOICE_STATE = 9
+    MEMBER = 4
+    PRESENCE = 5
+    ROLE = 6
+    USER = 7
+    VOICE_STATE = 8
 
 
 class ResourceClient(traits.Resource, abc.ABC):
@@ -124,8 +134,8 @@ class ResourceClient(traits.Resource, abc.ABC):
         return None
 
     @property  # As a note, this will only be set if this is actively hooked into event dispatchers
-    def dispatcher(self) -> typing.Optional[hikari_traits.DispatcherAware]:
-        """The dispatcher this resource client is tied to, if set.
+    def dispatch(self) -> typing.Optional[hikari_traits.DispatcherAware]:
+        """The dispatcher aware client this resource client is tied to, if set.
 
         !!! note
             If this is set then event listeners will be (de)registered
@@ -270,6 +280,10 @@ class UserCache(ResourceClient, traits.UserCache):
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
         data = await client.hgetall(int(user_id))
+
+        if not data:
+            raise errors.EntryNotFound(f"User entry `{user_id}` not found")
+
         return conversion.deserialize_user(data, app=self.rest)
 
     async def get_user_view(self) -> views.CacheView[snowflakes.Snowflake, users.User]:
@@ -313,24 +327,23 @@ class EmojiCache(UserCache, traits.EmojiCache):
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
+        # TODO: on ready
         super().subscribe_listeners()
-        if self.dispatcher is not None:
-            self.dispatcher.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
+            self.dispatch.dispatcher.subscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
+            self.dispatch.dispatcher.subscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
+            self.dispatch.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
             #  TODO: can we also listen for member delete to manage this?
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatcher is not None:
-            self.dispatcher.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-            self.dispatcher.dispatcher.unsubscribe(
-                guild_events.GuildAvailableEvent, self._on_guild_available_and_update
-            )
-            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-            self.dispatcher.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
             #  TODO: can we also listen for member delete to manage this?
 
     async def clear_emojis(self) -> None:  # TODO: clear methods?
@@ -351,6 +364,10 @@ class EmojiCache(UserCache, traits.EmojiCache):
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         data = await client.hgetall(int(emoji_id))
+
+        if not data:
+            raise errors.EntryNotFound(f"Emoji entry `{emoji_id}` not found")
+
         user = await self.get_user(int(data["user_id"])) if "user_id" in data else None
         return conversion.deserialize_emoji(data, app=self.rest, user=user)
 
@@ -389,15 +406,16 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
+        #  TODO: on ready and on member chunk
         super().subscribe_listeners()
-        if self.dispatcher is not None:
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatcher is not None:
-            self.dispatcher.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
     async def delete_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>
@@ -408,6 +426,10 @@ class GuildCache(ResourceClient, traits.GuildCache):
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
         data = await client.hgetall(int(guild_id))
+
+        if not data:
+            raise errors.EntryNotFound(f"Guild entry `{guild_id}` not found")
+
         return conversion.deserialize_guild(data, app=self.rest)
 
     async def get_guild_view(self) -> views.CacheView[snowflakes.Snowflake, guilds.GatewayGuild]:
@@ -421,7 +443,49 @@ class GuildCache(ResourceClient, traits.GuildCache):
         await client.hmset_dict(int(guild.id), data)
 
 
-class FullCache(GuildCache, EmojiCache):
+class MeCache(ResourceClient, traits.MeCache):
+    __slots__: typing.Sequence[str] = ()
+
+    _ME_KEY: typing.Final[str] = "ME"
+
+    async def _on_own_user_update(self, event: user_events.OwnUserUpdateEvent) -> None:
+        await self.set_me(event.user)
+
+    async def _on_shard_ready(self, event: shard_events.ShardReadyEvent) -> None:
+        await self.set_me(event.my_user)  # TODO: this isnt' being called for whatever reason
+
+    def subscribe_listeners(self) -> None:
+        super().subscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.subscribe(user_events.OwnUserUpdateEvent, self._on_own_user_update)
+            self.dispatch.dispatcher.subscribe(shard_events.ShardReadyEvent, self._on_shard_ready)
+
+    def unsubscribe_listeners(self) -> None:
+        super().unsubscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.unsubscribe(user_events.OwnUserUpdateEvent, self._on_own_user_update)
+            self.dispatch.dispatcher.unsubscribe(shard_events.ShardReadyEvent, self._on_shard_ready)
+
+    async def delete_me(self) -> None:
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.delete(self._ME_KEY)
+
+    async def get_me(self) -> users.OwnUser:
+        client = await self.get_connection(ResourceIndex.USER)
+        data = await client.hgetall(self._ME_KEY)
+
+        if not data:
+            raise errors.EntryNotFound("Me entry not found")
+
+        return conversion.deserialize_me(data, app=self.rest)
+
+    async def set_me(self, me: users.OwnUser) -> None:
+        data = conversion.serialize_me(me)
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.hmset_dict(self._ME_KEY, data)
+
+
+class FullCache(GuildCache, EmojiCache, MeCache):
     """A class which implements all the defined cache resoruces."""
 
     __slots__: typing.Sequence[str] = ()

@@ -65,7 +65,7 @@ def deserialize_emoji(
     )
 
 
-def serialize_emoji(emoji: emojis.KnownCustomEmoji) -> typing.Mapping[str, RedisValueT]:
+def serialize_emoji(emoji: emojis.KnownCustomEmoji) -> RedisMapT:
     data: RedisMapT = {
         "id": int(emoji.id),
         "guild_id": int(emoji.guild_id),
@@ -130,7 +130,7 @@ def deserialize_guild(data: typing.Mapping[str, str], *, app: traits.RESTAware) 
     )
 
 
-def serialize_guild(guild: guilds.GatewayGuild) -> typing.Mapping[str, RedisValueT]:
+def serialize_guild(guild: guilds.GatewayGuild) -> RedisMapT:
     data: RedisMapT = {
         "features": ",".join(map(str, guild.features)),
         "id": int(guild.id),
@@ -210,7 +210,7 @@ def deserialize_guild_channel(data: typing.Mapping[str, str], *, app: traits.RES
     raise NotImplementedError
 
 
-def serialize_guild_channel(channel: channels.GuildChannel) -> typing.Mapping[str, RedisValueT]:
+def serialize_guild_channel(channel: channels.GuildChannel) -> RedisMapT:
     raise NotImplementedError
 
 
@@ -218,23 +218,53 @@ def deserialize_invite(data: typing.Mapping[str, str], *, app: traits.RESTAware)
     raise NotImplementedError
 
 
-def serialize_invite(invite: invites.InviteWithMetadata) -> typing.Mapping[str, RedisValueT]:
+def serialize_invite(invite: invites.InviteWithMetadata) -> RedisMapT:
     raise NotImplementedError
 
 
 def deserialize_me(data: typing.Mapping[str, str], *, app: traits.RESTAware) -> users.OwnUser:
-    raise NotImplementedError
+    # TODO: can we not duplicate this logic between here and deserialize_user
+    return users.OwnUser(
+        app=app,
+        id=snowflakes.Snowflake(data["id"]),
+        discriminator=data["discriminator"],
+        username=data["username"],
+        avatar_hash=data.get("avatar_hash"),
+        is_bot=bool(data["is_bot"]),
+        is_system=bool(data["is_system"]),
+        flags=users.UserFlag(int(data["flags"])),
+        is_mfa_enabled=bool(data["is_mfa_enabled"]),
+        locale=data.get("locale"),
+        is_verified=bool(data["is_verified"]) if "is_verified" in data else None,
+        email=data.get("email"),
+        premium_type=users.PremiumType(data["premium_type"]) if "premium_type" in data else None,
+    )
 
 
-def serialize_me(me: users.OwnUser) -> typing.Mapping[str, RedisValueT]:
-    raise NotImplementedError
+def serialize_me(me: users.OwnUser) -> RedisMapT:
+    data = serialize_user(me)
+    data.update(is_mfa_enabled=int(me.is_mfa_enabled))
+
+    if me.locale is not None:
+        data["locale"] = me.locale
+
+    if me.is_verified is not None:
+        data["is_verified"] = int(me.is_verified)
+
+    if me.email is not None:
+        data["email"] = me.email
+
+    if me.premium_type is not None:
+        data["premium_type"] = int(me.premium_type)
+
+    return data
 
 
 def deserialize_member(data: typing.Mapping[str, str], *, app: traits.RESTAware) -> guilds.Member:
     raise NotImplementedError
 
 
-def serialize_member(member: guilds.Member) -> typing.Mapping[str, RedisValueT]:
+def serialize_member(member: guilds.Member) -> RedisMapT:
     raise NotImplementedError
 
 
@@ -242,7 +272,7 @@ def deserialize_presence(data: typing.Mapping[str, str], *, app: traits.RESTAwar
     raise NotImplementedError
 
 
-def serialize_presence(presence: presences.MemberPresence) -> typing.Mapping[str, RedisValueT]:
+def serialize_presence(presence: presences.MemberPresence) -> RedisMapT:
     raise NotImplementedError
 
 
@@ -250,7 +280,7 @@ def deserialize_role(data: typing.Mapping[str, str], *, app: traits.RESTAware) -
     raise NotImplementedError
 
 
-def serialize_role(role: guilds.Role) -> typing.Mapping[str, RedisValueT]:
+def serialize_role(role: guilds.Role) -> RedisMapT:
     raise NotImplementedError
 
 
@@ -267,7 +297,7 @@ def deserialize_user(data: typing.Mapping[str, str], *, app: traits.RESTAware) -
     )
 
 
-def serialize_user(user: users.User) -> typing.Mapping[str, RedisValueT]:
+def serialize_user(user: users.User) -> RedisMapT:
     data: RedisMapT = {
         "id": int(user.id),
         "discriminator": user.discriminator,
@@ -286,5 +316,5 @@ def deserialize_voice_state(data: typing.Mapping[str, str], *, app: traits.RESTA
     raise NotImplementedError
 
 
-def serialize_voice_state(voice_state: voices.VoiceState) -> typing.Mapping[str, RedisValueT]:
+def serialize_voice_state(voice_state: voices.VoiceState) -> RedisMapT:
     raise NotImplementedError

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__: typing.Final[typing.Sequence[str]] = ["RedisView"]
+__all__: typing.Final[typing.Sequence[str]] = ["RedisIterator"]
 
 import typing
 
@@ -14,7 +14,7 @@ if typing.TYPE_CHECKING:
 ValueT = typing.TypeVar("ValueT")
 
 
-class RedisView(traits.CacheView[ValueT]):
+class RedisIterator(traits.CacheIterator[ValueT]):
     __slots__: typing.Sequence[str] = ("_builder", "_client", "_get_method", "_index", "_iterator")
 
     def __init__(
@@ -28,6 +28,9 @@ class RedisView(traits.CacheView[ValueT]):
         self._index = index
         self._iterator: typing.Optional[typing.AsyncIterator[conversion.RedisValueT]] = None
 
+    def __aiter__(self) -> RedisIterator[ValueT]:
+        return self
+
     async def __anext__(self) -> ValueT:
         client = await self._client.get_connection(self._index)
         if self._iterator is None:
@@ -38,9 +41,6 @@ class RedisView(traits.CacheView[ValueT]):
 
         self._iterator = None
         raise StopAsyncIteration
-
-    def __aiter__(self) -> RedisView[ValueT]:
-        return self
 
     async def len(self) -> int:
         client = await self._client.get_connection(self._index)

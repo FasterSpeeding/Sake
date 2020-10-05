@@ -19,9 +19,10 @@ __all__: typing.Final[typing.Sequence[str]] = [
 import abc
 import typing
 
+from hikari import iterators
 
 if typing.TYPE_CHECKING:
-    from hikari import channels, iterators
+    from hikari import channels
     from hikari import emojis
     from hikari import guilds
     from hikari import invites
@@ -31,22 +32,13 @@ if typing.TYPE_CHECKING:
     from hikari import voices
 
 
-# KeyT = typing.TypeVar("KeyT")
 ValueT = typing.TypeVar("ValueT")
 
 
-class CacheView(iterators.LazyIterator[ValueT], abc.ABC):
-    # @abc.abstractmethod
-    # async def keys(self) -> typing.AsyncIterator[KeyT]:
-    #     raise NotImplementedError
-
+class CacheIterator(iterators.LazyIterator[ValueT], abc.ABC):
     @abc.abstractmethod
     async def len(self) -> int:
         raise NotImplementedError
-
-    # @abc.abstractmethod
-    # async def search(self):  # TODO: search technique
-    #     raise NotImplementedError
 
 
 class Resource(typing.Protocol):
@@ -122,10 +114,10 @@ class EmojiCache(Resource, typing.Protocol):
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish) -> emojis.KnownCustomEmoji:
         raise NotImplementedError
 
-    async def get_emoji_view(self) -> CacheView[emojis.KnownCustomEmoji]:
+    def iter_emojis(self) -> CacheIterator[emojis.KnownCustomEmoji]:
         raise NotImplementedError
 
-    async def get_emoji_view_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheView[emojis.KnownCustomEmoji]:
+    def iter_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[emojis.KnownCustomEmoji]:
         raise NotImplementedError
 
     async def set_emoji(self, emoji: emojis.KnownCustomEmoji) -> None:
@@ -135,13 +127,16 @@ class EmojiCache(Resource, typing.Protocol):
 class GuildCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
+    async def clear_guilds(self) -> None:
+        raise NotImplementedError
+
     async def delete_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
     async def get_guild(self, guild_id: snowflakes.Snowflakeish) -> guilds.GatewayGuild:
         raise NotImplementedError
 
-    async def get_guild_view(self) -> CacheView[guilds.GatewayGuild]:
+    def iter_guilds(self) -> CacheIterator[guilds.GatewayGuild]:
         raise NotImplementedError
 
     async def set_guild(self, guild: guilds.GatewayGuild) -> None:
@@ -151,15 +146,22 @@ class GuildCache(Resource, typing.Protocol):
 class GuildChannelCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
+    async def clear_guild_channels(self) -> None:
+        raise NotImplementedError
+
+    async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
     async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
     async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> channels.GuildChannel:
         raise NotImplementedError
 
-    async def get_guild_channel_view_for_guild(
-        self, guild_id: snowflakes.Snowflakeish
-    ) -> CacheView[channels.GuildChannel]:
+    def iter_guild_channels(self) -> CacheIterator[channels.GuildChannel]:
+        raise NotImplementedError
+
+    def iter_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[channels.GuildChannel]:
         raise NotImplementedError
 
     async def set_guild_channel(self, channel: channels.GuildChannel) -> None:
@@ -169,23 +171,30 @@ class GuildChannelCache(Resource, typing.Protocol):
 class InviteCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
+    async def clear_invites(self) -> None:
+        raise NotImplementedError
+
+    async def clear_invites_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
+    async def clear_invites_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
     async def delete_invite(self, invite_code: str) -> None:
         raise NotImplementedError
 
     async def get_invite(self, invite_code: str) -> invites.InviteWithMetadata:
         raise NotImplementedError
 
-    async def get_invites_view(self) -> CacheView[invites.InviteWithMetadata]:
+    def iter_invites(self) -> CacheIterator[invites.InviteWithMetadata]:
         raise NotImplementedError
 
-    async def get_invite_view_for_channel(
+    def iter_invites_for_channel(
         self, channel_id: snowflakes.Snowflakeish
-    ) -> CacheView[invites.InviteWithMetadata]:
+    ) -> CacheIterator[invites.InviteWithMetadata]:
         raise NotImplementedError
 
-    async def get_invite_view_for_guild(
-        self, guild_id: snowflakes.Snowflakeish
-    ) -> CacheView[invites.InviteWithMetadata]:
+    def iter_invites_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[invites.InviteWithMetadata]:
         raise NotImplementedError
 
     async def set_invite(self, invite: invites.InviteWithMetadata) -> None:
@@ -208,21 +217,27 @@ class MeCache(Resource, typing.Protocol):  # TODO: is this necessary?
 class MemberCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
+    async def clear_members(self) -> None:
+        raise NotImplementedError
+
+    async def clear_members_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
     async def delete_member(self, user_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
     async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> guilds.Member:
         raise NotImplementedError
 
-    async def get_member_view_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheView[guilds.Member]:
-        raise NotImplementedError
-
-    async def get_member_view_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheView[guilds.Member]:
-        raise NotImplementedError
-
-    async def get_member_view(
+    def iter_members(
         self,
-    ) -> CacheView[guilds.Member]:
+    ) -> CacheIterator[guilds.Member]:
+        raise NotImplementedError
+
+    def iter_members_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[guilds.Member]:
+        raise NotImplementedError
+
+    def iter_members_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheIterator[guilds.Member]:
         raise NotImplementedError
 
     async def set_member(self, member: guilds.Member) -> None:
@@ -232,6 +247,12 @@ class MemberCache(Resource, typing.Protocol):
 class PresenceCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
+    async def clear_presences(self) -> None:
+        raise NotImplementedError
+
+    async def clear_presences_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
     async def delete_presence(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
@@ -240,17 +261,15 @@ class PresenceCache(Resource, typing.Protocol):
     ) -> presences.MemberPresence:
         raise NotImplementedError
 
-    async def get_presence_view(
+    def iter_presences(
         self,
-    ) -> CacheView[presences.MemberPresence]:
+    ) -> CacheIterator[presences.MemberPresence]:
         raise NotImplementedError
 
-    async def get_presence_view_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheView[presences.MemberPresence]:
+    def iter_presences_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheIterator[presences.MemberPresence]:
         raise NotImplementedError
 
-    async def get_presence_view_for_guild(
-        self, guild_id: snowflakes.Snowflakeish
-    ) -> CacheView[presences.MemberPresence]:
+    def iter_presences_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[presences.MemberPresence]:
         raise NotImplementedError
 
     async def set_presence(self, presence: presences.MemberPresence) -> None:
@@ -260,32 +279,41 @@ class PresenceCache(Resource, typing.Protocol):
 class RoleCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
+    async def clear_roles(self) -> None:
+        raise NotImplementedError
+
+    async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
     async def delete_role(self, role_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
     async def get_role(self, role_id: snowflakes.Snowflakeish) -> guilds.Role:
         raise NotImplementedError
 
-    async def get_role_view(self) -> CacheView[guilds.Role]:
+    def iter_roles(self) -> CacheIterator[guilds.Role]:
         raise NotImplementedError
 
-    async def get_role_view_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheView[guilds.Role]:
+    def iter_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[guilds.Role]:
         raise NotImplementedError
 
     async def set_role(self, role: guilds.Role) -> None:
         raise NotImplementedError
 
 
-class UserCache(Resource, typing.Protocol):  # TODO: add this to more classes?
+class UserCache(Resource, typing.Protocol):
     """The traits for a cache implementation which supports a user cache.
 
     !!! note
-        Unlike other resources, user is read only and will only ever be
-        implemented as a part of another resource which references user objects
-        due to the fact that it doesn't match up to any specific events.
+        Unlike other resources, user doesn't have any events which
+        directly update it and may only be updated through event
+        listeners when resources which reference it are also included.
     """
 
     __slots__: typing.Sequence[str] = ()
+
+    async def clear_users(self) -> None:  # TODO: cascade
+        raise NotImplementedError
 
     async def delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
@@ -293,7 +321,7 @@ class UserCache(Resource, typing.Protocol):  # TODO: add this to more classes?
     async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
         raise NotImplementedError
 
-    async def get_user_view(self) -> CacheView[users.User]:
+    def iter_users(self) -> CacheIterator[users.User]:
         raise NotImplementedError
 
     async def set_user(self, user: users.User) -> None:
@@ -303,6 +331,12 @@ class UserCache(Resource, typing.Protocol):  # TODO: add this to more classes?
 class VoiceStateCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
+    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
+    async def clear_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
     async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
@@ -311,15 +345,16 @@ class VoiceStateCache(Resource, typing.Protocol):
     ) -> voices.VoiceState:
         raise NotImplementedError
 
-    async def get_voice_state_view_for_channel(
-        self, channel_id: snowflakes.Snowflakeish
-    ) -> CacheView[voices.VoiceState]:
+    def iter_voice_states(self) -> CacheIterator[voices.VoiceState]:
         raise NotImplementedError
 
-    async def get_voice_state_view_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheView[voices.VoiceState]:
+    def iter_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish) -> CacheIterator[voices.VoiceState]:
         raise NotImplementedError
 
-    async def get_voice_state_view_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheView[voices.VoiceState]:
+    def iter_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[voices.VoiceState]:
+        raise NotImplementedError
+
+    def iter_voice_states_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheIterator[voices.VoiceState]:
         raise NotImplementedError
 
     async def set_voice_state(self, voice_state: voices.VoiceState) -> None:

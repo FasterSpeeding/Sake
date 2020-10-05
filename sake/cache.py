@@ -17,6 +17,7 @@ import typing
 
 import aioredis
 from hikari import guilds
+from hikari import snowflakes
 from hikari import users
 from hikari.events import guild_events
 from hikari.events import member_events
@@ -26,8 +27,8 @@ from hikari.events import user_events
 import sake.traits
 from sake import conversion
 from sake import errors
+from sake import iterators
 from sake import traits
-from sake import views
 
 if typing.TYPE_CHECKING:
     import ssl as ssl_
@@ -35,7 +36,6 @@ if typing.TYPE_CHECKING:
 
     import aioredis.abc
     from hikari import emojis as emojis_
-    from hikari import snowflakes
     from hikari import traits as hikari_traits
 
 
@@ -272,6 +272,10 @@ class UserCache(ResourceClient, traits.UserCache):
         # The users cache is a special case as it doesn't directly map to any events.
         super().unsubscribe_listeners()
 
+    async def clear_users(self) -> None:
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.flushdb()  # TODO: ref counting
+
     async def delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
@@ -287,9 +291,9 @@ class UserCache(ResourceClient, traits.UserCache):
 
         return conversion.deserialize_user(data, app=self.rest)
 
-    async def get_user_view(self) -> sake.traits.CacheView[users.User]:
+    def iter_users(self) -> sake.traits.CacheIterator[users.User]:
         # <<Inherited docstring from sake.traits.UserCache>>
-        return views.RedisView(self, ResourceIndex.USER, lambda id_: self.get_user(snowflakes.Snowflake(id_)))
+        return iterators.RedisIterator(self, ResourceIndex.USER, lambda id_: self.get_user(snowflakes.Snowflake(id_)))
 
     async def set_user(self, user: users.User) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
@@ -347,7 +351,7 @@ class EmojiCache(UserCache, traits.EmojiCache):
             self.dispatch.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
             #  TODO: can we also listen for member delete to manage this?
 
-    async def clear_emojis(self) -> None:  # TODO: clear methods?
+    async def clear_emojis(self) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         await client.flushdb()
@@ -372,13 +376,13 @@ class EmojiCache(UserCache, traits.EmojiCache):
         user = await self.get_user(int(data["user_id"])) if "user_id" in data else None
         return conversion.deserialize_emoji(data, app=self.rest, user=user)
 
-    async def get_emoji_view(self) -> sake.traits.CacheView[emojis_.KnownCustomEmoji]:
+    def iter_emojis(self) -> sake.traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        raise NotImplementedError
+        return iterators.RedisIterator(self, ResourceIndex.EMOJI, lambda id_: self.get_emoji(snowflakes.Snowflake(id_)))
 
-    async def get_emoji_view_for_guild(
+    def iter_emojis_for_guild(
         self, guild_id: snowflakes.Snowflakeish
-    ) -> sake.traits.CacheView[emojis_.KnownCustomEmoji]:
+    ) -> sake.traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         raise NotImplementedError
 
@@ -418,6 +422,10 @@ class GuildCache(ResourceClient, traits.GuildCache):
         if self.dispatch is not None:
             self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
 
+    async def clear_guilds(self) -> None:
+        client = await self.get_connection(ResourceIndex.GUILD)
+        await client.flushdb()
+
     async def delete_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
@@ -433,9 +441,9 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
         return conversion.deserialize_guild(data, app=self.rest)
 
-    async def get_guild_view(self) -> sake.traits.CacheView[guilds.GatewayGuild]:
+    def iter_guilds(self) -> sake.traits.CacheIterator[guilds.GatewayGuild]:
         # <<Inherited docstring from sake.traits.GuildCache>>
-        raise NotImplementedError
+        return iterators.RedisIterator(self, ResourceIndex.GUILD, lambda id_: self.get_guild(snowflakes.Snowflake(id_)))
 
     async def set_guild(self, guild: guilds.GatewayGuild) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>

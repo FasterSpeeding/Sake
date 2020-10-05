@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
+    "RedisValueT",
+    "RedisMapT",
     "deserialize_emoji",
     "serialize_emoji",
     "deserialize_guild",

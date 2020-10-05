@@ -1,26 +1,49 @@
 from __future__ import annotations
 
-__all__: typing.Final[typing.Sequence[str]] = ["CacheView"]
+__all__: typing.Final[typing.Sequence[str]] = ["RedisView"]
 
-import abc
 import typing
 
-from hikari import iterators
+from sake import traits
+
+if typing.TYPE_CHECKING:
+    from sake import cache
+    from sake import conversion
 
 
-KeyT = typing.TypeVar("KeyT")
 ValueT = typing.TypeVar("ValueT")
 
 
-class CacheView(iterators.LazyIterator[ValueT], typing.Generic[KeyT, ValueT], abc.ABC):
-    @abc.abstractmethod
-    async def get(self, key: KeyT) -> ValueT:
-        raise NotImplementedError
+class RedisView(traits.CacheView[ValueT]):
+    __slots__: typing.Sequence[str] = ("_builder", "_client", "_get_method", "_index", "_iterator")
 
-    @abc.abstractmethod
+    def __init__(
+        self,
+        client: cache.ResourceClient,
+        index: cache.ResourceIndex,
+        get_method: typing.Callable[[conversion.RedisValueT], typing.Coroutine[typing.Any, typing.Any, ValueT]],
+    ) -> None:
+        self._client = client
+        self._get_method = get_method
+        self._index = index
+        self._iterator: typing.Optional[typing.AsyncIterator[conversion.RedisValueT]] = None
+
+    async def __anext__(self) -> ValueT:
+        client = await self._client.get_connection(self._index)
+        if self._iterator is None:
+            self._iterator = client.iscan()
+
+        async for key in self._iterator:
+            return await self._get_method(key)
+
+        self._iterator = None
+        raise StopAsyncIteration
+
+    def __aiter__(self) -> RedisView[ValueT]:
+        return self
+
     async def len(self) -> int:
-        raise NotImplementedError
-
-    # @abc.abstractmethod
-    # async def search(self):  # TODO: search technique
-    #     raise NotImplementedError
+        client = await self._client.get_connection(self._index)
+        count = await client.dbsize()
+        assert isinstance(count, int), f"Aioredis returned a {type(count)} when an integer was expected"
+        return count

@@ -23,6 +23,7 @@ from hikari.events import member_events
 from hikari.events import shard_events
 from hikari.events import user_events
 
+import sake.traits
 from sake import conversion
 from sake import errors
 from sake import traits
@@ -286,9 +287,9 @@ class UserCache(ResourceClient, traits.UserCache):
 
         return conversion.deserialize_user(data, app=self.rest)
 
-    async def get_user_view(self) -> views.CacheView[snowflakes.Snowflake, users.User]:
+    async def get_user_view(self) -> sake.traits.CacheView[users.User]:
         # <<Inherited docstring from sake.traits.UserCache>>
-        raise NotImplementedError
+        return views.RedisView(self, ResourceIndex.USER, lambda id_: self.get_user(snowflakes.Snowflake(id_)))
 
     async def set_user(self, user: users.User) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
@@ -371,13 +372,13 @@ class EmojiCache(UserCache, traits.EmojiCache):
         user = await self.get_user(int(data["user_id"])) if "user_id" in data else None
         return conversion.deserialize_emoji(data, app=self.rest, user=user)
 
-    async def get_emoji_view(self) -> views.CacheView[snowflakes.Snowflake, emojis_.KnownCustomEmoji]:
+    async def get_emoji_view(self) -> sake.traits.CacheView[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         raise NotImplementedError
 
     async def get_emoji_view_for_guild(
         self, guild_id: snowflakes.Snowflakeish
-    ) -> views.CacheView[snowflakes.Snowflake, emojis_.KnownCustomEmoji]:
+    ) -> sake.traits.CacheView[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         raise NotImplementedError
 
@@ -432,7 +433,7 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
         return conversion.deserialize_guild(data, app=self.rest)
 
-    async def get_guild_view(self) -> views.CacheView[snowflakes.Snowflake, guilds.GatewayGuild]:
+    async def get_guild_view(self) -> sake.traits.CacheView[guilds.GatewayGuild]:
         # <<Inherited docstring from sake.traits.GuildCache>>
         raise NotImplementedError
 

@@ -27,11 +27,14 @@ import datetime
 import typing
 
 from hikari import channels
+from hikari import colors
 from hikari import emojis
 from hikari import guilds
 from hikari import invites
+from hikari import permissions
 from hikari import presences
 from hikari import snowflakes
+from hikari import undefined
 from hikari import users
 from hikari import voices
 from hikari.internal import time
@@ -46,6 +49,10 @@ RedisValueT = typing.Union[bytearray, bytes, float, int, str]
 
 RedisMapT = typing.MutableMapping[str, RedisValueT]
 """A type variable of the mapping type accepted by aioredis"""
+
+
+def _deserialize_array(array: typing.Sequence[typing.Any]) -> str:
+    return ",".join(map(str, array))
 
 
 def deserialize_emoji(
@@ -69,7 +76,7 @@ def serialize_emoji(emoji: emojis.KnownCustomEmoji) -> RedisMapT:
     data: RedisMapT = {
         "id": int(emoji.id),
         "guild_id": int(emoji.guild_id),
-        "role_ids": ",".join(map(str, emoji.role_ids)),
+        "role_ids": _deserialize_array(emoji.role_ids),
         "is_animated": int(emoji.is_animated),
         "is_colons_required": int(emoji.is_colons_required),
         "is_managed": int(emoji.is_managed),
@@ -132,7 +139,7 @@ def deserialize_guild(data: typing.Mapping[str, str], *, app: traits.RESTAware) 
 
 def serialize_guild(guild: guilds.GatewayGuild) -> RedisMapT:
     data: RedisMapT = {
-        "features": ",".join(map(str, guild.features)),
+        "features": _deserialize_array(guild.features),
         "id": int(guild.id),
         "name": guild.name,
         "owner_id": int(guild.owner_id),
@@ -260,12 +267,44 @@ def serialize_me(me: users.OwnUser) -> RedisMapT:
     return data
 
 
-def deserialize_member(data: typing.Mapping[str, str], *, app: traits.RESTAware) -> guilds.Member:
-    raise NotImplementedError
+def deserialize_member(data: typing.Mapping[str, str], *, user: users.User) -> guilds.Member:
+    premium_since: typing.Optional[datetime.datetime] = None
+    if "premium_since" in data:
+        premium_since = time.iso8601_datetime_string_to_datetime(data["premium_since"])
+
+    return guilds.Member(
+        user=user,
+        guild_id=snowflakes.Snowflake(data["guild_id"]),
+        nickname=data.get("nickname"),
+        role_ids=[snowflakes.Snowflake(role_id) for role_id in data["role_ids"].split(",")],
+        joined_at=time.iso8601_datetime_string_to_datetime(data["joined_at"]),
+        premium_since=premium_since,
+        is_deaf=bool(data["is_deaf"]) if "is_deaf" in data else undefined.UNDEFINED,
+        is_mute=bool(data["is_mute"]) if "is_mute" in data else undefined.UNDEFINED,
+    )
 
 
 def serialize_member(member: guilds.Member) -> RedisMapT:
-    raise NotImplementedError
+    data: RedisMapT = {
+        "guild_id": int(member.guild_id),
+        "user_id": int(member.user.id),
+        "role_ids": _deserialize_array(member.role_ids),
+        "joined_at": member.joined_at.isoformat(),
+    }
+
+    if member.nickname is not None and member.nickname is not undefined.UNDEFINED:
+        data["nickname"] = member.nickname
+
+    if member.premium_since is not None:
+        data["premium_since"] = member.premium_since.isoformat()
+
+    if member.is_deaf is not undefined.UNDEFINED:
+        data["is_deaf"] = int(member.is_deaf)
+
+    if member.is_mute is not undefined.UNDEFINED:
+        data["is_mute"] = int(member.is_mute)
+
+    return data
 
 
 def deserialize_presence(data: typing.Mapping[str, str], *, app: traits.RESTAware) -> presences.MemberPresence:
@@ -277,11 +316,32 @@ def serialize_presence(presence: presences.MemberPresence) -> RedisMapT:
 
 
 def deserialize_role(data: typing.Mapping[str, str], *, app: traits.RESTAware) -> guilds.Role:
-    raise NotImplementedError
+    return guilds.Role(
+        app=app,
+        id=snowflakes.Snowflake(data["id"]),
+        name=data["name"],
+        color=colors.Color(int(data["color"])),
+        guild_id=snowflakes.Snowflake(data["guild_id"]),
+        is_hoisted=bool(data["is_hoisted"]),
+        position=int(data["position"]),
+        permissions=permissions.Permissions(data["permissions"]),
+        is_managed=bool(data["is_managed"]),
+        is_mentionable=bool(data["is_mentionable"]),
+    )
 
 
 def serialize_role(role: guilds.Role) -> RedisMapT:
-    raise NotImplementedError
+    return {
+        "id": int(role.id),
+        "name": role.name,
+        "color": int(role.color),
+        "guild_id": int(role.guild_id),
+        "is_hoisted": int(role.is_hoisted),
+        "position": role.position,
+        "permissions": int(role.permissions),
+        "is_managed": int(role.is_managed),
+        "is_mentionable": int(role.is_mentionable),
+    }
 
 
 def deserialize_user(data: typing.Mapping[str, str], *, app: traits.RESTAware) -> users.User:
@@ -312,9 +372,42 @@ def serialize_user(user: users.User) -> RedisMapT:
     return data
 
 
-def deserialize_voice_state(data: typing.Mapping[str, str], *, app: traits.RESTAware) -> voices.VoiceState:
-    raise NotImplementedError
+def deserialize_voice_state(
+    data: typing.Mapping[str, str], *, app: traits.RESTAware, member: guilds.Member
+) -> voices.VoiceState:
+    return voices.VoiceState(
+        app=app,
+        channel_id=snowflakes.Snowflake(data["channel_id"]) if "channel_id" in data else None,
+        guild_id=snowflakes.Snowflake(data["guild_id"]),
+        is_guild_deafened=bool(data["is_guild_deafened"]),
+        is_guild_muted=bool(data["is_guild_muted"]),
+        is_self_deafened=bool(data["is_self_deafened"]),
+        is_self_muted=bool(data["is_self_muted"]),
+        is_streaming=bool(data["is_streaming"]),
+        is_suppressed=bool(data["is_suppressed"]),
+        is_video_enabled=bool(data["is_video_enabled"]),
+        user_id=snowflakes.Snowflake(data["user_id"]),
+        member=member,
+        session_id=data["session_id"],
+    )
 
 
 def serialize_voice_state(voice_state: voices.VoiceState) -> RedisMapT:
-    raise NotImplementedError
+    data: RedisMapT = {
+        "guild_id": int(voice_state.guild_id),
+        "is_guild_deafened": int(voice_state.is_guild_deafened),
+        "is_guild_muted": int(voice_state.is_guild_muted),
+        "is_self_deafened": int(voice_state.is_self_deafened),
+        "is_self_muted": int(voice_state.is_self_muted),
+        "is_streaming": int(voice_state.is_streaming),
+        "is_suppressed": int(voice_state.is_suppressed),
+        "is_video_enabled": int(voice_state.is_video_enabled),
+        "user_id": int(voice_state.user_id),
+        # member,
+        "session_id": voice_state.session_id,
+    }
+
+    if voice_state.channel_id is not None:
+        data["channel_id"] = int(voice_state.channel_id)
+
+    return data

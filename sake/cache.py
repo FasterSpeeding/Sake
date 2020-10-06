@@ -6,6 +6,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "FullCache",
     "GuildCache",
     "MeCache",
+    "RoleCache",
     "UserCache",
 ]
 
@@ -21,10 +22,10 @@ from hikari import snowflakes
 from hikari import users
 from hikari.events import guild_events
 from hikari.events import member_events
+from hikari.events import role_events
 from hikari.events import shard_events
 from hikari.events import user_events
 
-import sake.traits
 from sake import conversion
 from sake import errors
 from sake import iterators
@@ -291,7 +292,7 @@ class UserCache(ResourceClient, traits.UserCache):
 
         return conversion.deserialize_user(data, app=self.rest)
 
-    def iter_users(self) -> sake.traits.CacheIterator[users.User]:
+    def iter_users(self) -> traits.CacheIterator[users.User]:
         # <<Inherited docstring from sake.traits.UserCache>>
         return iterators.RedisIterator(self, ResourceIndex.USER, lambda id_: self.get_user(snowflakes.Snowflake(id_)))
 
@@ -308,38 +309,33 @@ class EmojiCache(UserCache, traits.EmojiCache):
         #  This is generally quicker and less blocking than buffering requests.
         await asyncio.gather(*map(self.set_emoji, emojis))
 
-    async def _on_emojis_update(self, event: guild_events.EmojisUpdateEvent) -> None:
+    async def __on_emojis_update(self, event: guild_events.EmojisUpdateEvent) -> None:
         await self.clear_emojis_for_guild(event.guild_id)
         await self._bulk_add_emojis(event.emojis)
 
-    async def _on_guild_available_and_update(
-        self, event: typing.Union[guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent]
-    ) -> None:
-        await self.clear_emojis_for_guild(event.guild_id)
-        await self._bulk_add_emojis(event.emojis.values())
+    async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
+        if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
+            await self.clear_emojis_for_guild(event.guild_id)
+            await self._bulk_add_emojis(event.emojis.values())
 
-    async def _on_guild_leave(self, event: guild_events.GuildLeaveEvent) -> None:
-        await self.clear_emojis_for_guild(event.guild_id)
+        elif isinstance(event, guild_events.GuildLeaveEvent):
+            await self.clear_emojis_for_guild(event.guild_id)
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         # TODO: on ready
         super().subscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-            self.dispatch.dispatcher.subscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
-            self.dispatch.dispatcher.subscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-            self.dispatch.dispatcher.subscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+            self.dispatch.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self.__on_emojis_update)
+            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
             #  TODO: can we also listen for member delete to manage this?
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self._on_emojis_update)
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildAvailableEvent, self._on_guild_available_and_update)
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildUpdateEvent, self._on_guild_available_and_update)
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self._on_guild_leave)
+            self.dispatch.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self.__on_emojis_update)
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
             #  TODO: can we also listen for member delete to manage this?
 
     async def clear_emojis(self) -> None:
@@ -367,13 +363,13 @@ class EmojiCache(UserCache, traits.EmojiCache):
         user = await self.get_user(int(data["user_id"])) if "user_id" in data else None
         return conversion.deserialize_emoji(data, app=self.rest, user=user)
 
-    def iter_emojis(self) -> sake.traits.CacheIterator[emojis_.KnownCustomEmoji]:
+    def iter_emojis(self) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         return iterators.RedisIterator(self, ResourceIndex.EMOJI, lambda id_: self.get_emoji(snowflakes.Snowflake(id_)))
 
     def iter_emojis_for_guild(
         self, guild_id: snowflakes.Snowflakeish
-    ) -> sake.traits.CacheIterator[emojis_.KnownCustomEmoji]:
+    ) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         raise NotImplementedError
 
@@ -391,7 +387,7 @@ class EmojiCache(UserCache, traits.EmojiCache):
 class GuildCache(ResourceClient, traits.GuildCache):
     __slots__: typing.Sequence[str] = ()
 
-    async def _on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
+    async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)
         if isinstance(event, guild_events.GuildAvailableEvent):
             data = conversion.serialize_guild(event.guild)
@@ -405,13 +401,13 @@ class GuildCache(ResourceClient, traits.GuildCache):
         #  TODO: on ready and on member chunk
         super().subscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self._on_guild_visibility_event)
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
 
     async def clear_guilds(self) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)
@@ -432,7 +428,7 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
         return conversion.deserialize_guild(data, app=self.rest)
 
-    def iter_guilds(self) -> sake.traits.CacheIterator[guilds.GatewayGuild]:
+    def iter_guilds(self) -> traits.CacheIterator[guilds.GatewayGuild]:
         # <<Inherited docstring from sake.traits.GuildCache>>
         return iterators.RedisIterator(self, ResourceIndex.GUILD, lambda id_: self.get_guild(snowflakes.Snowflake(id_)))
 
@@ -448,29 +444,33 @@ class MeCache(ResourceClient, traits.MeCache):
 
     _ME_KEY: typing.Final[str] = "ME"
 
-    async def _on_own_user_update(self, event: user_events.OwnUserUpdateEvent) -> None:
+    async def __on_own_user_update(self, event: user_events.OwnUserUpdateEvent) -> None:
         await self.set_me(event.user)
 
-    async def _on_shard_ready(self, event: shard_events.ShardReadyEvent) -> None:
+    async def __on_shard_ready(self, event: shard_events.ShardReadyEvent) -> None:
         await self.set_me(event.my_user)  # TODO: this isnt' being called for whatever reason
 
     def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(user_events.OwnUserUpdateEvent, self._on_own_user_update)
-            self.dispatch.dispatcher.subscribe(shard_events.ShardReadyEvent, self._on_shard_ready)
+            self.dispatch.dispatcher.subscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
+            self.dispatch.dispatcher.subscribe(shard_events.ShardReadyEvent, self.__on_shard_ready)
 
     def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(user_events.OwnUserUpdateEvent, self._on_own_user_update)
-            self.dispatch.dispatcher.unsubscribe(shard_events.ShardReadyEvent, self._on_shard_ready)
+            self.dispatch.dispatcher.unsubscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
+            self.dispatch.dispatcher.unsubscribe(shard_events.ShardReadyEvent, self.__on_shard_ready)
 
     async def delete_me(self) -> None:
+        # <<Inherited docstring from sake.traits.MeCache>>
         client = await self.get_connection(ResourceIndex.USER)
         await client.delete(self._ME_KEY)
 
     async def get_me(self) -> users.OwnUser:
+        # <<Inherited docstring from sake.traits.MeCache>>
         client = await self.get_connection(ResourceIndex.USER)
         data = await client.hgetall(self._ME_KEY)
 
@@ -480,12 +480,82 @@ class MeCache(ResourceClient, traits.MeCache):
         return conversion.deserialize_me(data, app=self.rest)
 
     async def set_me(self, me: users.OwnUser) -> None:
+        # <<Inherited docstring from sake.traits.MeCache>>
         data = conversion.serialize_me(me)
         client = await self.get_connection(ResourceIndex.USER)
         await client.hmset_dict(self._ME_KEY, data)
 
 
-class FullCache(GuildCache, EmojiCache, MeCache):
+class RoleCache(ResourceClient, traits.RoleCache):
+    __slots__: typing.Sequence[str] = ()
+
+    async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
+        if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
+            await asyncio.gather(*map(self.set_role, event.roles.values()))
+
+        elif isinstance(event, guild_events.GuildLeaveEvent):
+            await self.clear_roles_for_guild(event.guild_id)
+
+    async def __on_role_update(self, event: role_events.RoleEvent) -> None:
+        if isinstance(event, (role_events.RoleCreateEvent, role_events.RoleUpdateEvent)):
+            await self.set_role(event.role)
+
+        elif isinstance(event, role_events.RoleDeleteEvent):
+            await self.delete_role(event.role_id)
+
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().subscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.dispatch.dispatcher.subscribe(role_events.RoleEvent, self.__on_role_update)
+
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().unsubscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.dispatch.dispatcher.unsubscribe(role_events.RoleEvent, self.__on_role_update)
+
+    async def clear_roles(self) -> None:
+        # <<Inherited docstring from sake.traits.RoleCache>>
+        client = await self.get_connection(ResourceIndex.ROLE)
+        await client.flushdb()
+
+    async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        # <<Inherited docstring from sake.traits.RoleCache>>
+        raise NotImplementedError
+
+    async def delete_role(self, role_id: snowflakes.Snowflakeish) -> None:
+        # <<Inherited docstring from sake.traits.RoleCache>>
+        client = await self.get_connection(ResourceIndex.ROLE)
+        await client.delete(int(role_id))
+
+    async def get_role(self, role_id: snowflakes.Snowflakeish) -> guilds.Role:
+        # <<Inherited docstring from sake.traits.RoleCache>>
+        client = await self.get_connection(ResourceIndex.ROLE)
+        data = await client.hgetall(int(role_id))
+
+        if not data:
+            raise errors.EntryNotFound(f"Role entry `{role_id}` not found")
+
+        return conversion.deserialize_role(data, app=self.rest)
+
+    def iter_roles(self) -> traits.CacheIterator[guilds.Role]:
+        # <<Inherited docstring from sake.traits.RoleCache>>
+        return iterators.RedisIterator(self, ResourceIndex.ROLE, lambda id_: self.get_role(snowflakes.Snowflake(id_)))
+
+    def iter_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> traits.CacheIterator[guilds.Role]:
+        # <<Inherited docstring from sake.traits.RoleCache>>
+        raise NotImplementedError
+
+    async def set_role(self, role: guilds.Role) -> None:
+        # <<Inherited docstring from sake.traits.RoleCache>>
+        client = await self.get_connection(ResourceIndex.ROLE)
+        await client.hmset_dict(int(role.id), conversion.serialize_role(role))
+
+
+class FullCache(GuildCache, EmojiCache, MeCache, RoleCache):
     """A class which implements all the defined cache resoruces."""
 
     __slots__: typing.Sequence[str] = ()

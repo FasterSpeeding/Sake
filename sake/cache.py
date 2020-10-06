@@ -222,22 +222,22 @@ class ResourceClient(traits.Resource, abc.ABC):
         """
         return resource in self._clients and not self._clients[resource].closed
 
+    async def _spawn_connection(self, resource: ResourceIndex) -> None:
+        self._clients[resource] = await aioredis.create_redis_pool(
+            address=self._address,
+            db=int(resource),
+            password=self._password,
+            ssl=self._ssl,
+            encoding="utf-8",
+        )
+
     async def open(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         if self._started:
             return
 
+        await asyncio.gather(*map(self._spawn_connection, self._get_indexes()))
         self.subscribe_listeners()
-
-        for index in self._get_indexes():
-            self._clients[index] = await aioredis.create_redis_pool(
-                address=self._address,
-                db=int(index),
-                password=self._password,
-                ssl=self._ssl,
-                encoding="utf-8",
-            )
-
         self._started = True
 
     async def close(self) -> None:

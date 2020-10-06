@@ -58,6 +58,8 @@ class ResourceIndex(enum.IntEnum):
     ROLE = 6
     USER = 7
     VOICE_STATE = 8
+    GUILD_REFERENCE = 9
+    #  This is a special case database solely used for linking other entries to their relevant guilds.
 
 
 class ResourceClient(traits.Resource, abc.ABC):
@@ -136,8 +138,19 @@ class ResourceClient(traits.Resource, abc.ABC):
         return None
 
     @classmethod
-    @abc.abstractmethod
+    @abc.abstractmethod  # TODO: should this return a sequence?
     def index(cls) -> ResourceIndex:
+        """The index for the resource which this class is linked to.
+
+        !!! note
+            This should be called on specific base classes and will not be
+            accurate after inheritance.
+
+        Returns
+        -------
+        ResourceIndex
+            The index of the resource this class is linked to.
+        """
         raise NotImplementedError
 
     @property  # As a note, this will only be set if this is actively hooked into event dispatchers
@@ -267,11 +280,46 @@ class ResourceClient(traits.Resource, abc.ABC):
         return None
 
 
+class _GuildReference(ResourceClient):
+    __slots__: typing.Sequence[str] = ()
+
+    @classmethod
+    def index(cls) -> ResourceIndex:
+        # <<Inherited docstring from ResourceClient>>
+        return ResourceIndex.GUILD_REFERENCE
+
+    @staticmethod
+    def _generate_key(guild_id: snowflakes.Snowflakeish, resource: ResourceIndex) -> str:
+        return f"{guild_id}:{int(resource)}"
+
+    async def _add_ids(
+        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex, *identifiers: conversion.RedisValueT
+    ) -> None:
+        key = self._generate_key(guild_id, resource)
+        client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
+        await client.sadd(key, *identifiers)
+
+    async def _delete_ids(
+        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex, *identifiers: conversion.RedisValueT
+    ) -> None:
+        key = self._generate_key(guild_id, resource)
+        client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
+        await client.srem(key, *identifiers)
+
+    async def _get_ids(
+        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex
+    ) -> typing.Sequence[conversion.RedisValueT]:
+        key = self._generate_key(guild_id, resource)
+        client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
+        return typing.cast("typing.Sequence[conversion.RedisValueT]", await client.smembers(key))
+
+
 class UserCache(ResourceClient, traits.UserCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
     def index(cls) -> ResourceIndex:
+        # <<Inherited docstring from ResourceClient>>
         return ResourceIndex.USER
 
     def subscribe_listeners(self) -> None:
@@ -303,7 +351,7 @@ class UserCache(ResourceClient, traits.UserCache):
 
         return conversion.deserialize_user(data, app=self.rest)
 
-    def iter_users(self) -> traits.CacheIterator[users.User]:
+    def iter_users(self) -> traits.CacheIterator[users.User]:  # TODO: handle when an entity is removed mid-iteration
         # <<Inherited docstring from sake.traits.UserCache>>
         return iterators.RedisIterator(self, ResourceIndex.USER, lambda id_: self.get_user(snowflakes.Snowflake(id_)))
 
@@ -313,11 +361,12 @@ class UserCache(ResourceClient, traits.UserCache):
         await client.hmset_dict(int(user.id), conversion.serialize_user(user))
 
 
-class EmojiCache(UserCache, traits.EmojiCache):
+class EmojiCache(UserCache, _GuildReference, traits.EmojiCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
     def index(cls) -> ResourceIndex:
+        # <<Inherited docstring from ResourceClient>>
         return ResourceIndex.EMOJI
 
     async def _bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
@@ -360,7 +409,13 @@ class EmojiCache(UserCache, traits.EmojiCache):
 
     async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        raise NotImplementedError
+        emoji_ids = await self._get_ids(guild_id, ResourceIndex.EMOJI)
+        if not emoji_ids:
+            return
+
+        # TODO: self.delete_emoji
+        client = await self.get_connection(ResourceIndex.EMOJI)
+        await asyncio.gather(*map(client.delete, emoji_ids))
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
@@ -386,7 +441,9 @@ class EmojiCache(UserCache, traits.EmojiCache):
         self, guild_id: snowflakes.Snowflakeish
     ) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        raise NotImplementedError
+        return iterators.SpecificRedisIterator(
+            lambda: self._get_ids(guild_id, ResourceIndex.EMOJI), lambda id_: self.get_emoji(snowflakes.Snowflake(id_))
+        )
 
     async def set_emoji(self, emoji: emojis_.KnownCustomEmoji) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
@@ -396,6 +453,7 @@ class EmojiCache(UserCache, traits.EmojiCache):
         if emoji.user is not None:
             await self.set_user(emoji.user)
 
+        await self._add_ids(emoji.guild_id, ResourceIndex.EMOJI, int(emoji.id))
         await client.hmset_dict(int(emoji.id), data)
 
 
@@ -404,6 +462,7 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
     @classmethod
     def index(cls) -> ResourceIndex:
+        # <<Inherited docstring from ResourceClient>>
         return ResourceIndex.GUILD
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
@@ -465,6 +524,7 @@ class MeCache(ResourceClient, traits.MeCache):
 
     @classmethod
     def index(cls) -> ResourceIndex:
+        # <<Inherited docstring from ResourceClient>>
         return ResourceIndex.USER
 
     async def __on_own_user_update(self, event: user_events.OwnUserUpdateEvent) -> None:
@@ -514,6 +574,7 @@ class RoleCache(ResourceClient, traits.RoleCache):
 
     @classmethod
     def index(cls) -> ResourceIndex:
+        # <<Inherited docstring from ResourceClient>>
         return ResourceIndex.ROLE
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:

@@ -37,7 +37,7 @@ ValueT = typing.TypeVar("ValueT")
 
 class CacheIterator(iterators.LazyIterator[ValueT], abc.ABC):
     @abc.abstractmethod
-    async def len(self) -> int:
+    async def len(self) -> typing.Optional[int]:
         raise NotImplementedError
 
 

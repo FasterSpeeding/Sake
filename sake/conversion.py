@@ -52,9 +52,16 @@ RedisValueT = typing.Union[bytearray, bytes, float, int, str]
 RedisMapT = typing.MutableMapping[str, RedisValueT]
 """A type variable of the mapping type accepted by aioredis"""
 
+ValueT = typing.TypeVar("ValueT")
+
 
 def _deserialize_array(array: typing.Sequence[typing.Any]) -> str:
     return ",".join(map(str, array))
+
+
+def _serialize_array(array: str, cast: typing.Callable[[str], ValueT]) -> typing.Iterator[ValueT]:
+    if array:
+        yield from map(cast, array.split(","))
 
 
 def deserialize_emoji(
@@ -65,7 +72,7 @@ def deserialize_emoji(
         id=snowflakes.Snowflake(data["id"]),
         name=data.get("name"),
         guild_id=snowflakes.Snowflake(data["guild_id"]),
-        role_ids=[snowflakes.Snowflake(role_id) for role_id in data["role_ids"].split(",")],
+        role_ids=[*_serialize_array(data["role_ids"], snowflakes.Snowflake)],
         user=user,
         is_animated=bool(data["is_animated"]),
         is_colons_required=bool(data["is_colons_required"]),
@@ -105,7 +112,7 @@ def deserialize_guild(data: typing.Mapping[str, str], *, app: traits.RESTAware) 
 
     return guilds.GatewayGuild(
         app=app,
-        features=[guilds.GuildFeature(feature) for feature in data["features"].split(",")],
+        features=[*_serialize_array(data["features"], guilds.GuildFeature)],
         id=snowflakes.Snowflake(data["id"]),
         name=data["name"],
         owner_id=snowflakes.Snowflake(data["owner_id"]),
@@ -278,7 +285,7 @@ def deserialize_member(data: typing.Mapping[str, str], *, user: users.User) -> g
         user=user,
         guild_id=snowflakes.Snowflake(data["guild_id"]),
         nickname=data.get("nickname"),
-        role_ids=[snowflakes.Snowflake(role_id) for role_id in data["role_ids"].split(",")],
+        role_ids=[*_serialize_array(data["role_ids"], snowflakes.Snowflake)],
         joined_at=time.iso8601_datetime_string_to_datetime(data["joined_at"]),
         premium_since=premium_since,
         is_deaf=bool(data["is_deaf"]) if "is_deaf" in data else undefined.UNDEFINED,

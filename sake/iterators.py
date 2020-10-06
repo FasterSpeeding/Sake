@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__: typing.Final[typing.Sequence[str]] = ["RedisIterator"]
+__all__: typing.Final[typing.Sequence[str]] = ["RedisIterator", "SpecificRedisIterator"]
 
 import typing
 
@@ -11,11 +11,12 @@ if typing.TYPE_CHECKING:
     from sake import conversion
 
 
+KeyT = typing.TypeVar("KeyT")
 ValueT = typing.TypeVar("ValueT")
 
 
 class RedisIterator(traits.CacheIterator[ValueT]):
-    __slots__: typing.Sequence[str] = ("_builder", "_client", "_get_method", "_index", "_iterator")
+    __slots__: typing.Sequence[str] = ("_client", "_get_method", "_index", "_iterator")
 
     def __init__(
         self,
@@ -39,7 +40,6 @@ class RedisIterator(traits.CacheIterator[ValueT]):
         async for key in self._iterator:
             return await self._get_method(key)
 
-        self._iterator = None
         raise StopAsyncIteration
 
     async def len(self) -> int:
@@ -47,3 +47,36 @@ class RedisIterator(traits.CacheIterator[ValueT]):
         count = await client.dbsize()
         assert isinstance(count, int), f"Aioredis returned a {type(count)} when an integer was expected"
         return count
+
+
+class SpecificRedisIterator(traits.CacheIterator[ValueT]):
+    __slots__: typing.Sequence[str] = ("_ids", "_get_ids_method", "_get_method", "_len")
+
+    def __init__(
+        self,
+        get_ids_method: typing.Callable[[], typing.Coroutine[typing.Any, typing.Any, typing.Sequence[KeyT]]],
+        get_method: typing.Callable[[KeyT], typing.Coroutine[typing.Any, typing.Any, ValueT]],
+    ) -> None:
+        self._ids: typing.Optional[typing.Iterator[KeyT]] = None
+        self._get_ids_method = get_ids_method
+        self._get_method = get_method
+        self._len: typing.Optional[int] = None
+
+    def __aiter__(self) -> SpecificRedisIterator[ValueT]:
+        return self
+
+    async def __anext__(self) -> ValueT:
+        if self._ids is None:
+            ids = await self._get_ids_method()
+            self._ids = iter(ids)
+            self._len = len(ids)
+
+        try:
+            current_id = next(self._ids)
+        except StopIteration:
+            raise StopAsyncIteration from None
+        else:
+            return await self._get_method(current_id)
+
+    async def len(self) -> typing.Optional[int]:
+        return self._len

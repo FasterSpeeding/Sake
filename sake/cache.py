@@ -135,6 +135,11 @@ class ResourceClient(traits.Resource, abc.ABC):
     def __exit__(self, exc_type: typing.Type[Exception], exc_val: Exception, exc_tb: types.TracebackType) -> None:
         return None
 
+    @classmethod
+    @abc.abstractmethod
+    def index(cls) -> ResourceIndex:
+        raise NotImplementedError
+
     @property  # As a note, this will only be set if this is actively hooked into event dispatchers
     def dispatch(self) -> typing.Optional[hikari_traits.DispatcherAware]:
         """The dispatcher aware client this resource client is tied to, if set.
@@ -164,26 +169,8 @@ class ResourceClient(traits.Resource, abc.ABC):
         """
         return self._rest
 
-    async def destroy_connection(self, resource: ResourceIndex) -> None:
-        """Close the connection for a specific resource within this client.
-
-        Parameters
-        ----------
-        resource : ResourceIndex
-            The index of the resource
-
-        Raises
-        ------
-        LookupError
-            If the no instance was found for the resource specified.
-        """
-        if resource in self._clients:
-            await self._clients.pop(resource).close()
-        else:
-            raise LookupError(f"{resource!s} instance not found")
-
     async def get_connection(self, resource: ResourceIndex) -> aioredis.Redis:
-        """Get or create a connection for a specific resource.
+        """Get the connection for a specific resource.
 
         Parameters
         ----------
@@ -199,6 +186,8 @@ class ResourceClient(traits.Resource, abc.ABC):
         ------
         TypeError
             When this method is called on a closed client.
+        ValueError
+            When you pass an invalid resource for the client.
         """
         if not self._started:
             raise TypeError("Cannot use an inactive client")
@@ -206,15 +195,17 @@ class ResourceClient(traits.Resource, abc.ABC):
         try:
             return self._clients[resource]
         except KeyError:
-            pool = await aioredis.create_redis_pool(
-                address=self._address,
-                db=int(resource),
-                password=self._password,
-                ssl=self._ssl,
-                encoding="utf-8",
-            )
-            self._clients[resource] = pool
-            return pool
+            raise ValueError(f"Resource index `{resource}` is invalid for this client") from None
+
+    def _get_indexes(self) -> typing.MutableSet[ResourceIndex]:
+        results = set()
+        for cls in type(self).mro():
+            if not issubclass(cls, ResourceClient) or cls is ResourceClient:
+                continue
+
+            results.add(cls.index())
+
+        return results
 
     async def get_connection_status(self, resource: ResourceIndex) -> bool:
         """Get the status of the internal connection for a specific resource.
@@ -233,9 +224,21 @@ class ResourceClient(traits.Resource, abc.ABC):
 
     async def open(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        if not self._started:
-            self.subscribe_listeners()
-            self._started = True
+        if self._started:
+            return
+
+        self.subscribe_listeners()
+
+        for index in self._get_indexes():
+            self._clients[index] = await aioredis.create_redis_pool(
+                address=self._address,
+                db=int(index),
+                password=self._password,
+                ssl=self._ssl,
+                encoding="utf-8",
+            )
+
+        self._started = True
 
     async def close(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -244,10 +247,14 @@ class ResourceClient(traits.Resource, abc.ABC):
         was_started = self._started
         self._started = False
 
-        if was_started:
-            self.unsubscribe_listeners()
-            for key in tuple(self._clients.keys()):
-                await self.destroy_connection(key)
+        if not was_started:
+            return
+
+        self.unsubscribe_listeners()
+        clients = self._clients
+        self._clients = {}
+        for client in clients.values():
+            await client.close()
 
     @abc.abstractmethod
     def subscribe_listeners(self) -> None:
@@ -262,6 +269,10 @@ class ResourceClient(traits.Resource, abc.ABC):
 
 class UserCache(ResourceClient, traits.UserCache):
     __slots__: typing.Sequence[str] = ()
+
+    @classmethod
+    def index(cls) -> ResourceIndex:
+        return ResourceIndex.USER
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -304,6 +315,10 @@ class UserCache(ResourceClient, traits.UserCache):
 
 class EmojiCache(UserCache, traits.EmojiCache):
     __slots__: typing.Sequence[str] = ()
+
+    @classmethod
+    def index(cls) -> ResourceIndex:
+        return ResourceIndex.EMOJI
 
     async def _bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
         #  This is generally quicker and less blocking than buffering requests.
@@ -387,6 +402,10 @@ class EmojiCache(UserCache, traits.EmojiCache):
 class GuildCache(ResourceClient, traits.GuildCache):
     __slots__: typing.Sequence[str] = ()
 
+    @classmethod
+    def index(cls) -> ResourceIndex:
+        return ResourceIndex.GUILD
+
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)
         if isinstance(event, guild_events.GuildAvailableEvent):
@@ -444,6 +463,10 @@ class MeCache(ResourceClient, traits.MeCache):
 
     _ME_KEY: typing.Final[str] = "ME"
 
+    @classmethod
+    def index(cls) -> ResourceIndex:
+        return ResourceIndex.USER
+
     async def __on_own_user_update(self, event: user_events.OwnUserUpdateEvent) -> None:
         await self.set_me(event.user)
 
@@ -488,6 +511,10 @@ class MeCache(ResourceClient, traits.MeCache):
 
 class RoleCache(ResourceClient, traits.RoleCache):
     __slots__: typing.Sequence[str] = ()
+
+    @classmethod
+    def index(cls) -> ResourceIndex:
+        return ResourceIndex.ROLE
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):

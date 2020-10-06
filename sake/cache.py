@@ -44,6 +44,7 @@ _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake")
 """Type-Hint The logger instance used by this sake implementation."""
 ResourceT = typing.TypeVar("ResourceT", bound="ResourceClient")
 """Type-Hint A type hint used to represent a resource client instance."""
+ValueT = typing.TypeVar("ValueT")
 
 
 class ResourceIndex(enum.IntEnum):
@@ -60,6 +61,10 @@ class ResourceIndex(enum.IntEnum):
     VOICE_STATE = 8
     GUILD_REFERENCE = 9
     #  This is a special case database solely used for linking other entries to their relevant guilds.
+
+
+async def _close_client(client: aioredis.Redis) -> None:
+    await client.close()
 
 
 class ResourceClient(traits.Resource, abc.ABC):
@@ -266,8 +271,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         self.unsubscribe_listeners()
         clients = self._clients
         self._clients = {}
-        for client in clients.values():
-            await client.close()
+        await asyncio.gather(*map(_close_client, clients.values()))
 
     @abc.abstractmethod
     def subscribe_listeners(self) -> None:
@@ -307,11 +311,15 @@ class _GuildReference(ResourceClient):
         await client.srem(key, *identifiers)
 
     async def _get_ids(
-        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex
-    ) -> typing.Sequence[conversion.RedisValueT]:
+        self,
+        guild_id: snowflakes.Snowflakeish,
+        resource: ResourceIndex,
+        *,
+        cast: typing.Callable[[conversion.RedisValueT], ValueT],
+    ) -> typing.Sequence[ValueT]:
         key = self._generate_key(guild_id, resource)
         client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
-        return typing.cast("typing.Sequence[conversion.RedisValueT]", await client.smembers(key))
+        return (*map(cast, await client.smembers(key)),)
 
 
 class UserCache(ResourceClient, traits.UserCache):
@@ -387,7 +395,6 @@ class EmojiCache(UserCache, _GuildReference, traits.EmojiCache):
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        # TODO: on ready
         super().subscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self.__on_emojis_update)
@@ -409,13 +416,11 @@ class EmojiCache(UserCache, _GuildReference, traits.EmojiCache):
 
     async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        emoji_ids = await self._get_ids(guild_id, ResourceIndex.EMOJI)
+        emoji_ids = await self._get_ids(guild_id, ResourceIndex.EMOJI, cast=snowflakes.Snowflake)
         if not emoji_ids:
             return
 
-        # TODO: self.delete_emoji
-        client = await self.get_connection(ResourceIndex.EMOJI)
-        await asyncio.gather(*map(client.delete, emoji_ids))
+        await asyncio.gather(*map(self.delete_emoji, emoji_ids))
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
@@ -442,7 +447,7 @@ class EmojiCache(UserCache, _GuildReference, traits.EmojiCache):
     ) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         return iterators.SpecificRedisIterator(
-            lambda: self._get_ids(guild_id, ResourceIndex.EMOJI), lambda id_: self.get_emoji(snowflakes.Snowflake(id_))
+            lambda: self._get_ids(guild_id, ResourceIndex.EMOJI, cast=snowflakes.Snowflake), self.get_emoji
         )
 
     async def set_emoji(self, emoji: emojis_.KnownCustomEmoji) -> None:
@@ -476,7 +481,7 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        #  TODO: on ready and on member chunk
+        #  TODO: on member chunk
         super().subscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
@@ -520,7 +525,7 @@ class GuildCache(ResourceClient, traits.GuildCache):
 class MeCache(ResourceClient, traits.MeCache):
     __slots__: typing.Sequence[str] = ()
 
-    _ME_KEY: typing.Final[str] = "ME"
+    __ME_KEY: typing.Final[str] = "ME"
 
     @classmethod
     def index(cls) -> ResourceIndex:
@@ -531,7 +536,7 @@ class MeCache(ResourceClient, traits.MeCache):
         await self.set_me(event.user)
 
     async def __on_shard_ready(self, event: shard_events.ShardReadyEvent) -> None:
-        await self.set_me(event.my_user)  # TODO: this isnt' being called for whatever reason
+        await self.set_me(event.my_user)
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -550,12 +555,12 @@ class MeCache(ResourceClient, traits.MeCache):
     async def delete_me(self) -> None:
         # <<Inherited docstring from sake.traits.MeCache>>
         client = await self.get_connection(ResourceIndex.USER)
-        await client.delete(self._ME_KEY)
+        await client.delete(self.__ME_KEY)
 
     async def get_me(self) -> users.OwnUser:
         # <<Inherited docstring from sake.traits.MeCache>>
         client = await self.get_connection(ResourceIndex.USER)
-        data = await client.hgetall(self._ME_KEY)
+        data = await client.hgetall(self.__ME_KEY)
 
         if not data:
             raise errors.EntryNotFound("Me entry not found")
@@ -566,7 +571,7 @@ class MeCache(ResourceClient, traits.MeCache):
         # <<Inherited docstring from sake.traits.MeCache>>
         data = conversion.serialize_me(me)
         client = await self.get_connection(ResourceIndex.USER)
-        await client.hmset_dict(self._ME_KEY, data)
+        await client.hmset_dict(self.__ME_KEY, data)
 
 
 class RoleCache(ResourceClient, traits.RoleCache):

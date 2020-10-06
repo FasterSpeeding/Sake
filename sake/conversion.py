@@ -45,7 +45,7 @@ if typing.TYPE_CHECKING:
     from hikari import traits
 
 
-#  TODO: can we use a type var here for invarience?
+#  TODO: can we use a type var here for invariance?
 RedisValueT = typing.Union[bytearray, bytes, float, int, str]
 """A type variable of the value types accepted by aioredis."""
 
@@ -55,13 +55,15 @@ RedisMapT = typing.MutableMapping[str, RedisValueT]
 ValueT = typing.TypeVar("ValueT")
 
 
-def _deserialize_array(array: typing.Sequence[typing.Any]) -> str:
-    return ",".join(map(str, array))
-
-
-def _serialize_array(array: str, cast: typing.Callable[[str], ValueT]) -> typing.Iterator[ValueT]:
+def _deserialize_array(array: typing.Optional[str], cast: typing.Callable[[str], ValueT]) -> typing.Sequence[ValueT]:
     if array:
-        yield from map(cast, array.split(","))
+        return (*map(cast, array.split(",")),)
+
+    return ()
+
+
+def _serialize_array(array: typing.Sequence[typing.Any]) -> typing.Optional[str]:
+    return ",".join(map(str, array)) or None
 
 
 def deserialize_emoji(
@@ -72,7 +74,7 @@ def deserialize_emoji(
         id=snowflakes.Snowflake(data["id"]),
         name=data.get("name"),
         guild_id=snowflakes.Snowflake(data["guild_id"]),
-        role_ids=[*_serialize_array(data["role_ids"], snowflakes.Snowflake)],
+        role_ids=_deserialize_array(data.get("role_ids"), snowflakes.Snowflake),
         user=user,
         is_animated=bool(data["is_animated"]),
         is_colons_required=bool(data["is_colons_required"]),
@@ -85,12 +87,14 @@ def serialize_emoji(emoji: emojis.KnownCustomEmoji) -> RedisMapT:
     data: RedisMapT = {
         "id": int(emoji.id),
         "guild_id": int(emoji.guild_id),
-        "role_ids": _deserialize_array(emoji.role_ids),
         "is_animated": int(emoji.is_animated),
         "is_colons_required": int(emoji.is_colons_required),
         "is_managed": int(emoji.is_managed),
         "is_available": int(emoji.is_available),
     }
+
+    if role_ids := _serialize_array(emoji.role_ids):
+        data["role_ids"] = role_ids
 
     if emoji.name is not None:
         data["name"] = emoji.name
@@ -112,7 +116,7 @@ def deserialize_guild(data: typing.Mapping[str, str], *, app: traits.RESTAware) 
 
     return guilds.GatewayGuild(
         app=app,
-        features=[*_serialize_array(data["features"], guilds.GuildFeature)],
+        features=_deserialize_array(data.get("features"), guilds.GuildFeature),
         id=snowflakes.Snowflake(data["id"]),
         name=data["name"],
         owner_id=snowflakes.Snowflake(data["owner_id"]),
@@ -148,7 +152,6 @@ def deserialize_guild(data: typing.Mapping[str, str], *, app: traits.RESTAware) 
 
 def serialize_guild(guild: guilds.GatewayGuild) -> RedisMapT:
     data: RedisMapT = {
-        "features": _deserialize_array(guild.features),
         "id": int(guild.id),
         "name": guild.name,
         "owner_id": int(guild.owner_id),
@@ -161,6 +164,9 @@ def serialize_guild(guild: guilds.GatewayGuild) -> RedisMapT:
         "verification_level": int(guild.verification_level),
         "system_channel_flags": int(guild.system_channel_flags),
     }
+
+    if features := _serialize_array(guild.features):
+        data["features"] = features
 
     if guild.icon_hash is not None:
         data["icon_hash"] = guild.icon_hash
@@ -239,7 +245,7 @@ def serialize_invite(invite: invites.InviteWithMetadata) -> RedisMapT:
 
 
 def deserialize_me(data: typing.Mapping[str, str], *, app: traits.RESTAware) -> users.OwnUser:
-    # TODO: can we not duplicate this logic between here and deserialize_user
+    # TODO: can we not duplicate this logic between here, deserialize_user and deserialize_member
     return users.OwnUser(
         app=app,
         id=snowflakes.Snowflake(data["id"]),
@@ -285,7 +291,7 @@ def deserialize_member(data: typing.Mapping[str, str], *, user: users.User) -> g
         user=user,
         guild_id=snowflakes.Snowflake(data["guild_id"]),
         nickname=data.get("nickname"),
-        role_ids=[*_serialize_array(data["role_ids"], snowflakes.Snowflake)],
+        role_ids=_deserialize_array(data.get("role_ids"), snowflakes.Snowflake),
         joined_at=time.iso8601_datetime_string_to_datetime(data["joined_at"]),
         premium_since=premium_since,
         is_deaf=bool(data["is_deaf"]) if "is_deaf" in data else undefined.UNDEFINED,
@@ -297,12 +303,14 @@ def serialize_member(member: guilds.Member) -> RedisMapT:
     data: RedisMapT = {
         "guild_id": int(member.guild_id),
         "user_id": int(member.user.id),
-        "role_ids": _deserialize_array(member.role_ids),
         "joined_at": member.joined_at.isoformat(),
     }
 
     if member.nickname is not None and member.nickname is not undefined.UNDEFINED:
         data["nickname"] = member.nickname
+
+    if role_ids := _serialize_array(member.role_ids):
+        data["role_ids"] = role_ids
 
     if member.premium_since is not None:
         data["premium_since"] = member.premium_since.isoformat()

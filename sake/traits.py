@@ -201,7 +201,7 @@ class InviteCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-class MeCache(Resource, typing.Protocol):  # TODO: is this necessary?
+class MeCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
     async def delete_me(self) -> None:

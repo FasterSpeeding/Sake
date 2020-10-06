@@ -67,6 +67,7 @@ async def _close_client(client: aioredis.Redis) -> None:
     await client.close()
 
 
+# TODO: may go back to approach where client logic and interface are separate classes
 class ResourceClient(traits.Resource, abc.ABC):
     """A base client which all resources in this implementation will implement.
 
@@ -303,6 +304,14 @@ class _GuildReference(ResourceClient):
         client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
         await client.sadd(key, *identifiers)
 
+    async def _clear_ids(self, resource: ResourceIndex) -> None:
+        raise NotImplementedError  # TODO: this
+
+    async def _clear_ids_for_guild(self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex) -> None:
+        key = self._generate_key(guild_id, resource)
+        client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
+        await client.delete(key)
+
     async def _delete_ids(
         self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex, *identifiers: conversion.RedisValueT
     ) -> None:
@@ -411,6 +420,7 @@ class EmojiCache(UserCache, _GuildReference, traits.EmojiCache):
 
     async def clear_emojis(self) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
+        await self._clear_ids(ResourceIndex.EMOJI)
         client = await self.get_connection(ResourceIndex.EMOJI)
         await client.flushdb()
 
@@ -420,11 +430,18 @@ class EmojiCache(UserCache, _GuildReference, traits.EmojiCache):
         if not emoji_ids:
             return
 
+        await self._clear_ids_for_guild(guild_id, ResourceIndex.EMOJI)
         await asyncio.gather(*map(self.delete_emoji, emoji_ids))
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
+        data = await client.hgetall(int(emoji_id))
+
+        if not data:
+            return
+
+        await self._delete_ids(data["guild_id"], ResourceIndex.EMOJI, data["id"])
         await client.delete(int(emoji_id))
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish) -> emojis_.KnownCustomEmoji:
@@ -574,7 +591,7 @@ class MeCache(ResourceClient, traits.MeCache):
         await client.hmset_dict(self.__ME_KEY, data)
 
 
-class RoleCache(ResourceClient, traits.RoleCache):
+class RoleCache(_GuildReference, traits.RoleCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -612,16 +629,28 @@ class RoleCache(ResourceClient, traits.RoleCache):
 
     async def clear_roles(self) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
+        await self._clear_ids(ResourceIndex.ROLE)
         client = await self.get_connection(ResourceIndex.ROLE)
         await client.flushdb()
 
     async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        raise NotImplementedError
+        role_ids = await self._get_ids(guild_id, ResourceIndex.ROLE, cast=snowflakes.Snowflake)
+        if not role_ids:
+            return
+
+        await self._clear_ids_for_guild(guild_id, ResourceIndex.ROLE)
+        await asyncio.gather(*map(self.delete_role, role_ids))
 
     async def delete_role(self, role_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
+        data = await client.hgetall(int(role_id))
+
+        if not data:
+            return
+
+        await self._delete_ids(data["guild_id"], ResourceIndex.ROLE, data["id"])
         await client.delete(int(role_id))
 
     async def get_role(self, role_id: snowflakes.Snowflakeish) -> guilds.Role:
@@ -640,12 +669,15 @@ class RoleCache(ResourceClient, traits.RoleCache):
 
     def iter_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        raise NotImplementedError
+        return iterators.SpecificRedisIterator(
+            lambda: self._get_ids(guild_id, ResourceIndex.ROLE, cast=snowflakes.Snowflake), self.get_role
+        )
 
     async def set_role(self, role: guilds.Role) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
         await client.hmset_dict(int(role.id), conversion.serialize_role(role))
+        await self._add_ids(role.guild_id, ResourceIndex.ROLE, int(role.id))
 
 
 class FullCache(GuildCache, EmojiCache, MeCache, RoleCache):

@@ -22,6 +22,7 @@ from hikari import snowflakes
 from hikari import users
 from hikari.events import guild_events
 from hikari.events import member_events
+from hikari.events import message_events
 from hikari.events import role_events
 from hikari.events import shard_events
 from hikari.events import user_events
@@ -37,6 +38,7 @@ if typing.TYPE_CHECKING:
 
     import aioredis.abc
     from hikari import emojis as emojis_
+    from hikari import messages
     from hikari import traits as hikari_traits
 
 
@@ -61,6 +63,7 @@ class ResourceIndex(enum.IntEnum):
     VOICE_STATE = 8
     GUILD_REFERENCE = 9
     #  This is a special case database solely used for linking other entries to their relevant guilds.
+    MESSAGE = 10
 
 
 async def _close_client(client: aioredis.Redis) -> None:
@@ -589,6 +592,80 @@ class MeCache(ResourceClient, traits.MeCache):
         data = conversion.serialize_me(me)
         client = await self.get_connection(ResourceIndex.USER)
         await client.hmset_dict(self.__ME_KEY, data)
+
+
+class _InternalMemberCache(UserCache):
+    async def _delete_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
+    async def _get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> guilds.Member:
+        raise NotImplementedError
+
+    async def _set_member(self, member: guilds.Member) -> None:
+        client = await self.get_connection(ResourceIndex.MEMBER)
+        data = conversion.serialize_member(member)
+        await self.set_user(member.user)
+        await client.hmset_dict(int(member.id), data)
+
+
+class MessageCache(_GuildReference, _InternalMemberCache, traits.MessageCache):
+    @classmethod
+    def index(cls) -> ResourceIndex:
+        return ResourceIndex.MESSAGE
+
+    async def __on_message_event(self, event: message_events.MessageEvent) -> None:
+        if isinstance(event, message_events.MessageCreateEvent):
+            await self.set_message(event.message)
+        elif isinstance(event, message_events.MessageUpdateEvent):
+            await self.update_message(event.message)
+        elif isinstance(event, message_events.MessageDeleteEvent):
+            await self.delete_message(event.message.id)
+
+    def subscribe_listeners(self) -> None:
+        super().subscribe_listeners()
+        if self.dispatch is not None:
+            return  # TODO: remove when mature
+            self.dispatch.dispatcher.subscribe(message_events.MessageEvent, self.__on_message_event)
+
+    def unsubscribe_listeners(self) -> None:
+        super().unsubscribe_listeners()
+        if self.dispatch is not None:
+            return  # TODO: remove when mature
+            self.dispatch.dispatcher.unsubscribe(message_events.MessageEvent, self.__on_message_event)
+
+    async def clear_messages(self) -> None:
+        raise NotImplementedError
+
+    async def clear_messages_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
+    async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
+    async def delete_message(self, message_id: snowflakes.Snowflakeish):
+        raise NotImplementedError
+
+    async def get_message(self, message_id: snowflakes.Snowflakeish) -> messages.Message:
+        client = await self.get_connection(ResourceIndex.MESSAGE)
+
+    def iter_messages(self) -> traits.CacheIterator[messages.Message]:
+        raise NotImplementedError
+
+    def iter_message_for_channel(self, channel_id: snowflakes.Snowflakeish) -> traits.CacheIterator[messages.Message]:
+        raise NotImplementedError
+
+    def iter_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> traits.CacheIterator[messages.Message]:
+        raise NotImplementedError
+
+    async def set_message(self, message: messages.Message) -> None:
+        data = conversion.serialize_message(message)
+        await self._set_member(message.member)
+        client = await self.get_connection(ResourceIndex.MESSAGE)
+        await client.hmset_dict(int(message.id), data)
+
+    async def update_message(self, message: messages.PartialMessage) -> bool:
+        # This is a special case method for handling the partial message updates we get
+        raise NotImplementedError
 
 
 class RoleCache(_GuildReference, traits.RoleCache):

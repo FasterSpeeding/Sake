@@ -26,6 +26,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
 ]
 
 import datetime
+import pickle
 import typing
 
 from hikari import channels
@@ -33,6 +34,7 @@ from hikari import colors
 from hikari import emojis
 from hikari import guilds
 from hikari import invites
+from hikari import messages
 from hikari import permissions
 from hikari import presences
 from hikari import snowflakes
@@ -128,7 +130,7 @@ def deserialize_guild(data: typing.Mapping[str, str], *, app: traits.RESTAware) 
         premium_tier=guilds.GuildPremiumTier(int(data["premium_tier"])),
         preferred_locale=data["preferred_locale"],
         verification_level=guilds.GuildVerificationLevel(int(data["verification_level"])),
-        system_channel_flags=guilds.GuildSystemChannelFlag(data["system_channel_flags"]),
+        system_channel_flags=guilds.GuildSystemChannelFlag(int(data["system_channel_flags"])),
         icon_hash=data.get("icon_hash"),
         splash_hash=data.get("splash_hash"),
         discovery_splash_hash=data.get("discovery_splash_hash"),
@@ -324,6 +326,100 @@ def serialize_member(member: guilds.Member) -> RedisMapT:
     return data
 
 
+def deserialize_message(
+    data: RedisMapT, *, app: traits.RESTAware, user: users.User, member: typing.Optional[guilds.Member]
+) -> messages.Message:
+    edited_timestamp: typing.Optional[datetime.datetime] = None
+    if "edited_timestamp" in data:
+        edited_timestamp = time.iso8601_datetime_string_to_datetime(data["edited_timestamp"])
+
+    return messages.Message(
+        app=app,
+        author=user,
+        member=member,
+        guild_id=snowflakes.Snowflake(data["guild_id"]) if "guild_id" in data else None,
+        content=data.get("content"),
+        timestamp=time.iso8601_datetime_string_to_datetime(data["timestamp"]),
+        edited_timestamp=edited_timestamp,
+        is_tts=bool(data["is_tts"]),
+        is_mentioning_everyone=bool(data["is_mentioning_everyone"]),
+        user_mentions=_deserialize_array(data.get("user_mentions"), cast=snowflakes.Snowflake),
+        role_mentions=_deserialize_array(data.get("role_mentions"), cast=snowflakes.Snowflake),
+        channel_id=_deserialize_array(data.get("channel_mentions"), cast=snowflakes.Snowflake),
+        attachments=pickle.loads(data["attachments"]) if "attachments" in data else (),
+        embeds=pickle.loads(data["embeds"]) if "embeds" in data else (),
+        reactions=pickle.loads(data["reactions"]) if "reactions" in data else (),
+        is_pinned=bool(data["is_pinned"]),
+        webhook_id=snowflakes.Snowflake(data["webhook_id"]) if "webhook_id" in data else None,
+        type=messages.MessageType(int(data["type"])),
+        activity=pickle.loads(data["activity"]) if "activity" in data else None,
+        application=None,  # TODO: can't pickle this rn
+        message_reference=None,  # TODO: can't pickle this rn,
+        flags=messages.MessageFlag(int(data["flags"])) if "flags" in data else None,
+        nonce=data.get("nonce"),
+    )
+
+
+def serialize_message(message: messages.Message) -> RedisMapT:
+    data: RedisMapT = {
+        "id": int(message.id),
+        "channel_id": int(message.channel_id),
+        "author_id": int(message.author.id),
+        "timestamp": message.timestamp.isoformat(),
+        "is_tts": int(message.is_tts),
+        "is_mentioning_everyone": int(message.is_mentioning_everyone),
+        "is_pinned": int(message.is_pinned),
+        "type": int(message.type),
+    }
+
+    if message.guild_id is not None:
+        data["guild_id"] = int(message.guild_id)
+
+    if message.content is not None:
+        data["content"] = message.content
+
+    if message.edited_timestamp is not None:
+        data["edited_timestamp"] = message.edited_timestamp.isoformat()
+
+    if user_mentions := _serialize_array(message.user_mentions):
+        data["user_mentions"] = user_mentions
+
+    if role_mentions := _serialize_array(message.role_mentions):
+        data["role_mentions"] = role_mentions
+
+    if channel_mentions := _serialize_array(message.channel_mentions):
+        data["channel_mentions"] = channel_mentions
+
+    if message.attachments:
+        data["attachments"] = pickle.dumps(message.attachments)
+
+    if message.embeds:
+        data["embeds"] = pickle.dumps(message.embeds)
+
+    if message.reactions:
+        data["reactions"] = pickle.dumps(message.reactions)
+
+    if message.webhook_id is not None:
+        data["webhook_id"] = int(message.webhook_id)
+
+    if message.activity is not None:
+        data["activity"] = pickle.dumps(data["activity"])
+
+    if message.application is not None:
+        pass  # TODO: can't pickle application rn
+
+    if message.message_reference is not None:
+        pass  # TODO: can't pickle reference rn
+
+    if message.flags is not None:
+        data["flags"] = int(message.flags)
+
+    if message.nonce is not None:
+        data["nonce"] = message.nonce
+
+    return data
+
+
 def deserialize_presence(data: typing.Mapping[str, str], *, app: traits.RESTAware) -> presences.MemberPresence:
     raise NotImplementedError
 
@@ -341,7 +437,7 @@ def deserialize_role(data: typing.Mapping[str, str], *, app: traits.RESTAware) -
         guild_id=snowflakes.Snowflake(data["guild_id"]),
         is_hoisted=bool(data["is_hoisted"]),
         position=int(data["position"]),
-        permissions=permissions.Permissions(data["permissions"]),
+        permissions=permissions.Permissions(int(data["permissions"])),
         is_managed=bool(data["is_managed"]),
         is_mentionable=bool(data["is_mentionable"]),
     )

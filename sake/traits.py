@@ -26,6 +26,7 @@ if typing.TYPE_CHECKING:
     from hikari import emojis
     from hikari import guilds
     from hikari import invites
+    from hikari import messages
     from hikari import presences
     from hikari import snowflakes
     from hikari import users
@@ -241,6 +242,41 @@ class MemberCache(Resource, typing.Protocol):
         raise NotImplementedError
 
     async def set_member(self, member: guilds.Member) -> None:
+        raise NotImplementedError
+
+
+class MessageCache(Resource, typing.Protocol):
+    __slots__: typing.Sequence[str] = ()
+
+    async def clear_messages(self) -> None:
+        raise NotImplementedError
+
+    async def clear_messages_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
+    async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
+    async def delete_message(self, message_id: snowflakes.Snowflakeish):
+        raise NotImplementedError
+
+    async def get_message(self, message_id: snowflakes.Snowflakeish) -> messages.Message:
+        raise NotImplementedError
+
+    def iter_messages(self) -> CacheIterator[messages.Message]:
+        raise NotImplementedError
+
+    def iter_message_for_channel(self, channel_id: snowflakes.Snowflakeish) -> CacheIterator[messages.Message]:
+        raise NotImplementedError
+
+    def iter_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[messages.Message]:
+        raise NotImplementedError
+
+    async def set_message(self, message: messages.Message) -> None:
+        raise NotImplementedError
+
+    async def update_message(self, message: messages.PartialMessage) -> bool:
+        # This is a special case method for handling the partial message updates we get
         raise NotImplementedError
 
 

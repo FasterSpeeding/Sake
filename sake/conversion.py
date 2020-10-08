@@ -44,6 +44,7 @@ from hikari import voices
 from hikari.internal import time
 
 if typing.TYPE_CHECKING:
+    from hikari import applications
     from hikari import traits
 
 
@@ -327,14 +328,35 @@ def serialize_member(member: guilds.Member) -> RedisMapT:
 
 
 def deserialize_message(
-    data: RedisMapT, *, app: traits.RESTAware, user: users.User, member: typing.Optional[guilds.Member]
+    data: typing.MutableMapping[str, str], *, app: traits.RESTAware, user: users.User, member: typing.Optional[guilds.Member]
 ) -> messages.Message:
     edited_timestamp: typing.Optional[datetime.datetime] = None
     if "edited_timestamp" in data:
         edited_timestamp = time.iso8601_datetime_string_to_datetime(data["edited_timestamp"])
 
+    application: typing.Optional[applications.Application] = None
+    if "application" in data:
+        application = pickle.loads(data["application"])
+        application.app = app
+
+        if application.owner is not None:
+            application.owner.app = app
+
+        if application.team is not None:
+            application.team.app = app
+
+            for member in application.team.members.values():
+                member.app = app
+
+    message_reference: typing.Optional[messages.MessageCrosspost] = None
+    if "message_reference" in data:
+        message_reference = pickle.loads(data["message_reference"])
+        message_reference.app = app
+
     return messages.Message(
         app=app,
+        id=snowflakes.Snowflake(data["id"]),
+        channel_id=snowflakes.Snowflake(data["channel_id"]),
         author=user,
         member=member,
         guild_id=snowflakes.Snowflake(data["guild_id"]) if "guild_id" in data else None,
@@ -345,7 +367,7 @@ def deserialize_message(
         is_mentioning_everyone=bool(data["is_mentioning_everyone"]),
         user_mentions=_deserialize_array(data.get("user_mentions"), cast=snowflakes.Snowflake),
         role_mentions=_deserialize_array(data.get("role_mentions"), cast=snowflakes.Snowflake),
-        channel_id=_deserialize_array(data.get("channel_mentions"), cast=snowflakes.Snowflake),
+        channel_mentions=_deserialize_array(data.get("channel_mentions"), cast=snowflakes.Snowflake),
         attachments=pickle.loads(data["attachments"]) if "attachments" in data else (),
         embeds=pickle.loads(data["embeds"]) if "embeds" in data else (),
         reactions=pickle.loads(data["reactions"]) if "reactions" in data else (),
@@ -353,8 +375,8 @@ def deserialize_message(
         webhook_id=snowflakes.Snowflake(data["webhook_id"]) if "webhook_id" in data else None,
         type=messages.MessageType(int(data["type"])),
         activity=pickle.loads(data["activity"]) if "activity" in data else None,
-        application=None,  # TODO: can't pickle this rn
-        message_reference=None,  # TODO: can't pickle this rn,
+        application=application,
+        message_reference=message_reference,
         flags=messages.MessageFlag(int(data["flags"])) if "flags" in data else None,
         nonce=data.get("nonce"),
     )
@@ -403,13 +425,13 @@ def serialize_message(message: messages.Message) -> RedisMapT:
         data["webhook_id"] = int(message.webhook_id)
 
     if message.activity is not None:
-        data["activity"] = pickle.dumps(data["activity"])
+        data["activity"] = pickle.dumps(message.activity)
 
     if message.application is not None:
-        pass  # TODO: can't pickle application rn
+        data["application"] = pickle.dumps(message.application)
 
     if message.message_reference is not None:
-        pass  # TODO: can't pickle reference rn
+        data["message_reference"] = pickle.dumps(message.message_reference)
 
     if message.flags is not None:
         data["flags"] = int(message.flags)

@@ -257,7 +257,7 @@ class MessageCache(Resource, typing.Protocol):
     async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
-    async def delete_message(self, message_id: snowflakes.Snowflakeish):
+    async def delete_message(self, message_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
     async def get_message(self, message_id: snowflakes.Snowflakeish) -> messages.Message:

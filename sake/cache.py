@@ -619,19 +619,17 @@ class MessageCache(_GuildReference, _InternalMemberCache, traits.MessageCache):
         elif isinstance(event, message_events.MessageUpdateEvent):
             await self.update_message(event.message)
         elif isinstance(event, message_events.MessageDeleteEvent):
-            await self.delete_message(event.message.id)
+            await asyncio.gather(*map(self.delete_message, event.message_ids))
 
     def subscribe_listeners(self) -> None:
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            return  # TODO: remove when mature
-            self.dispatch.dispatcher.subscribe(message_events.MessageEvent, self.__on_message_event)
+        # if self.dispatch is not None:
+        #     self.dispatch.dispatcher.subscribe(message_events.MessageEvent, self.__on_message_event)
 
     def unsubscribe_listeners(self) -> None:
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            return  # TODO: remove when mature
-            self.dispatch.dispatcher.unsubscribe(message_events.MessageEvent, self.__on_message_event)
+        # if self.dispatch is not None:
+        #     self.dispatch.dispatcher.unsubscribe(message_events.MessageEvent, self.__on_message_event)
 
     async def clear_messages(self) -> None:
         raise NotImplementedError
@@ -642,11 +640,11 @@ class MessageCache(_GuildReference, _InternalMemberCache, traits.MessageCache):
     async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
-    async def delete_message(self, message_id: snowflakes.Snowflakeish):
+    async def delete_message(self, message_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
     async def get_message(self, message_id: snowflakes.Snowflakeish) -> messages.Message:
-        client = await self.get_connection(ResourceIndex.MESSAGE)
+        raise NotImplementedError
 
     def iter_messages(self) -> traits.CacheIterator[messages.Message]:
         raise NotImplementedError
@@ -659,7 +657,12 @@ class MessageCache(_GuildReference, _InternalMemberCache, traits.MessageCache):
 
     async def set_message(self, message: messages.Message) -> None:
         data = conversion.serialize_message(message)
-        await self._set_member(message.member)
+
+        if message.member is not None:
+            await self._set_member(message.member)
+        else:
+            await self.set_user(message.author)
+
         client = await self.get_connection(ResourceIndex.MESSAGE)
         await client.hmset_dict(int(message.id), data)
 

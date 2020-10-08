@@ -7,7 +7,7 @@ import typing
 from sake import traits
 
 if typing.TYPE_CHECKING:
-    from sake import cache
+    from sake import redis
     from sake import conversion
 
 
@@ -20,8 +20,8 @@ class RedisIterator(traits.CacheIterator[ValueT]):
 
     def __init__(
         self,
-        client: cache.ResourceClient,
-        index: cache.ResourceIndex,
+        client: redis.ResourceClient,
+        index: redis.ResourceIndex,
         get_method: typing.Callable[[conversion.RedisValueT], typing.Coroutine[typing.Any, typing.Any, ValueT]],
     ) -> None:
         self._client = client

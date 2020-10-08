@@ -105,6 +105,7 @@ class ResourceClient(traits.Resource, abc.ABC):
     __slots__: typing.Sequence[str] = (
         "_address",
         "_clients",
+        "_converter",
         "_dispatch",
         "_password",
         "_rest",
@@ -124,6 +125,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         self._address = address
         self._dispatch = dispatch
         self._clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
+        self._converter = conversion.ObjectPickler()
         self._password = password
         self._rest = rest
         self._ssl = ssl
@@ -250,7 +252,7 @@ class ResourceClient(traits.Resource, abc.ABC):
             db=int(resource),
             password=self._password,
             ssl=self._ssl,
-            encoding="utf-8",
+            # encoding="utf-8",
         )
 
     async def open(self) -> None:
@@ -320,7 +322,7 @@ class _GuildReference(ResourceClient):
     ) -> None:
         key = self._generate_key(guild_id, resource)
         client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
-        await client.srem(key, *identifiers)
+        await client.srem(key, *identifiers)  # TODO: do i need to explicitly delete this if len is 0?
 
     async def _get_ids(
         self,
@@ -364,12 +366,12 @@ class UserCache(ResourceClient, traits.UserCache):
     async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
-        data = await client.hgetall(int(user_id))
+        data = await client.get(int(user_id))
 
         if not data:
             raise errors.EntryNotFound(f"User entry `{user_id}` not found")
 
-        return conversion.deserialize_user(data, app=self.rest)
+        return self._converter.deserialize_user(data, app=self.rest)
 
     def iter_users(self) -> traits.CacheIterator[users.User]:  # TODO: handle when an entity is removed mid-iteration
         # <<Inherited docstring from sake.traits.UserCache>>
@@ -378,10 +380,10 @@ class UserCache(ResourceClient, traits.UserCache):
     async def set_user(self, user: users.User) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
-        await client.hmset_dict(int(user.id), conversion.serialize_user(user))
+        await client.set(int(user.id), self._converter.serialize_user(user))
 
 
-class EmojiCache(UserCache, _GuildReference, traits.EmojiCache):
+class EmojiCache(_GuildReference, traits.EmojiCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -439,24 +441,24 @@ class EmojiCache(UserCache, _GuildReference, traits.EmojiCache):
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
-        data = await client.hgetall(int(emoji_id))
+        data = await client.get(int(emoji_id))
 
         if not data:
             return
 
-        await self._delete_ids(data["guild_id"], ResourceIndex.EMOJI, data["id"])
+        emoji = self._converter.deserialize_emoji(data, app=self.rest)  # TODO: can i avoid this?
+        await self._delete_ids(int(emoji.guild_id), ResourceIndex.EMOJI, int(emoji.id))
         await client.delete(int(emoji_id))
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish) -> emojis_.KnownCustomEmoji:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
-        data = await client.hgetall(int(emoji_id))
+        data = await client.get(int(emoji_id))
 
         if not data:
             raise errors.EntryNotFound(f"Emoji entry `{emoji_id}` not found")
 
-        user = await self.get_user(int(data["user_id"])) if "user_id" in data else None
-        return conversion.deserialize_emoji(data, app=self.rest, user=user)
+        return self._converter.deserialize_emoji(data, app=self.rest)
 
     def iter_emojis(self) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
@@ -473,13 +475,9 @@ class EmojiCache(UserCache, _GuildReference, traits.EmojiCache):
     async def set_emoji(self, emoji: emojis_.KnownCustomEmoji) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
-        data = conversion.serialize_emoji(emoji)
-
-        if emoji.user is not None:
-            await self.set_user(emoji.user)
-
+        data = self._converter.serialize_emoji(emoji)
         await self._add_ids(emoji.guild_id, ResourceIndex.EMOJI, int(emoji.id))
-        await client.hmset_dict(int(emoji.id), data)
+        await client.set(int(emoji.id), data)
 
 
 class GuildCache(ResourceClient, traits.GuildCache):
@@ -493,8 +491,8 @@ class GuildCache(ResourceClient, traits.GuildCache):
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)
         if isinstance(event, guild_events.GuildAvailableEvent):
-            data = conversion.serialize_guild(event.guild)
-            await client.hmset_dict(int(event.guild_id), data)
+            data = self._converter.serialize_guild(event.guild)
+            await client.set(int(event.guild_id), data)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await client.delete(int(event.guild_id))
@@ -524,12 +522,12 @@ class GuildCache(ResourceClient, traits.GuildCache):
     async def get_guild(self, guild_id: snowflakes.Snowflakeish) -> guilds.GatewayGuild:
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
-        data = await client.hgetall(int(guild_id))
+        data = await client.get(int(guild_id))
 
         if not data:
             raise errors.EntryNotFound(f"Guild entry `{guild_id}` not found")
 
-        return conversion.deserialize_guild(data, app=self.rest)
+        return self._converter.deserialize_guild(data, app=self.rest)
 
     def iter_guilds(self) -> traits.CacheIterator[guilds.GatewayGuild]:
         # <<Inherited docstring from sake.traits.GuildCache>>
@@ -538,8 +536,8 @@ class GuildCache(ResourceClient, traits.GuildCache):
     async def set_guild(self, guild: guilds.GatewayGuild) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
-        data = conversion.serialize_guild(guild)
-        await client.hmset_dict(int(guild.id), data)
+        data = self._converter.serialize_guild(guild)
+        await client.set(int(guild.id), data)
 
 
 class MeCache(ResourceClient, traits.MeCache):
@@ -580,18 +578,18 @@ class MeCache(ResourceClient, traits.MeCache):
     async def get_me(self) -> users.OwnUser:
         # <<Inherited docstring from sake.traits.MeCache>>
         client = await self.get_connection(ResourceIndex.USER)
-        data = await client.hgetall(self.__ME_KEY)
+        data = await client.get(self.__ME_KEY)
 
         if not data:
             raise errors.EntryNotFound("Me entry not found")
 
-        return conversion.deserialize_me(data, app=self.rest)
+        return self._converter.deserialize_me(data, app=self.rest)
 
     async def set_me(self, me: users.OwnUser) -> None:
         # <<Inherited docstring from sake.traits.MeCache>>
-        data = conversion.serialize_me(me)
+        data = self._converter.serialize_me(me)
         client = await self.get_connection(ResourceIndex.USER)
-        await client.hmset_dict(self.__ME_KEY, data)
+        await client.set(self.__ME_KEY, data)
 
 
 class _InternalMemberCache(UserCache):
@@ -603,12 +601,11 @@ class _InternalMemberCache(UserCache):
 
     async def _set_member(self, member: guilds.Member) -> None:
         client = await self.get_connection(ResourceIndex.MEMBER)
-        data = conversion.serialize_member(member)
-        await self.set_user(member.user)
-        await client.hmset_dict(int(member.id), data)
+        data = self._converter.serialize_member(member)
+        await client.set(int(member.id), data)
 
 
-class MessageCache(_GuildReference, _InternalMemberCache, traits.MessageCache):
+class MessageCache(_GuildReference, traits.MessageCache):
     @classmethod
     def index(cls) -> ResourceIndex:
         return ResourceIndex.MESSAGE
@@ -656,15 +653,9 @@ class MessageCache(_GuildReference, _InternalMemberCache, traits.MessageCache):
         raise NotImplementedError
 
     async def set_message(self, message: messages.Message) -> None:
-        data = conversion.serialize_message(message)
-
-        if message.member is not None:
-            await self._set_member(message.member)
-        else:
-            await self.set_user(message.author)
-
+        data = self._converter.serialize_message(message)
         client = await self.get_connection(ResourceIndex.MESSAGE)
-        await client.hmset_dict(int(message.id), data)
+        await client.set(int(message.id), data)
 
     async def update_message(self, message: messages.PartialMessage) -> bool:
         # This is a special case method for handling the partial message updates we get
@@ -725,23 +716,24 @@ class RoleCache(_GuildReference, traits.RoleCache):
     async def delete_role(self, role_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
-        data = await client.hgetall(int(role_id))
+        data = await client.get(int(role_id))
 
         if not data:
             return
 
-        await self._delete_ids(data["guild_id"], ResourceIndex.ROLE, data["id"])
+        role = self._converter.deserialize_role(data, app=self.rest)  # TODO: can i avoid this?
+        await self._delete_ids(int(role.guild_id), ResourceIndex.ROLE, int(role.id))
         await client.delete(int(role_id))
 
     async def get_role(self, role_id: snowflakes.Snowflakeish) -> guilds.Role:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
-        data = await client.hgetall(int(role_id))
+        data = await client.get(int(role_id))
 
         if not data:
             raise errors.EntryNotFound(f"Role entry `{role_id}` not found")
 
-        return conversion.deserialize_role(data, app=self.rest)
+        return self._converter.deserialize_role(data, app=self.rest)
 
     def iter_roles(self) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>
@@ -756,7 +748,7 @@ class RoleCache(_GuildReference, traits.RoleCache):
     async def set_role(self, role: guilds.Role) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
-        await client.hmset_dict(int(role.id), conversion.serialize_role(role))
+        await client.set(int(role.id), self._converter.serialize_role(role))
         await self._add_ids(role.guild_id, ResourceIndex.ROLE, int(role.id))
 
 

@@ -224,7 +224,7 @@ class MemberCache(Resource, typing.Protocol):
     async def clear_members_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
-    async def delete_member(self, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
     async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> guilds.Member:

@@ -35,6 +35,8 @@ ValueT = typing.TypeVar("ValueT")
 
 
 class ObjectHandler(abc.ABC):
+    __slots__: typing.Sequence[str] = ()
+
     @abc.abstractmethod
     def deserialize_emoji(self, value: bytes, *, app: traits.RESTAware) -> emojis.KnownCustomEmoji:
         raise NotImplementedError
@@ -125,8 +127,29 @@ class ObjectHandler(abc.ABC):
 
 
 class ObjectPickler(ObjectHandler):
+    __slots__: typing.Sequence[str] = ()
+
+    @property
+    def protocol(self) -> int:
+        return 4
+
+    def _dumps(self, obj: typing.Any, *, fix_imports: bool = True, buffer_callback: typing.Any = None) -> bytes:
+        return pickle.dumps(obj, protocol=self.protocol, fix_imports=fix_imports, buffer_callback=buffer_callback)
+
+    def _loads(
+        self,
+        data: bytes,
+        /,
+        *,
+        fix_imports: bool = True,
+        encoding: str = "ASCII",
+        errors: str = "strict",
+        buffers: typing.Any = None,
+    ) -> typing.Any:
+        return pickle.loads(data, fix_imports=fix_imports, encoding=encoding, errors=errors, buffers=buffers)
+
     def deserialize_emoji(self, value: bytes, *, app: traits.RESTAware) -> emojis.KnownCustomEmoji:
-        emoji = pickle.loads(value)
+        emoji = self._loads(value)
 
         if not isinstance(emoji, emojis.KnownCustomEmoji):
             raise ValueError(f"Unexpected object type {type(emoji)}, expected a KnownCustomEmoji")
@@ -139,10 +162,10 @@ class ObjectPickler(ObjectHandler):
         return emoji
 
     def serialize_emoji(self, emoji: emojis.KnownCustomEmoji) -> bytes:
-        return pickle.dumps(emoji)
+        return self._dumps(emoji)
 
     def deserialize_guild(self, value: bytes, *, app: traits.RESTAware) -> guilds.GatewayGuild:
-        guild = pickle.loads(value)
+        guild = self._loads(value)
 
         if not isinstance(guild, guilds.GatewayGuild):
             raise ValueError(f"Unexpected object type {type(guild)}, expected a GatewayGuild")
@@ -151,10 +174,10 @@ class ObjectPickler(ObjectHandler):
         return guild
 
     def serialize_guild(self, guild: guilds.GatewayGuild) -> bytes:
-        return pickle.dumps(guild)
+        return self._dumps(guild)
 
     def deserialize_guild_channel(self, value: bytes, *, app: traits.RESTAware) -> channels.GuildChannel:
-        channel = pickle.loads(value)
+        channel = self._loads(value)
 
         if not isinstance(channel, channels.GuildChannel):
             raise ValueError(f"Unexpected object type {type(channel)}, expected a GuildChannel")
@@ -163,10 +186,10 @@ class ObjectPickler(ObjectHandler):
         return channel
 
     def serialize_guild_channel(self, channel: channels.GuildChannel) -> bytes:
-        return pickle.dumps(channel)
+        return self._dumps(channel)
 
     def deserialize_invite(self, value: bytes, *, app: traits.RESTAware) -> invites.InviteWithMetadata:
-        invite = pickle.loads(value)
+        invite = self._loads(value)
 
         if not isinstance(invite, invites.InviteWithMetadata):
             raise ValueError(f"Unexpected object type {type(invite)}, expected a InviteWithMetadata")
@@ -182,10 +205,10 @@ class ObjectPickler(ObjectHandler):
         return invite
 
     def serialize_invite(self, invite: invites.InviteWithMetadata) -> bytes:
-        return pickle.dumps(invite)
+        return self._dumps(invite)
 
     def deserialize_me(self, value: bytes, *, app: traits.RESTAware) -> users.OwnUser:
-        me = pickle.loads(value)
+        me = self._loads(value)
 
         if not isinstance(me, users.OwnUser):
             raise ValueError(f"Unexpected object type {type(me)}, expected a OwnUser")
@@ -194,10 +217,10 @@ class ObjectPickler(ObjectHandler):
         return me
 
     def serialize_me(self, me: users.OwnUser) -> bytes:
-        return pickle.dumps(me)
+        return self._dumps(me)
 
     def deserialize_member(self, value: bytes, *, app: traits.RESTAware) -> guilds.Member:
-        member = pickle.loads(value)
+        member = self._loads(value)
 
         if not isinstance(member, guilds.Member):
             raise ValueError(f"Unexpected object type {type(member)}, expected Member")
@@ -206,10 +229,10 @@ class ObjectPickler(ObjectHandler):
         return member
 
     def serialize_member(self, member: guilds.Member) -> bytes:
-        return pickle.dumps(member)
+        return self._dumps(member)
 
     def deserialize_message(self, value: bytes, *, app: traits.RESTAware) -> messages.Message:
-        message = pickle.loads(value)
+        message = self._loads(value)
 
         if not isinstance(message, messages.Message):
             raise ValueError(f"Unexpected object type {type(message)}, expected Message")
@@ -227,10 +250,10 @@ class ObjectPickler(ObjectHandler):
         return message
 
     def serialize_message(self, message: messages.Message) -> bytes:
-        return pickle.dumps(message)
+        return self._dumps(message)
 
     def deserialize_presence(self, value: bytes, *, app: traits.RESTAware) -> presences.MemberPresence:
-        presence = pickle.loads(value)
+        presence = self._loads(value)
 
         if not isinstance(presence, presences.MemberPresence):
             raise ValueError(f"Unexpected object type {type(presence)}, expected a MemberPresence")
@@ -244,10 +267,10 @@ class ObjectPickler(ObjectHandler):
         return presence
 
     def serialize_presence(self, presence: presences.MemberPresence) -> bytes:
-        return pickle.dumps(presence)
+        return self._dumps(presence)
 
     def deserialize_role(self, value: bytes, *, app: traits.RESTAware) -> guilds.Role:
-        role = pickle.loads(value)
+        role = self._loads(value)
 
         if not isinstance(role, guilds.Role):
             raise ValueError(f"Unexpected object type {type(role)}, expected a Role")
@@ -256,10 +279,10 @@ class ObjectPickler(ObjectHandler):
         return role
 
     def serialize_role(self, role: guilds.Role) -> bytes:
-        return pickle.dumps(role)
+        return self._dumps(role)
 
     def deserialize_user(self, value: bytes, *, app: traits.RESTAware) -> users.User:
-        user = pickle.loads(value)
+        user = self._loads(value)
 
         if not isinstance(user, users.User):
             raise ValueError(f"Unexpected object type {type(user)}, expected a User impl")
@@ -268,10 +291,10 @@ class ObjectPickler(ObjectHandler):
         return user
 
     def serialize_user(self, user: users.User) -> bytes:
-        return pickle.dumps(user)
+        return self._dumps(user)
 
     def deserialize_voice_state(self, value: bytes, *, app: traits.RESTAware) -> voices.VoiceState:
-        voice_state = pickle.loads(value)
+        voice_state = self._loads(value)
 
         if not isinstance(voice_state, voices.VoiceState):
             raise ValueError(f"Unexpected object type {type(voice_state)}, expected a VoiceState")
@@ -281,4 +304,4 @@ class ObjectPickler(ObjectHandler):
         return voice_state
 
     def serialize_voice_state(self, voice_state: voices.VoiceState) -> bytes:
-        return pickle.dumps(voice_state)
+        return self._dumps(voice_state)

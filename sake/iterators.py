@@ -18,7 +18,7 @@ ValueT = typing.TypeVar("ValueT")
 class RedisIterator(traits.CacheIterator[ValueT]):
     __slots__: typing.Sequence[str] = ("_client", "_get_method", "_index", "_iterator")
 
-    def __init__(
+    def __init__(  # TODO: chunk requests
         self,
         client: redis.ResourceClient,
         index: redis.ResourceIndex,

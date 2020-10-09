@@ -134,7 +134,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         self._address = address
         self._dispatch = dispatch
         self._clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
-        self._converter = conversion.ObjectPickler()
+        self._converter = conversion.ObjectPickler(rest)
         self._metadata = metadata or {}
         self._password = password
         self._rest = rest
@@ -389,7 +389,7 @@ class UserCache(ResourceClient, traits.UserCache):
         if not data:
             raise errors.EntryNotFound(f"User entry `{user_id}` not found")
 
-        return self._converter.deserialize_user(data, app=self.rest)
+        return self._converter.deserialize_user(data)
 
     def iter_users(self) -> traits.CacheIterator[users.User]:  # TODO: handle when an entity is removed mid-iteration
         # <<Inherited docstring from sake.traits.UserCache>>
@@ -464,7 +464,7 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
         if not data:
             return
 
-        emoji = self._converter.deserialize_emoji(data, app=self.rest)  # TODO: can i avoid this?
+        emoji = self._converter.deserialize_emoji(data)  # TODO: can i avoid this?
         await self._delete_ids(int(emoji.guild_id), ResourceIndex.EMOJI, int(emoji.id))
         await client.delete(int(emoji_id))
 
@@ -476,7 +476,7 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
         if not data:
             raise errors.EntryNotFound(f"Emoji entry `{emoji_id}` not found")
 
-        return self._converter.deserialize_emoji(data, app=self.rest)
+        return self._converter.deserialize_emoji(data)
 
     def iter_emojis(self) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
@@ -548,7 +548,7 @@ class GuildCache(ResourceClient, traits.GuildCache):
         if not data:
             raise errors.EntryNotFound(f"Guild entry `{guild_id}` not found")
 
-        return self._converter.deserialize_guild(data, app=self.rest)
+        return self._converter.deserialize_guild(data)
 
     def iter_guilds(self) -> traits.CacheIterator[guilds.GatewayGuild]:
         # <<Inherited docstring from sake.traits.GuildCache>>
@@ -629,7 +629,7 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
         if not data:
             raise errors.EntryNotFound(f"Guild channel entry `{channel_id}` not found")
 
-        return self._converter.deserialize_guild_channel(data, app=self.rest)
+        return self._converter.deserialize_guild_channel(data)
 
     def iter_guild_channels(self) -> CacheIterator[channels.GuildChannel]:
         return iterators.RedisIterator(self, ResourceIndex.GUILD_CHANNEL, self.get_guild_channel)
@@ -714,7 +714,7 @@ class InviteCache(_GuildReference, traits.InviteCache):
         if not data:
             raise errors.EntryNotFound(f"Invite entry `{invite_code}` not found")
 
-        return self._converter.deserialize_invite(data, app=self.rest)
+        return self._converter.deserialize_invite(data)
 
     def iter_invites(self) -> CacheIterator[invites.InviteWithMetadata]:
         return iterators.RedisIterator(self, ResourceIndex.INVITE, lambda key: self.get_invite(key.decode("utf-8")))
@@ -782,7 +782,7 @@ class MeCache(ResourceClient, traits.MeCache):
         if not data:
             raise errors.EntryNotFound("Me entry not found")
 
-        return self._converter.deserialize_me(data, app=self.rest)
+        return self._converter.deserialize_me(data)
 
     async def set_me(self, me: users.OwnUser) -> None:
         # <<Inherited docstring from sake.traits.MeCache>>
@@ -865,7 +865,7 @@ class MemberCache(_GuildReference, traits.MemberCache):
         if not data:
             raise errors.EntryNotFound(f"Member entry `{user_id}` for guild `{guild_id}` not found")
 
-        return self._converter.deserialize_member(data, app=self.rest)
+        return self._converter.deserialize_member(data)
 
     def iter_members(
         self,
@@ -959,7 +959,7 @@ class MessageCache(_GuildReference, traits.MessageCache):
         if not data:
             raise errors.EntryNotFound(f"Message entry `{message_id}` not found")
 
-        return self._converter.deserialize_message(data, app=self.rest)
+        return self._converter.deserialize_message(data)
 
     def iter_messages(self) -> traits.CacheIterator[messages.Message]:
         return iterators.RedisIterator(self, ResourceIndex.MESSAGE, self.get_message)
@@ -1042,7 +1042,7 @@ class RoleCache(_GuildReference, traits.RoleCache):
         if not data:
             return
 
-        role = self._converter.deserialize_role(data, app=self.rest)  # TODO: can i avoid this?
+        role = self._converter.deserialize_role(data)  # TODO: can i avoid this?
         await self._delete_ids(int(role.guild_id), ResourceIndex.ROLE, int(role.id))
         await client.delete(int(role_id))
 
@@ -1054,7 +1054,7 @@ class RoleCache(_GuildReference, traits.RoleCache):
         if not data:
             raise errors.EntryNotFound(f"Role entry `{role_id}` not found")
 
-        return self._converter.deserialize_role(data, app=self.rest)
+        return self._converter.deserialize_role(data)
 
     def iter_roles(self) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>

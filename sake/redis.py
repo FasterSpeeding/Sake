@@ -134,7 +134,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         self._address = address
         self._dispatch = dispatch
         self._clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
-        self._converter = conversion.ObjectPickler(rest)
+        self._converter = conversion.PickleHandler(rest)
         self._metadata = metadata or {}
         self._password = password
         self._rest = rest

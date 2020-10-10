@@ -50,10 +50,14 @@ if typing.TYPE_CHECKING:
 
 
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake")
-"""Type-Hint The logger instance used by this sake implementation."""
+RedisValueT = typing.Union[bytearray, bytes, float, int, str]
+"""A type variable of the value types accepted by aioredis."""
+RedisMapT = typing.MutableMapping[str, RedisValueT]
+"""A type variable of the mapping type accepted by aioredis"""
 ResourceT = typing.TypeVar("ResourceT", bound="ResourceClient")
-"""Type-Hint A type hint used to represent a resource client instance."""
+"""Type-Hint The logger instance used by this sake implementation."""
 ValueT = typing.TypeVar("ValueT")
+"""Type-Hint A type hint used to represent a resource client instance."""
 
 
 class ResourceIndex(enum.IntEnum):
@@ -134,7 +138,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         self._address = address
         self._dispatch = dispatch
         self._clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
-        self._converter = conversion.PickleHandler(rest)
+        self._converter = conversion.JSONhandler(rest)
         self._metadata = metadata or {}
         self._password = password
         self._rest = rest
@@ -321,7 +325,7 @@ class _GuildReference(ResourceClient):
         return f"{guild_id}:{int(resource)}"
 
     async def _add_ids(
-        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex, *identifiers: conversion.RedisValueT
+        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex, *identifiers: RedisValueT
     ) -> None:
         key = self.__generate_key(guild_id, resource)
         client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
@@ -336,7 +340,7 @@ class _GuildReference(ResourceClient):
         await client.delete(key)
 
     async def _delete_ids(
-        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex, *identifiers: conversion.RedisValueT
+        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex, *identifiers: RedisValueT
     ) -> None:
         key = self.__generate_key(guild_id, resource)
         client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
@@ -347,7 +351,7 @@ class _GuildReference(ResourceClient):
         guild_id: snowflakes.Snowflakeish,
         resource: ResourceIndex,
         *,
-        cast: typing.Callable[[conversion.RedisValueT], ValueT],
+        cast: typing.Callable[[bytes], ValueT],
     ) -> typing.Sequence[ValueT]:
         key = self.__generate_key(guild_id, resource)
         client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
@@ -632,7 +636,9 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
         return self._converter.deserialize_guild_channel(data)
 
     def iter_guild_channels(self) -> CacheIterator[channels.GuildChannel]:
-        return iterators.RedisIterator(self, ResourceIndex.GUILD_CHANNEL, self.get_guild_channel)
+        return iterators.RedisIterator(
+            self, ResourceIndex.GUILD_CHANNEL, lambda key: self.get_guild_channel(snowflakes.Snowflake(key))
+        )
 
     def iter_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[channels.GuildChannel]:
         return iterators.SpecificRedisIterator(
@@ -942,7 +948,7 @@ class MessageCache(_GuildReference, traits.MessageCache):
         raise NotImplementedError
 
     async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
-        message_ids = self._get_ids(int(guild_id), ResourceIndex.MESSAGE, cast=snowflakes.Snowflake)
+        message_ids = await self._get_ids(int(guild_id), ResourceIndex.MESSAGE, cast=snowflakes.Snowflake)
         if not message_ids:
             return
 
@@ -962,7 +968,9 @@ class MessageCache(_GuildReference, traits.MessageCache):
         return self._converter.deserialize_message(data)
 
     def iter_messages(self) -> traits.CacheIterator[messages.Message]:
-        return iterators.RedisIterator(self, ResourceIndex.MESSAGE, self.get_message)
+        return iterators.RedisIterator(
+            self, ResourceIndex.MESSAGE, lambda key: self.get_message(snowflakes.Snowflake(key))
+        )
 
     def iter_message_for_channel(self, channel_id: snowflakes.Snowflakeish) -> traits.CacheIterator[messages.Message]:
         raise NotImplementedError

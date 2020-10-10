@@ -8,7 +8,6 @@ from sake import traits
 
 if typing.TYPE_CHECKING:
     from sake import redis
-    from sake import conversion
 
 
 KeyT = typing.TypeVar("KeyT")
@@ -22,12 +21,12 @@ class RedisIterator(traits.CacheIterator[ValueT]):
         self,
         client: redis.ResourceClient,
         index: redis.ResourceIndex,
-        get_method: typing.Callable[[conversion.RedisValueT], typing.Coroutine[typing.Any, typing.Any, ValueT]],
+        get_method: typing.Callable[[bytes], typing.Coroutine[typing.Any, typing.Any, ValueT]],
     ) -> None:
         self._client = client
         self._get_method = get_method
         self._index = index
-        self._iterator: typing.Optional[typing.AsyncIterator[conversion.RedisValueT]] = None
+        self._iterator: typing.Optional[typing.AsyncIterator[bytes]] = None
 
     def __aiter__(self) -> RedisIterator[ValueT]:
         return self

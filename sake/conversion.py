@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
-    "JSONhandler",
+    "JSONHandler",
     "ObjectHandler",
     "PickleHandler",
 ]
@@ -321,17 +321,6 @@ def _get_init_name(field: str) -> str:
     return field[1:] if field.startswith("_") else field
 
 
-def _optional_converter(
-    cast: typing.Callable[[ValueT], OtherValueT]
-) -> typing.Callable[[typing.Optional[ValueT]], typing.Optional[OtherValueT]]:
-    def converter(value: typing.Optional[ValueT]) -> typing.Optional[OtherValueT]:
-        if value is None:
-            return None
-        return cast(value)
-
-    return converter
-
-
 _PASSED_THROUGH_SINGLETONS: typing.Final[typing.Mapping[typing.Any, str]] = {
     undefined.UNDEFINED: "UNDEFINED",
     None: "None",
@@ -401,7 +390,18 @@ def _generate_json_serializer(
     return typing.cast("typing.Callable[[typing.Any], typing.MutableMapping[str, typing.Any]]", globals_["serialize"])
 
 
-def _array_converter(
+def _optional_cast(
+    cast: typing.Callable[[ValueT], OtherValueT]
+) -> typing.Callable[[typing.Optional[ValueT]], typing.Optional[OtherValueT]]:
+    def converter(value: typing.Optional[ValueT]) -> typing.Optional[OtherValueT]:
+        if value is None:
+            return None
+        return cast(value)
+
+    return converter
+
+
+def _cast_sequence(
     cast: typing.Callable[[ValueT], OtherValueT]
 ) -> typing.Callable[[typing.Sequence[ValueT]], typing.Sequence[OtherValueT]]:
     def converter(array: typing.Sequence[ValueT]) -> typing.Sequence[OtherValueT]:
@@ -410,7 +410,7 @@ def _array_converter(
     return converter
 
 
-def _mapping_converter(
+def _cast_mapping(
     key_cast: typing.Callable[[KeyT], OtherKeyT], value_cast: typing.Callable[[ValueT], OtherValueT]
 ) -> typing.Callable[[typing.Mapping[KeyT, ValueT]], typing.MutableMapping[OtherKeyT, OtherValueT]]:
     def converter(mapping: typing.Mapping[KeyT, ValueT]) -> typing.MutableMapping[OtherKeyT, OtherValueT]:
@@ -419,7 +419,56 @@ def _mapping_converter(
     return converter
 
 
-class JSONhandler(ObjectHandler):
+def _no_cast(value: ValueT) -> ValueT:
+    return value
+
+
+def _deserialize_timedelta(delta: typing.Union[bytes, float]) -> datetime.timedelta:
+    return datetime.timedelta(seconds=float(delta))
+
+
+def _serialize_timedelta(delta: datetime.timedelta) -> float:
+    return delta.total_seconds()
+
+
+def _deserialize_datetime(date: str) -> datetime.datetime:
+    return time.iso8601_datetime_string_to_datetime(date)
+
+
+def _serialize_datetime(date: datetime.datetime) -> str:
+    return date.isoformat()
+
+
+def _user_deserialize_rules() -> typing.Sequence[
+    typing.Union[str, typing.Tuple[str, typing.Optional[typing.Callable[[typing.Any], typing.Any]]]]
+]:
+    return (
+        ("id", snowflakes.Snowflake),
+        ("app", None),
+        "discriminator",
+        "username",
+        "avatar_hash",
+        "is_bot",
+        "is_system",
+        ("flags", users.UserFlag),
+    )
+
+
+def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
+    return (
+        "id",
+        "name",
+        "color",
+        "guild_id",
+        "is_hoisted",
+        "is_managed",
+        "is_mentionable",
+        "permissions",
+        "position",
+    )
+
+
+class JSONHandler(ObjectHandler):
     __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder", "_deserializers", "_serializers")
 
     def __init__(self, app: traits.RESTAware) -> None:
@@ -456,8 +505,8 @@ class JSONhandler(ObjectHandler):
             "is_animated",
             ("app", None),
             ("guild_id", snowflakes.Snowflake),
-            ("role_ids", _array_converter(snowflakes.Snowflake)),
-            ("user", _optional_converter(self.deserialize_user)),
+            ("role_ids", _cast_sequence(snowflakes.Snowflake)),
+            ("user", _optional_cast(self.deserialize_user)),
             "is_colons_required",
             "is_managed",
             "is_available",
@@ -486,7 +535,7 @@ class JSONhandler(ObjectHandler):
             "is_animated",
             "guild_id",
             "role_ids",
-            ("user", _optional_converter(self.serialize_user)),
+            ("user", _optional_cast(self.serialize_user)),
             "is_animated",
             "is_colons_required",
             "is_managed",
@@ -507,13 +556,13 @@ class JSONhandler(ObjectHandler):
         deserializer = _generate_json_deserializer(
             guilds.GatewayGuild,
             ("app", None),
-            ("features", _array_converter(guilds.GuildFeature)),
+            ("features", _cast_sequence(guilds.GuildFeature)),
             ("id", snowflakes.Snowflake),
             "icon_hash",
             "name",
-            ("application_id", _optional_converter(snowflakes.Snowflake)),
-            ("afk_channel_id", _optional_converter(snowflakes.Snowflake)),
-            ("afk_timeout", lambda data: datetime.timedelta(seconds=data)),
+            ("application_id", _optional_cast(snowflakes.Snowflake)),
+            ("afk_channel_id", _optional_cast(snowflakes.Snowflake)),
+            ("afk_timeout", _deserialize_timedelta),
             "banner_hash",
             ("default_message_notifications", guilds.GuildMessageNotificationsLevel),
             "description",
@@ -526,17 +575,17 @@ class JSONhandler(ObjectHandler):
             "preferred_locale",
             "premium_subscription_count",
             ("premium_tier", guilds.GuildPremiumTier),
-            ("public_updates_channel_id", _optional_converter(snowflakes.Snowflake)),
+            ("public_updates_channel_id", _optional_cast(snowflakes.Snowflake)),
             "region",
-            ("rules_channel_id", _optional_converter(snowflakes.Snowflake)),
+            ("rules_channel_id", _optional_cast(snowflakes.Snowflake)),
             "splash_hash",
             ("system_channel_flags", guilds.GuildSystemChannelFlag),
-            ("system_channel_id", _optional_converter(snowflakes.Snowflake)),
+            ("system_channel_id", _optional_cast(snowflakes.Snowflake)),
             "vanity_url_code",
             ("verification_level", guilds.GuildVerificationLevel),
-            ("widget_channel_id", _optional_converter(snowflakes.Snowflake)),
+            ("widget_channel_id", _optional_cast(snowflakes.Snowflake)),
             "is_large",
-            ("joined_at", _optional_converter(time.iso8601_datetime_string_to_datetime)),
+            ("joined_at", _optional_cast(_deserialize_datetime)),
             "member_count",
         )
         self._deserializers[guilds.GatewayGuild] = deserializer
@@ -560,7 +609,7 @@ class JSONhandler(ObjectHandler):
             "name",
             "application_id",
             "afk_channel_id",
-            ("afk_timeout", lambda delta: delta.total_seconds()),
+            ("afk_timeout", _serialize_timedelta),
             "banner_hash",
             "default_message_notifications",
             "description",
@@ -583,7 +632,7 @@ class JSONhandler(ObjectHandler):
             "verification_level",
             "widget_channel_id",
             "is_large",
-            ("joined_at", lambda date: date.isoformat()),
+            ("joined_at", _serialize_datetime),
             "member_count",
         )
         self._serializers[guilds.GatewayGuild] = serializer
@@ -592,11 +641,217 @@ class JSONhandler(ObjectHandler):
     def serialize_guild(self, guild: guilds.GatewayGuild) -> bytes:
         return self._dumps(self._get_guild_serializer()(guild))
 
+    def _guild_channel_deserialize_rules(
+        self,
+    ) -> typing.Sequence[
+        typing.Union[str, typing.Tuple[str, typing.Optional[typing.Callable[[typing.Any], typing.Any]]]]
+    ]:
+        try:
+            overwrite_deserializer = self._deserializers[channels.PermissionOverwrite]
+        except KeyError:
+            overwrite_deserializer = _generate_json_deserializer(
+                channels.PermissionOverwrite,
+                ("id", snowflakes.Snowflake),
+                ("type", channels.PermissionOverwriteType),
+                ("allow", permissions.Permissions),
+                ("deny", permissions.Permissions),
+            )
+            self._deserializers[channels.PermissionOverwrite] = overwrite_deserializer
+
+        return (
+            ("app", None),
+            ("id", snowflakes.Snowflake),
+            "name",
+            ("type", channels.ChannelType),
+            ("guild_id", snowflakes.Snowflake),
+            "position",
+            ("permission_overwrites", _cast_mapping(snowflakes.Snowflake, overwrite_deserializer)),
+            "is_nsfw",
+            ("parent_id", _optional_cast(snowflakes.Snowflake)),
+        )
+
+    def _get_category_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildCategory]:
+        try:
+            return self._deserializers[channels.GuildCategory]
+        except KeyError:
+            deserializer = _generate_json_deserializer(channels.GuildCategory, *self._guild_channel_deserialize_rules())
+            self._deserializers[channels.GuildCategory] = deserializer
+            return deserializer
+
+    def _get_text_channel_deserializer(
+        self,
+    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildTextChannel]:
+        try:
+            return self._deserializers[channels.GuildTextChannel]
+        except KeyError:
+            deserializer = _generate_json_deserializer(
+                channels.GuildTextChannel,
+                *self._guild_channel_deserialize_rules(),
+                "topic",
+                ("last_message_id", _optional_cast(snowflakes.Snowflake)),
+                ("rate_limit_per_user", _deserialize_timedelta),
+                ("last_pin_timestamp", _optional_cast(_deserialize_datetime)),
+            )
+            self._deserializers[channels.GuildTextChannel] = deserializer
+            return deserializer
+
+    def _get_news_channel_deserializer(
+        self,
+    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildNewsChannel]:
+        try:
+            return self._deserializers[channels.GuildNewsChannel]
+        except KeyError:
+            deserializer = _generate_json_deserializer(
+                channels.GuildNewsChannel,
+                "topic",
+                ("last_message_id", _optional_cast(snowflakes.Snowflake)),
+                ("last_pin_timestamp", _optional_cast(_deserialize_datetime)),
+            )
+            self._deserializers[channels.GuildNewsChannel] = deserializer
+            return deserializer
+
+    def _get_store_channel_deserializer(
+        self,
+    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildStoreChannel]:
+        try:
+            return self._deserializers[channels.GuildStoreChannel]
+        except KeyError:
+            deserializer = _generate_json_deserializer(
+                channels.GuildStoreChannel, *self._guild_channel_deserialize_rules()
+            )
+            self._deserializers[channels.GuildStoreChannel] = deserializer
+            return deserializer
+
+    def _get_voice_channel_deserializer(
+        self,
+    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildVoiceChannel]:
+        try:
+            return self._deserializers[channels.GuildVoiceChannel]
+        except KeyError:
+            deserializer = _generate_json_deserializer(
+                channels.GuildVoiceChannel, *self._guild_channel_deserialize_rules(), "bitrate", "user_limit"
+            )
+            self._deserializers[channels.GuildVoiceChannel] = deserializer
+            return deserializer
+
     def deserialize_guild_channel(self, value: bytes) -> channels.GuildChannel:
-        raise NotImplementedError
+        #  TODO: pre-validation and raise a ValueError
+        data = self._loads(value)
+        channel_type = channels.ChannelType(data["type"])
+
+        channel: channels.GuildChannel
+        if channel_type is channels.ChannelType.GUILD_CATEGORY:
+            channel = self._get_category_deserializer()(data)
+        elif channel_type is channels.ChannelType.GUILD_TEXT:
+            channel = self._get_text_channel_deserializer()(data)
+        elif channel_type is channels.ChannelType.GUILD_NEWS:
+            channel = self._get_news_channel_deserializer()(data)
+        elif channel_type is channels.ChannelType.GUILD_STORE:
+            channel = self._get_store_channel_deserializer()(data)
+        elif channel_type is channels.ChannelType.GUILD_VOICE:
+            channel = self._get_voice_channel_deserializer()(data)
+        else:
+            raise NotImplementedError(f"Deserialization not implemented for {channel_type} channel type")
+
+        channel.app = self._app
+        return channel
+
+    def _guild_channel_serialize_rules(
+        self,
+    ) -> typing.Sequence[typing.Union[str, typing.Tuple[str, typing.Callable[[typing.Any], typing.Any]]]]:
+        try:
+            overwrite_serializer = self._serializers[channels.PermissionOverwrite]
+        except KeyError:
+            overwrite_serializer = _generate_json_serializer("id", "type", "allow", "deny")
+            self._serializers[channels.PermissionOverwrite] = overwrite_serializer
+
+        return (
+            "id",
+            "name",
+            "type",
+            "guild_id",
+            "position",
+            ("permission_overwrites", _cast_mapping(_no_cast, overwrite_serializer)),
+            "is_nsfw",
+            "parent_id",
+        )
+
+    def _get_category_serializer(
+        self,
+    ) -> typing.Callable[[channels.GuildCategory], typing.Mapping[str, typing.Any]]:
+        try:
+            return self._serializers[channels.GuildCategory]
+        except KeyError:
+            serializer = _generate_json_serializer(*self._guild_channel_serialize_rules())
+            self._serializers[channels.GuildCategory] = serializer
+            return serializer
+
+    def _get_text_channel_serializer(
+        self,
+    ) -> typing.Callable[[channels.GuildTextChannel], typing.Mapping[str, typing.Any]]:
+        try:
+            return self._serializers[channels.GuildTextChannel]
+        except KeyError:
+            serializer = _generate_json_serializer(
+                *self._guild_channel_serialize_rules(),
+                "topic",
+                "last_message_id",
+                ("rate_limit_per_user", _serialize_timedelta),
+                ("last_pin_timestamp", _optional_cast(_serialize_datetime)),
+            )
+            self._serializers[channels.GuildTextChannel] = serializer
+            return serializer
+
+    def _get_news_channel_serializer(
+        self,
+    ) -> typing.Callable[[channels.GuildNewsChannel], typing.Mapping[str, typing.Any]]:
+        try:
+            return self._serializers[channels.GuildNewsChannel]
+        except KeyError:
+            serializer = _generate_json_serializer(
+                *self._guild_channel_serialize_rules(),
+                "topic",
+                "last_message_id",
+                ("last_pin_timestamp", _optional_cast(_serialize_datetime)),
+            )
+            self._serializers[channels.GuildNewsChannel] = serializer
+            return serializer
+
+    def _get_store_channel_serializer(
+        self,
+    ) -> typing.Callable[[channels.GuildStoreChannel], typing.Mapping[str, typing.Any]]:
+        try:
+            return self._serializers[channels.GuildStoreChannel]
+        except KeyError:
+            serializer = _generate_json_serializer(*self._guild_channel_serialize_rules())
+            self._serializers[channels.GuildStoreChannel] = serializer
+            return serializer
+
+    def _get_voice_channel_serializer(
+        self,
+    ) -> typing.Callable[[channels.GuildVoiceChannel], typing.Mapping[str, typing.Any]]:
+        try:
+            return self._serializers[channels.GuildVoiceChannel]
+        except KeyError:
+            serializer = _generate_json_serializer(*self._guild_channel_serialize_rules(), "bitrate", "user_limit")
+            self._serializers[channels.GuildVoiceChannel] = serializer
+            return serializer
 
     def serialize_guild_channel(self, channel: channels.GuildChannel) -> bytes:
-        raise NotImplementedError
+        if isinstance(channel, channels.GuildCategory):
+            data = self._get_category_serializer()(channel)
+        elif isinstance(channel, channels.GuildTextChannel):
+            data = self._get_text_channel_serializer()(channel)
+        elif isinstance(channel, channels.GuildNewsChannel):
+            data = self._get_news_channel_serializer()(channel)
+        elif isinstance(channel, channels.GuildStoreChannel):
+            data = self._get_store_channel_serializer()(channel)
+        elif isinstance(channel, channels.GuildVoiceChannel):
+            data = self._get_voice_channel_serializer()(channel)
+        else:
+            raise NotImplementedError(f"Serializer not implemented for {type(channel).__name__} channel type")
+
+        return self._dumps(data)
 
     def _get_invite_deserializer(
         self,
@@ -609,7 +864,7 @@ class JSONhandler(ObjectHandler):
         guild_deserializer = _generate_json_deserializer(
             invites.InviteGuild,
             ("app", None),
-            ("features", _array_converter(guilds.GuildFeature)),
+            ("features", _cast_sequence(guilds.GuildFeature)),
             ("id", snowflakes.Snowflake),
             "icon_hash",
             "name",
@@ -631,13 +886,13 @@ class JSONhandler(ObjectHandler):
             invites.InviteWithMetadata,
             ("app", None),
             "code",
-            ("guild", _optional_converter(guild_deserializer)),
-            ("guild_id", _optional_converter(snowflakes.Snowflake)),
-            ("channel", _optional_converter(channel_deserializer)),
+            ("guild", _optional_cast(guild_deserializer)),
+            ("guild_id", _optional_cast(snowflakes.Snowflake)),
+            ("channel", _optional_cast(channel_deserializer)),
             ("channel_id", snowflakes.Snowflake),
             ("inviter", self._get_user_serializer()),
             ("target_user", self._get_user_serializer()),
-            ("target_user_type", _optional_converter(invites.TargetUserType)),
+            ("target_user_type", _optional_cast(invites.TargetUserType)),
             "approximate_active_member_count",
             "approximate_member_count",
         )
@@ -684,9 +939,9 @@ class JSONhandler(ObjectHandler):
 
         serializer = _generate_json_serializer(
             "code",
-            ("guild", _optional_converter(guild_serializer)),
+            ("guild", _optional_cast(guild_serializer)),
             "guild_id",
-            ("channel", _optional_converter(channel_serializer)),
+            ("channel", _optional_cast(channel_serializer)),
             "channel_id",
             ("inviter", self._get_user_serializer()),
             ("target_user", self._get_user_serializer()),
@@ -708,12 +963,12 @@ class JSONhandler(ObjectHandler):
 
         deserializer = _generate_json_deserializer(
             users.OwnUser,
-            *self._user_serialize_rules(),
+            *_user_deserialize_rules(),
             "is_mfa_enabled",
             "locale",
             "is_verified",
             "email",
-            ("premium_type", _optional_converter(users.PremiumType)),
+            ("premium_type", _optional_cast(users.PremiumType)),
         )
         self._deserializers[users.OwnUser] = deserializer
         return deserializer
@@ -730,7 +985,7 @@ class JSONhandler(ObjectHandler):
             pass
 
         serializer = _generate_json_serializer(
-            *self._user_serialize_rules(), "is_mfa_enabled", "locale", "is_verified", "email", "premium_type"
+            *_user_serialize_rules(), "is_mfa_enabled", "locale", "is_verified", "email", "premium_type"
         )
         self._serializers[users.OwnUser] = serializer
         return serializer
@@ -749,13 +1004,13 @@ class JSONhandler(ObjectHandler):
             ("guild_id", snowflakes.Snowflake),
             "is_deaf",
             "is_mute",
-            ("joined_at", time.iso8601_datetime_string_to_datetime),
+            ("joined_at", _deserialize_datetime),
             "nickname",
             (
                 "premium_since",
-                _optional_converter(time.iso8601_datetime_string_to_datetime),
+                _optional_cast(_deserialize_datetime),
             ),
-            ("role_ids", _array_converter),
+            ("role_ids", _cast_sequence),
             ("user", self._get_user_deserializer()),
         )
         self._deserializers[guilds.Member] = deserializer
@@ -777,8 +1032,8 @@ class JSONhandler(ObjectHandler):
             "is_deaf",
             "is_mute",
             "nickname",
-            ("joined_at", lambda date: date.isoformat()),
-            ("premium_since", lambda premium_since: premium_since.isoformat() if premium_since is not None else None),
+            ("joined_at", _serialize_datetime),
+            ("premium_since", _optional_cast(_serialize_datetime)),
             "role_ids",
             ("user", self._get_user_serializer()),
         )
@@ -810,23 +1065,26 @@ class JSONhandler(ObjectHandler):
         attachment_serializer = _generate_json_serializer(
             "id", "url", "filename", "size", "proxy_url", "height", "width"
         )
-        resource_with_proxy_serializer = _generate_json_serializer()
+
+        def resource_serializer(resource: embeds.EmbedResource):  # TODO: this
+            ...
+
         embed_serializer = _generate_json_serializer(
             "title",
             "description",
             "url",
             "color",
-            ("timestamp", lambda date: date.isoformat()),
+            ("timestamp", _serialize_datetime),
             (
                 "footer",
-                _optional_converter(_generate_json_serializer("text", ("icon", resource_with_proxy_serializer))),
+                _optional_cast(_generate_json_serializer("text", ("icon", resource_with_proxy_serializer))),
             ),
             ("image",),  # TODO: resource  # TODO: resource
             ("thumbnail",),  # TODO: same as image: resource
             ("video",),  # TODO: resource
-            ("provider", _optional_converter(_generate_json_serializer("name", "url"))),
-            ("author", _optional_converter(_generate_json_serializer("name", "url", ("icon",)))),  # TODO: resource
-            ("fields", _array_converter(_generate_json_serializer("name", "value", "is_inline"))),
+            ("provider", _optional_cast(_generate_json_serializer("name", "url"))),
+            ("author", _optional_cast(_generate_json_serializer("name", "url", ("icon",)))),  # TODO: resource
+            ("fields", _cast_sequence(_generate_json_serializer("name", "value", "is_inline"))),
         )
         reaction_serializer = _generate_json_serializer("count", "emoji", "is_me")
         message_activity_serializer = _generate_json_serializer("type", "party_id")
@@ -834,7 +1092,7 @@ class JSONhandler(ObjectHandler):
             "membership_state", "permissions", "team_id", ("user", self._get_user_serializer())
         )
         team_serializer = _generate_json_serializer(
-            "id", "icon_hash", ("members", _mapping_converter(lambda foo: foo, team_member_serializer)), "owner_id"
+            "id", "icon_hash", ("members", _cast_mapping(_no_cast, team_member_serializer)), "owner_id"
         )
         application_serializer = _generate_json_serializer(
             "id",
@@ -847,7 +1105,7 @@ class JSONhandler(ObjectHandler):
             "summary",
             "verify_key",
             "icon_hash",
-            ("team", _optional_converter(team_serializer)),
+            ("team", _optional_cast(team_serializer)),
             "guild_id",
             "primary_sku_id",
             "slug",
@@ -859,24 +1117,24 @@ class JSONhandler(ObjectHandler):
             "channel_id",
             "guild_id",
             ("author", self._get_user_serializer()),
-            ("member", _optional_converter(self._get_member_serializer())),
+            ("member", _optional_cast(self._get_member_serializer())),
             "content",
-            ("timestamp", lambda date: date.isoformat()),
-            ("edited_timestamp", lambda date: date.isoformat() if date is not None else None),
+            ("timestamp", _serialize_datetime),
+            ("edited_timestamp", _optional_cast(_serialize_datetime)),
             "is_tts",
             "is_mentioning_everyone",
             "user_mentions",
             "role_mentions",
             "channel_mentions",
-            ("attachments", _array_converter(attachment_serializer)),
-            ("embeds", _array_converter(embed_serializer)),
-            ("reactions", _array_converter(reaction_serializer)),
+            ("attachments", _cast_sequence(attachment_serializer)),
+            ("embeds", _cast_sequence(embed_serializer)),
+            ("reactions", _cast_sequence(reaction_serializer)),
             "is_pinned",
             "webhook_id",
             "type",
-            ("activity", _optional_converter(message_activity_serializer)),
-            ("application", _optional_converter(application_serializer)),
-            ("message_reference", _optional_converter(reference_serializer)),
+            ("activity", _optional_cast(message_activity_serializer)),
+            ("application", _optional_cast(application_serializer)),
+            ("message_reference", _optional_cast(reference_serializer)),
             "flags",
             "nonce",
         )
@@ -886,11 +1144,120 @@ class JSONhandler(ObjectHandler):
     def serialize_message(self, message: messages.Message) -> bytes:
         raise NotImplementedError
 
+    def _get_presence_deserializer(
+        self,
+    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], presences.MemberPresence]:
+        try:
+            return self._deserializers[presences.MemberPresence]
+        except KeyError:
+            pass
+
+        def emoji_deserializer(data: typing.Mapping[str, typing.Any]) -> emojis.Emoji:
+            if "id" in data:
+                return emojis.CustomEmoji(
+                    name=data["name"],
+                    id=snowflakes.Snowflake(data["id"]),
+                    is_animated=data["is_animated"],
+                )
+            return emojis.UnicodeEmoji(data["name"])
+
+        timestamps_deserializer = _generate_json_deserializer(
+            presences.ActivityTimestamps,
+            ("start", _optional_cast(_deserialize_datetime)),
+            ("end", _optional_cast(_deserialize_datetime)),
+        )
+        activity_deserializer = _generate_json_deserializer(
+            presences.Activity,
+            ("created_at", _deserialize_datetime),
+            ("timestamps", _optional_cast(timestamps_deserializer)),
+            ("application_id", _optional_cast(snowflakes.Snowflake)),
+            "details",
+            "state",
+            ("emoji", _optional_cast(emoji_deserializer)),
+        )
+        client_status_deserializer = _generate_json_deserializer(
+            presences.ClientStatus,
+            ("desktop", presences.Status),
+            ("mobile", presences.Status),
+            ("web", presences.Status),
+        )
+        party_deserializer = _generate_json_deserializer(presences.ActivityParty, "id", "current_size", "max_size")
+        assets_deserializer = _generate_json_deserializer(
+            presences.ActivityAssets, "large_image", "large_text", "small_image", "small_text"
+        )
+        secrets_deserializer = _generate_json_deserializer(presences.ActivitySecret, "join", "spectate", "match")
+        deserializer = _generate_json_deserializer(
+            presences.MemberPresence,
+            ("app", None),
+            ("user_id", snowflakes.Snowflake),
+            ("guild_id", snowflakes.Snowflake),
+            ("visible_status", presences.Status),
+            ("activities", _cast_sequence(activity_deserializer)),
+            ("client_status", client_status_deserializer),
+            ("party", party_deserializer),
+            ("assets", assets_deserializer),
+            ("secrets", secrets_deserializer),
+            "is_instance",
+            ("flags", _optional_cast(presences.ActivityFlag)),
+        )
+        self._deserializers[presences.MemberPresence] = deserializer
+        return deserializer
+
     def deserialize_presence(self, value: bytes) -> presences.MemberPresence:
-        raise NotImplementedError
+        presence = self._get_presence_deserializer()(self._loads(value))
+        presence.app = self._app
+
+        for activity in presence.activities:
+            if isinstance(activity.emoji, emojis.CustomEmoji):
+                activity.emoji.app = self._app
+
+        return presence
+
+    def _get_presence_serializer(self) -> typing.Callable[[presences.MemberPresence], typing.Mapping[str, typing.Any]]:
+        try:
+            return self._serializers[presences.MemberPresence]
+        except KeyError:
+            pass
+
+        def emoji_serializer(emoji: emojis.Emoji) -> typing.Mapping[str, typing.Any]:
+            if isinstance(emoji, emojis.CustomEmoji):
+                return {"id": emoji.id, "name": emoji.name, "is_animated": emoji.is_animated}
+            return {"name": emoji.name}
+
+        assets_serializer = _generate_json_serializer("large_image", "large_text", "small_image", "small_text")
+        timestamps_serializer = _generate_json_serializer(
+            ("start", _optional_cast(_serialize_datetime)),
+            ("end", _optional_cast(_serialize_datetime)),
+        )
+        activity_serializer = _generate_json_serializer(
+            "name",
+            "url",
+            "type",
+            ("created_at", _serialize_datetime),
+            ("timestamps", _optional_cast(timestamps_serializer)),
+            "application_id",
+            "details",
+            "state",
+            ("emoji", _optional_cast(emoji_serializer)),
+            ("party", _optional_cast(_generate_json_serializer("id", "current_size", "max_size"))),
+            ("assets", _optional_cast(assets_serializer)),
+            ("secrets", _optional_cast(_generate_json_serializer("join", "spectate", "match"))),
+            "is_instance",
+            "flags",
+        )
+        client_status_serializer = _generate_json_serializer("desktop", "mobile", "web")
+        serializer = _generate_json_serializer(
+            "user_id",
+            "guild_id",
+            "visible_status",
+            ("activities", _cast_sequence(activity_serializer)),
+            ("client_status", client_status_serializer),
+        )
+        self._serializers[presences.MemberPresence] = serializer
+        return serializer
 
     def serialize_presence(self, presence: presences.MemberPresence) -> bytes:
-        raise NotImplementedError
+        return self._dumps(self._get_presence_serializer()(presence))
 
     def _get_role_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], guilds.Role]:
         try:
@@ -919,47 +1286,18 @@ class JSONhandler(ObjectHandler):
         role.app = self._app
         return role
 
-    def _user_serialize_rules(self) -> typing.Sequence[typing.Union[str, str]]:
-        return (
-            "id",
-            "name",
-            "color",
-            "guild_id",
-            "is_hoisted",
-            "is_managed",
-            "is_mentionable",
-            "permissions",
-            "position",
-        )
-
     def _get_role_serializer(self) -> typing.Callable[[guilds.Role], typing.Mapping[str, typing.Any]]:
         try:
             return self._serializers[guilds.Role]
         except KeyError:
             pass
 
-        serializer = _generate_json_serializer(*self._user_serialize_rules())
+        serializer = _generate_json_serializer(*_user_serialize_rules())
         self._serializers[guilds.Role] = serializer
         return serializer
 
     def serialize_role(self, role: guilds.Role) -> bytes:
         return self._dumps(self._get_role_serializer()(role))
-
-    def _user_deserialize_rules(
-        self,
-    ) -> typing.Sequence[
-        typing.Union[str, typing.Tuple[str, typing.Optional[typing.Callable[[typing.Any], typing.Any]]]]
-    ]:
-        return (
-            ("id", snowflakes.Snowflake),
-            ("app", None),
-            "discriminator",
-            "username",
-            "avatar_hash",
-            "is_bot",
-            "is_system",
-            ("flags", users.UserFlag),
-        )
 
     def _get_user_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], users.User]:
         try:
@@ -967,7 +1305,7 @@ class JSONhandler(ObjectHandler):
         except KeyError:
             pass
 
-        deserializer = _generate_json_deserializer(users.UserImpl, *self._user_deserialize_rules())
+        deserializer = _generate_json_deserializer(users.UserImpl, *_user_deserialize_rules())
         self._deserializers[users.UserImpl] = deserializer
         return deserializer
 
@@ -1000,7 +1338,7 @@ class JSONhandler(ObjectHandler):
         deserializer = _generate_json_deserializer(
             voices.VoiceState,
             ("app", None),
-            ("channel_id", _optional_converter(snowflakes.Snowflake)),
+            ("channel_id", _optional_cast(snowflakes.Snowflake)),
             ("guild_id", snowflakes.Snowflake),
             "is_guild_deafened",
             "is_guild_muted",

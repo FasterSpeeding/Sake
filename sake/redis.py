@@ -138,7 +138,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         self._address = address
         self._dispatch = dispatch
         self._clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
-        self._converter = conversion.JSONhandler(rest)
+        self._converter = conversion.JSONHandler(rest)
         self._metadata = metadata or {}
         self._password = password
         self._rest = rest

@@ -455,17 +455,7 @@ def _user_deserialize_rules() -> typing.Sequence[
 
 
 def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
-    return (
-        "id",
-        "name",
-        "color",
-        "guild_id",
-        "is_hoisted",
-        "is_managed",
-        "is_mentionable",
-        "permissions",
-        "position",
-    )
+    return ("discriminator", "username", "avatar_hash", "is_bot", "is_system", "flags")
 
 
 class JSONHandler(ObjectHandler):
@@ -1292,7 +1282,17 @@ class JSONHandler(ObjectHandler):
         except KeyError:
             pass
 
-        serializer = _generate_json_serializer(*_user_serialize_rules())
+        serializer = _generate_json_serializer(
+            "id",
+            "name",
+            "color",
+            "guild_id",
+            "is_hoisted",
+            "is_managed",
+            "is_mentionable",
+            "permissions",
+            "position",
+        )
         self._serializers[guilds.Role] = serializer
         return serializer
 

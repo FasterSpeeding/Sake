@@ -7,6 +7,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
 ]
 
 import abc
+import base64
 import datetime
 import json
 import logging
@@ -18,6 +19,7 @@ from hikari import channels
 from hikari import colors
 from hikari import embeds
 from hikari import emojis
+from hikari import files
 from hikari import guilds
 from hikari import invites
 from hikari import messages
@@ -455,7 +457,7 @@ def _user_deserialize_rules() -> typing.Sequence[
 
 
 def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
-    return ("discriminator", "username", "avatar_hash", "is_bot", "is_system", "flags")
+    return ("id", "discriminator", "username", "avatar_hash", "is_bot", "is_system", "flags")
 
 
 class JSONHandler(ObjectHandler):
@@ -496,7 +498,7 @@ class JSONHandler(ObjectHandler):
             ("app", None),
             ("guild_id", snowflakes.Snowflake),
             ("role_ids", _cast_sequence(snowflakes.Snowflake)),
-            ("user", _optional_cast(self.deserialize_user)),
+            ("user", _optional_cast(self._get_user_deserializer())),
             "is_colons_required",
             "is_managed",
             "is_available",
@@ -525,7 +527,7 @@ class JSONHandler(ObjectHandler):
             "is_animated",
             "guild_id",
             "role_ids",
-            ("user", _optional_cast(self.serialize_user)),
+            ("user", _optional_cast(self._get_user_serializer())),
             "is_animated",
             "is_colons_required",
             "is_managed",
@@ -725,9 +727,8 @@ class JSONHandler(ObjectHandler):
             return deserializer
 
     def deserialize_guild_channel(self, value: bytes) -> channels.GuildChannel:
-        #  TODO: pre-validation and raise a ValueError
         data = self._loads(value)
-        channel_type = channels.ChannelType(data["type"])
+        channel_type = channels.ChannelType(data.get("type", -1))
 
         channel: channels.GuildChannel
         if channel_type is channels.ChannelType.GUILD_CATEGORY:
@@ -1046,6 +1047,27 @@ class JSONHandler(ObjectHandler):
     def deserialize_message(self, value: bytes) -> messages.Message:
         raise NotImplementedError
 
+    def _serialize_resource(self, resource: files.Resource[files.ReaderImplT]) -> typing.Mapping[str, typing.Any]:
+        data: typing.Mapping[str, typing.Any]
+        if isinstance(resource, files.URL):
+            data = {"type": "url", "url": resource.url}
+        elif isinstance(resource, files.File):
+            data = {
+                "type": "file",
+                "path": resource.path,
+                "is_spoiler": resource.is_spoiler,
+                "filename": resource.filename,
+            }
+        elif isinstance(resource, files.Bytes):
+            data = {
+                "type": "bytes",
+                "data": base64.b64encode(resource.data),  # TODO: this has so many cases jeez
+                "mimetype": resource.mimetype,
+                "is_spoiler": resource.is_spoiler,
+            }
+
+        return self._dumps(data)
+
     def _get_message_serializier(self) -> typing.Callable[[messages.Message], typing.Mapping[str, typing.Any]]:
         try:
             return self._serializers[messages.Message]
@@ -1156,15 +1178,6 @@ class JSONHandler(ObjectHandler):
             ("start", _optional_cast(_deserialize_datetime)),
             ("end", _optional_cast(_deserialize_datetime)),
         )
-        activity_deserializer = _generate_json_deserializer(
-            presences.Activity,
-            ("created_at", _deserialize_datetime),
-            ("timestamps", _optional_cast(timestamps_deserializer)),
-            ("application_id", _optional_cast(snowflakes.Snowflake)),
-            "details",
-            "state",
-            ("emoji", _optional_cast(emoji_deserializer)),
-        )
         client_status_deserializer = _generate_json_deserializer(
             presences.ClientStatus,
             ("desktop", presences.Status),
@@ -1176,6 +1189,23 @@ class JSONHandler(ObjectHandler):
             presences.ActivityAssets, "large_image", "large_text", "small_image", "small_text"
         )
         secrets_deserializer = _generate_json_deserializer(presences.ActivitySecret, "join", "spectate", "match")
+        activity_deserializer = _generate_json_deserializer(
+            presences.RichActivity,
+            "name",
+            "url",
+            ("type", presences.ActivityType),
+            ("created_at", _deserialize_datetime),
+            ("timestamps", _optional_cast(timestamps_deserializer)),
+            ("application_id", _optional_cast(snowflakes.Snowflake)),
+            "details",
+            "state",
+            ("emoji", _optional_cast(emoji_deserializer)),
+            ("party", _optional_cast(party_deserializer)),
+            ("assets", _optional_cast(assets_deserializer)),
+            ("secrets", _optional_cast(secrets_deserializer)),
+            "is_instance",
+            ("flags", _optional_cast(presences.ActivityFlag)),
+        )
         deserializer = _generate_json_deserializer(
             presences.MemberPresence,
             ("app", None),
@@ -1184,11 +1214,6 @@ class JSONHandler(ObjectHandler):
             ("visible_status", presences.Status),
             ("activities", _cast_sequence(activity_deserializer)),
             ("client_status", client_status_deserializer),
-            ("party", party_deserializer),
-            ("assets", assets_deserializer),
-            ("secrets", secrets_deserializer),
-            "is_instance",
-            ("flags", _optional_cast(presences.ActivityFlag)),
         )
         self._deserializers[presences.MemberPresence] = deserializer
         return deserializer
@@ -1198,7 +1223,7 @@ class JSONHandler(ObjectHandler):
         presence.app = self._app
 
         for activity in presence.activities:
-            if isinstance(activity.emoji, emojis.CustomEmoji):
+            if isinstance(activity.emoji, emojis.KnownCustomEmoji):
                 activity.emoji.app = self._app
 
         return presence
@@ -1320,9 +1345,7 @@ class JSONHandler(ObjectHandler):
         except KeyError:
             pass
 
-        serializer = _generate_json_serializer(
-            "id", "discriminator", "username", "avatar_hash", "is_bot", "is_system", "flags"
-        )
+        serializer = _generate_json_serializer(*_user_serialize_rules())
         self._serializers[users.UserImpl] = serializer
         return serializer
 

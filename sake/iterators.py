@@ -32,12 +32,12 @@ class RedisIterator(traits.CacheIterator[ValueT]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer = []
+        self._buffer: typing.MutableSequence[bytes] = []
         self._builder = builder
         self._client = client
         self._index = index
         self._len: typing.Optional[int] = None
-        self._windows: typing.Optional[typing.AsyncIterator[bytes]] = None
+        self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = int(window_size)
 
     def __aiter__(self) -> RedisIterator[ValueT]:
@@ -90,7 +90,7 @@ class SpecificRedisIterator(traits.CacheIterator[ValueT]):
         self._index = index
         self._key = key
         self._len: typing.Optional[int] = None
-        self._windows: typing.Optional[typing.AsyncIterator[bytes]] = None
+        self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = int(window_size)
 
     async def __anext__(self) -> ValueT:
@@ -117,7 +117,7 @@ class SpecificRedisIterator(traits.CacheIterator[ValueT]):
 
 async def _empty_async_iterator() -> typing.AsyncIterator[typing.Any]:
     if False:
-        yield
+        yield  # type: ignore[unreachable]
 
 
 class MultiMapIterator(traits.CacheIterator[ValueT]):
@@ -132,7 +132,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         "_window_size",
     )
 
-    def __init__(  # TODO: chunk requests
+    def __init__(
         self,
         client: redis.ResourceClient,
         index: redis.ResourceIndex,
@@ -149,7 +149,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         self._index = index
         self._len: typing.Optional[int] = None
         self._top_level_keys: typing.Optional[typing.AsyncIterator[bytes]] = None
-        self._windows: typing.AsyncIterator[ValueT] = _empty_async_iterator()
+        self._windows: typing.AsyncIterator[typing.Sequence[bytes]] = _empty_async_iterator()
         self._window_size = int(window_size)
 
     def __aiter__(self) -> MultiMapIterator[ValueT]:
@@ -159,7 +159,8 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         client = await self._client.get_connection(self._index)
 
         if not self._top_level_keys:
-            self._top_level_keys = client.iscan()
+            keys: typing.AsyncIterator[bytes] = client.iscan()
+            self._top_level_keys = keys
 
         while not self._buffer:
             async for window in self._windows:
@@ -185,7 +186,8 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         if self._len is None:
             client = await self._client.get_connection(self._index)
             keys = await client.keys("*")
-            self._len = sum([await client.hlen(key) for key in keys])
+            # For some reason mypy thinks this is optional without the int cast
+            self._len = int(sum([await client.hlen(key) for key in keys]))
 
         return self._len
 
@@ -211,7 +213,7 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
         self._index = index
         self._key = key
         self._len: typing.Optional[int] = None
-        self._windows: typing.Optional[typing.AsyncIterator[bytes]] = None
+        self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = window_size
 
     async def __anext__(self) -> ValueT:
@@ -219,7 +221,8 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
             client = await self._client.get_connection(self._index)
             self._windows = redis.iter_hget(client, self._key, self._window_size)
 
-        while not self._buffer:
+        assert self._windows is not None
+        while not self._buffer and self._windows:
             async for window in self._windows:
                 self._buffer.extend(window)
                 break
@@ -232,6 +235,6 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
     async def len(self) -> int:
         if self._len is None:
             client = await self._client.get_connection(self._index)
-            self._len = await client.hlen(self._key)  # TODO: key
+            self._len = await client.hlen(self._key)
 
         return self._len

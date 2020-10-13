@@ -18,6 +18,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
 import abc
 import asyncio
 import enum
+import itertools
 import logging
 import typing
 
@@ -57,8 +58,11 @@ RedisValueT = typing.Union[bytearray, bytes, float, int, str]
 RedisMapT = typing.MutableMapping[str, RedisValueT]
 """A type variable of the mapping type accepted by aioredis"""
 ResourceT = typing.TypeVar("ResourceT", bound="ResourceClient")
+KeyT = typing.TypeVar("KeyT")
+OtherKeyT = typing.TypeVar("OtherKeyT")
 """Type-Hint The logger instance used by this sake implementation."""
 ValueT = typing.TypeVar("ValueT")
+OtherValueT = typing.TypeVar("OtherValueT")
 """Type-Hint A type hint used to represent a resource client instance."""
 WINDOW_SIZE: typing.Final[int] = 100
 
@@ -78,6 +82,25 @@ class ResourceIndex(enum.IntEnum):
     GUILD_REFERENCE = 9
     #  This is a special case database solely used for linking other entries to their relevant guilds.
     MESSAGE = 10
+
+
+def chunk_values(
+    values: typing.Iterable[ValueT], window_size: int = WINDOW_SIZE
+) -> typing.Iterator[typing.Sequence[ValueT]]:
+    if window_size <= 0:
+        raise ValueError("Window size must be a positive integer")
+
+    iterator = iter(values)
+    while result := list(itertools.islice(iterator, window_size)):
+        yield result
+
+
+def cast_map_window(
+    window: typing.Iterable[typing.Tuple[KeyT, ValueT]],
+    key_cast: typing.Callable[[KeyT], OtherKeyT],
+    value_cast: typing.Callable[[ValueT], OtherValueT],
+) -> typing.Dict[OtherKeyT, OtherValueT]:
+    return dict((key_cast(key), value_cast(value)) for key, value in window)
 
 
 async def global_iter_get(
@@ -110,7 +133,7 @@ async def iter_hget(
 
 async def reference_iter_get(
     resource_client: ResourceClient, index: ResourceIndex, key: RedisValueT, window_size: int
-) -> typing.AsyncIterator[bytes]:
+) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
     client = await resource_client.get_connection(index)
     reference_client = await resource_client.get_connection(ResourceIndex.GUILD_REFERENCE)
     cursor = 0
@@ -312,6 +335,16 @@ class ResourceClient(traits.Resource, abc.ABC):
         """
         return resource in self._clients and not self._clients[resource].closed
 
+    async def _optionally_bulk_set_users(self, users_: typing.Iterator[users.User]) -> None:
+        if isinstance(self, UserCache):
+            client = await self.get_connection(ResourceIndex.USER)
+            windows = chunk_values(users_)
+            setters = (
+                client.mset(*((int(user.id), self._converter.serialize_user(user)) for user in window))
+                for window in windows
+            )
+            await asyncio.gather(*setters)
+
     async def _optionally_set_user(self, user: users.User) -> None:
         if isinstance(self, UserCache):
             await self.set_user(user)
@@ -465,18 +498,23 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
         # <<Inherited docstring from ResourceClient>>
         return ResourceIndex.EMOJI
 
-    async def _bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
-        #  This is generally quicker and less blocking than buffering requests.
-        await asyncio.gather(*map(self.set_emoji, emojis))
+    async def __bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
+        client = await self.get_connection(ResourceIndex.EMOJI)
+        windows = chunk_values(emojis)
+        setters = (
+            client.mset({int(emoji.id): self._converter.serialize_emoji(emoji) for emoji in window})
+            for window in windows
+        )
+        await asyncio.gather(*setters)
 
     async def __on_emojis_update(self, event: guild_events.EmojisUpdateEvent) -> None:
         await self.clear_emojis_for_guild(event.guild_id)
-        await self._bulk_add_emojis(event.emojis)
+        await self.__bulk_add_emojis(event.emojis)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
             await self.clear_emojis_for_guild(event.guild_id)
-            await self._bulk_add_emojis(event.emojis.values())
+            await self.__bulk_add_emojis(event.emojis.values())
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await self.clear_emojis_for_guild(event.guild_id)
@@ -505,12 +543,13 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
 
     async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        emoji_ids = await self._get_ids(guild_id, ResourceIndex.EMOJI, cast=snowflakes.Snowflake)
+        emoji_ids = await self._get_ids(guild_id, ResourceIndex.EMOJI, cast=int)
         if not emoji_ids:
             return
 
         await self._clear_ids_for_guild(guild_id, ResourceIndex.EMOJI)
-        await asyncio.gather(*map(self.delete_emoji, emoji_ids))
+        client = await self.get_connection(ResourceIndex.EMOJI)
+        await asyncio.gather(*(client.delete(*window) for window in chunk_values(emoji_ids)))
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
@@ -649,7 +688,13 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
 
     async def __on_guild_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, guild_events.GuildAvailableEvent):
-            await asyncio.gather(*map(self.set_guild_channel, event.channels.values()))
+            client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
+            windows = chunk_values(event.channels.items())
+            setters = (
+                client.mset(cast_map_window(window, int, self._converter.serialize_guild_channel)) for window in windows
+            )
+            id_setter = self._add_ids(event.guild_id, ResourceIndex.GUILD_CHANNEL, *map(int, event.channels.keys()))
+            await asyncio.gather(*setters, id_setter)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await self.clear_guild_channels_for_guild(event.guild_id)
@@ -674,14 +719,13 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
         await self._clear_ids(ResourceIndex.GUILD_CHANNEL)
 
     async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
-        channel_ids = await self._get_ids(int(guild_id), ResourceIndex.GUILD_CHANNEL, cast=snowflakes.Snowflake)
+        channel_ids = await self._get_ids(int(guild_id), ResourceIndex.GUILD_CHANNEL, cast=int)
         if not channel_ids:
             return
 
         await self._clear_ids_for_guild(int(guild_id), ResourceIndex.GUILD_CHANNEL)
-        await asyncio.gather(
-            *map(self.delete_guild_channel, channel_ids)
-        )  # TODO: for clears should i chunk these into a single request?
+        client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
+        await asyncio.gather(*(client.delete(*window) for window in chunk_values(channel_ids)))
 
     async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
         client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
@@ -770,7 +814,8 @@ class InviteCache(_GuildReference, traits.InviteCache):
         if not codes:
             return
 
-        await asyncio.gather(*map(self.delete_invite, codes))
+        client = await self.get_connection(ResourceIndex.INVITE)
+        await asyncio.gather(*(client.delete(*window) for window in chunk_values(codes)))
 
     async def delete_invite(self, invite_code: str) -> None:
         client = await self.get_connection(ResourceIndex.INVITE)
@@ -876,8 +921,19 @@ class MemberCache(ResourceClient, traits.MemberCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return ResourceIndex.MEMBER
 
+    async def __bulk_add_members(
+        self, guild_id: snowflakes.Snowflakeish, members: typing.Mapping[snowflakes.Snowflake, guilds.Member]
+    ) -> None:
+        client = await self.get_connection(ResourceIndex.MEMBER)
+        windows = chunk_values(members.items())
+        setters = (
+            client.hmset_dict(int(guild_id), cast_map_window(window, int, self._converter.serialize_member))
+            for window in windows
+        )
+        await asyncio.gather(*setters, self._optionally_bulk_set_users(member.user for member in members.values()))
+
     async def __on_guild_availability(self, event: guild_events.GuildAvailableEvent) -> None:
-        await asyncio.gather(*map(self.set_member, event.members.values()))
+        await self.__bulk_add_members(event.guild_id, event.members)
 
     async def __on_member_event(self, event: member_events.MemberEvent) -> None:
         if isinstance(event, (member_events.MemberCreateEvent, member_events.MemberUpdateEvent)):
@@ -896,8 +952,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
                 await self.delete_member(event.guild_id, event.user_id)
 
     async def __on_member_chunk_event(self, event: shard_events.MemberChunkEvent) -> None:
-        asyncio.gather(*map(self.set_member, event.members.values()))
-        # await asyncio.gather(*map(self.set_member, event.members.values()))
+        await self.__bulk_add_members(event.guild_id, event.members)
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -978,6 +1033,10 @@ class MessageCache(_GuildReference, traits.MessageCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return ResourceIndex.MESSAGE
 
+    async def __bulk_delete_messages(self, message_ids: typing.Iterable[int]) -> None:
+        client = await self.get_connection(ResourceIndex.MESSAGE)
+        await asyncio.gather(*(client.delete(*window) for window in chunk_values(message_ids)))
+
     async def __on_channel_delete(self, event: channel_events.ChannelDeleteEvent) -> None:
         await self.clear_messages_for_channel(event.channel_id)
 
@@ -992,7 +1051,7 @@ class MessageCache(_GuildReference, traits.MessageCache):
             await self.update_message(event.message)
 
         elif isinstance(event, message_events.MessageDeleteEvent):
-            await asyncio.gather(*map(self.delete_message, event.message_ids))
+            await self.__bulk_delete_messages((int(message_id) for message_id in event.message_ids))
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -1019,12 +1078,12 @@ class MessageCache(_GuildReference, traits.MessageCache):
         raise NotImplementedError
 
     async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
-        message_ids = await self._get_ids(int(guild_id), ResourceIndex.MESSAGE, cast=snowflakes.Snowflake)
+        message_ids = await self._get_ids(int(guild_id), ResourceIndex.MESSAGE, cast=int)
         if not message_ids:
             return
 
         await self._clear_ids_for_guild(int(guild_id), ResourceIndex.MESSAGE)
-        await asyncio.gather(*map(self.delete_message, message_ids))
+        await self.__bulk_delete_messages(message_ids)
 
     async def delete_message(self, message_id: snowflakes.Snowflakeish) -> None:
         client = await self.get_connection(ResourceIndex.MESSAGE)
@@ -1073,19 +1132,26 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         # <<Inherited docstring from ResourceClient>>
         return ResourceIndex.PRESENCE
 
-    async def __bulk_add_presences(self, values: typing.Iterable[presences.MemberPresence]) -> None:
-        asyncio.gather(*map(self.set_presence, values))
-        # await asyncio.gather(*map(self.set_presence, values))
+    async def __bulk_add_presences(
+        self, guild_id: snowflakes.Snowflake, presence: typing.Mapping[snowflakes.Snowflake, presences.MemberPresence]
+    ) -> None:
+        client = await self.get_connection(ResourceIndex.PRESENCE)
+        windows = chunk_values(presence.items())
+        setters = (
+            client.hmset_dict(int(guild_id), cast_map_window(window, int, self._converter.serialize_presence))
+            for window in windows
+        )
+        await asyncio.gather(*setters)  # self._optionally_bulk_set_users
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, guild_events.GuildAvailableEvent):
-            await self.__bulk_add_presences(event.presences.values())
+            await self.__bulk_add_presences(event.guild_id, event.presences)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await self.clear_presences_for_guild(event.guild_id)
 
     async def __on_member_chunk(self, event: shard_events.MemberChunkEvent) -> None:
-        await self.__bulk_add_presences(event.presences.values())
+        await self.__bulk_add_presences(event.guild_id, event.presences)
 
     async def __on_presence_update_event(self, event: guild_events.PresenceUpdateEvent) -> None:
         if event.presence.visible_status is presences.Status.OFFLINE:
@@ -1164,7 +1230,11 @@ class RoleCache(_GuildReference, traits.RoleCache):
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
-            await asyncio.gather(*map(self.set_role, event.roles.values()))
+            client = await self.get_connection(ResourceIndex.ROLE)
+            windows = chunk_values(event.roles.items())
+            setters = (client.mset(cast_map_window(window, int, self._converter.serialize_role)) for window in windows)
+            id_setter = self._add_ids(event.guild_id, ResourceIndex.ROLE, *map(int, event.roles.keys()))
+            await asyncio.gather(*setters, id_setter)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await self.clear_roles_for_guild(event.guild_id)
@@ -1198,12 +1268,13 @@ class RoleCache(_GuildReference, traits.RoleCache):
 
     async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        role_ids = await self._get_ids(guild_id, ResourceIndex.ROLE, cast=snowflakes.Snowflake)
+        role_ids = await self._get_ids(guild_id, ResourceIndex.ROLE, cast=int)
         if not role_ids:
             return
 
         await self._clear_ids_for_guild(guild_id, ResourceIndex.ROLE)
-        await asyncio.gather(*map(self.delete_role, role_ids))
+        client = await self.get_connection(ResourceIndex.ROLE)
+        await asyncio.gather(*(client.delete(*window) for window in chunk_values(role_ids)))
 
     async def delete_role(self, role_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
@@ -1250,8 +1321,8 @@ class RoleCache(_GuildReference, traits.RoleCache):
 
 
 class FullCache(
-    GuildCache, EmojiCache, GuildChannelCache, InviteCache, MeCache, MemberCache, MessageCache, PresenceCache, RoleCache
-):
+    GuildCache, EmojiCache, GuildChannelCache, InviteCache, MeCache, MemberCache, PresenceCache, RoleCache
+):  # MessageCache
     """A class which implements all the defined cache resoruces."""
 
     __slots__: typing.Sequence[str] = ()

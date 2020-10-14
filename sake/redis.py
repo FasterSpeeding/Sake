@@ -23,8 +23,9 @@ import logging
 import typing
 
 import aioredis
-from hikari import channels, invites
+from hikari import channels
 from hikari import guilds
+from hikari import invites
 from hikari import presences
 from hikari import snowflakes
 from hikari import users
@@ -682,6 +683,7 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
 
         await self._clear_ids_for_guild(int(guild_id), ResourceIndex.GUILD_CHANNEL)
         client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
+        #  TODO: is there any benefit to chunking on bulk delete?
         await asyncio.gather(*(client.delete(*window) for window in chunk_values(channel_ids)))
 
     async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> None:

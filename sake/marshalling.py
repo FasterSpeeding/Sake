@@ -461,18 +461,19 @@ def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
 
 
 class JSONMarshaller(ObjectMarshaller):
-    __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder", "_deserializers", "_serializers")
+    __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder")
+
+    _deserializers: typing.MutableMapping[
+        typing.Any, typing.Callable[[typing.Mapping[str, typing.Any]], typing.Any]
+    ] = {}
+    _serializers: typing.MutableMapping[
+        typing.Any, typing.Callable[[typing.Any], typing.MutableMapping[str, typing.Any]]
+    ] = {}
 
     def __init__(self, app: traits.RESTAware) -> None:
         self._app = app
         self._decoder = json.JSONDecoder()
         self._encoder = json.JSONEncoder()
-        self._deserializers: typing.MutableMapping[
-            typing.Any, typing.Callable[[typing.Mapping[str, typing.Any]], typing.Any]
-        ] = {}
-        self._serializers: typing.MutableMapping[
-            typing.Any, typing.Callable[[typing.Any], typing.MutableMapping[str, typing.Any]]
-        ] = {}
 
     def _dumps(self, data: typing.Mapping[str, typing.Any]) -> bytes:
         return self._encoder.encode(data).encode()
@@ -881,8 +882,8 @@ class JSONMarshaller(ObjectMarshaller):
             ("guild_id", _optional_cast(snowflakes.Snowflake)),
             ("channel", _optional_cast(channel_deserializer)),
             ("channel_id", snowflakes.Snowflake),
-            ("inviter", self._get_user_serializer()),
-            ("target_user", self._get_user_serializer()),
+            ("inviter", _optional_cast(self._get_user_serializer())),
+            ("target_user", _optional_cast(self._get_user_serializer())),
             ("target_user_type", _optional_cast(invites.TargetUserType)),
             "approximate_active_member_count",
             "approximate_member_count",
@@ -934,8 +935,8 @@ class JSONMarshaller(ObjectMarshaller):
             "guild_id",
             ("channel", _optional_cast(channel_serializer)),
             "channel_id",
-            ("inviter", self._get_user_serializer()),
-            ("target_user", self._get_user_serializer()),
+            ("inviter", _optional_cast(self._get_user_serializer())),
+            ("target_user", _optional_cast(self._get_user_serializer())),
             "target_user_type",
             "approximate_active_member_count",
             "approximate_member_count",

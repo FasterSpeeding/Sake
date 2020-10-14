@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
-    "JSONHandler",
-    "ObjectHandler",
-    "PickleHandler",
+    "JSONMarshaller",
+    "ObjectMarshaller",
+    "PickleMarshaller",
 ]
 
 import abc
@@ -43,7 +43,7 @@ OtherValueT = typing.TypeVar("OtherValueT")
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.conversion")
 
 
-class ObjectHandler(abc.ABC):
+class ObjectMarshaller(abc.ABC):
     __slots__: typing.Sequence[str] = ()
 
     @abc.abstractmethod
@@ -135,7 +135,7 @@ class ObjectHandler(abc.ABC):
         raise NotImplementedError
 
 
-class PickleHandler(ObjectHandler):
+class PickleMarshaller(ObjectMarshaller):
     __slots__: typing.Sequence[str] = ("_app",)
 
     def __init__(self, app: traits.RESTAware) -> None:
@@ -460,7 +460,7 @@ def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
     return ("id", "discriminator", "username", "avatar_hash", "is_bot", "is_system", "flags")
 
 
-class JSONHandler(ObjectHandler):
+class JSONMarshaller(ObjectMarshaller):
     __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder", "_deserializers", "_serializers")
 
     def __init__(self, app: traits.RESTAware) -> None:

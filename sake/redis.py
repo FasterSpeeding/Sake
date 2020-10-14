@@ -36,11 +36,10 @@ from hikari.events import role_events
 from hikari.events import shard_events
 from hikari.events import user_events
 
-from sake import conversion
 from sake import errors
-from sake import iterators
+from sake import marshalling
+from sake import redis_iterators
 from sake import traits
-from sake.traits import CacheIterator
 
 if typing.TYPE_CHECKING:
     import ssl as ssl_
@@ -64,7 +63,7 @@ OtherKeyT = typing.TypeVar("OtherKeyT")
 ValueT = typing.TypeVar("ValueT")
 OtherValueT = typing.TypeVar("OtherValueT")
 """Type-Hint A type hint used to represent a resource client instance."""
-WINDOW_SIZE: typing.Final[int] = 100
+WINDOW_SIZE: typing.Final[int] = 1000
 
 
 class ResourceIndex(enum.IntEnum):
@@ -101,51 +100,6 @@ def cast_map_window(
     value_cast: typing.Callable[[ValueT], OtherValueT],
 ) -> typing.Dict[OtherKeyT, OtherValueT]:
     return dict((key_cast(key), value_cast(value)) for key, value in window)
-
-
-async def global_iter_get(
-    client: aioredis.Redis, window_size: int
-) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
-    cursor = 0
-    while True:
-        cursor, results = await client.scan(cursor, count=window_size)
-
-        if results:
-            yield await client.mget(*results)
-
-        if not cursor:
-            break
-
-
-async def iter_hget(
-    client: aioredis.Redis, key: RedisValueT, window_size: int
-) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
-    cursor = 0
-    while True:
-        cursor, results = await client.hscan(key, cursor, count=window_size)
-
-        if results:
-            yield [result for _, result in results]
-
-        if not cursor:
-            break
-
-
-async def reference_iter_get(
-    resource_client: ResourceClient, index: ResourceIndex, key: RedisValueT, window_size: int
-) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
-    client = await resource_client.get_connection(index)
-    reference_client = await resource_client.get_connection(ResourceIndex.GUILD_REFERENCE)
-    cursor = 0
-
-    while True:
-        cursor, results = await reference_client.sscan(key, cursor, count=window_size)
-
-        if results:
-            yield await client.mget(*results)
-
-        if not cursor:
-            break
 
 
 async def _close_client(client: aioredis.Redis) -> None:
@@ -205,11 +159,12 @@ class ResourceClient(traits.Resource, abc.ABC):
         password: typing.Optional[str] = None,
         ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
         metadata: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
+        object_marshaller: typing.Optional[marshalling.ObjectMarshaller] = None,
     ) -> None:
         self._address = address
         self._dispatch = dispatch
         self._clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
-        self._converter = conversion.JSONHandler(rest)
+        self._converter = object_marshaller or marshalling.JSONMarshaller(rest)
         self._metadata = metadata or {}
         self._password = password
         self._rest = rest
@@ -480,7 +435,7 @@ class UserCache(ResourceClient, traits.UserCache):
         self, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[users.User]:  # TODO: handle when an entity is removed mid-iteration
         # <<Inherited docstring from sake.traits.UserCache>>
-        return iterators.RedisIterator(
+        return redis_iterators.RedisIterator(
             self, ResourceIndex.USER, self._converter.deserialize_user, window_size=window_size
         )
 
@@ -575,7 +530,7 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
 
     def iter_emojis(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        return iterators.RedisIterator(
+        return redis_iterators.RedisIterator(
             self, ResourceIndex.EMOJI, self._converter.deserialize_emoji, window_size=window_size
         )
 
@@ -584,7 +539,7 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
     ) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         key = self._generate_reference_key(guild_id, ResourceIndex.EMOJI).encode()
-        return iterators.SpecificRedisIterator(
+        return redis_iterators.SpecificRedisIterator(
             self, key, ResourceIndex.EMOJI, self._converter.deserialize_emoji, window_size=window_size
         )
 
@@ -650,7 +605,7 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
     def iter_guilds(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[guilds.GatewayGuild]:
         # <<Inherited docstring from sake.traits.GuildCache>>
-        return iterators.RedisIterator(
+        return redis_iterators.RedisIterator(
             self, ResourceIndex.GUILD, self._converter.deserialize_guild, window_size=window_size
         )
 
@@ -740,16 +695,16 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
 
         return self._converter.deserialize_guild_channel(data)
 
-    def iter_guild_channels(self, *, window_size: int = WINDOW_SIZE) -> CacheIterator[channels.GuildChannel]:
-        return iterators.RedisIterator(
+    def iter_guild_channels(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[channels.GuildChannel]:
+        return redis_iterators.RedisIterator(
             self, ResourceIndex.GUILD_CHANNEL, self._converter.deserialize_guild_channel, window_size=window_size
         )
 
     def iter_guild_channels_for_guild(
         self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> CacheIterator[channels.GuildChannel]:
+    ) -> traits.CacheIterator[channels.GuildChannel]:
         key = self._generate_reference_key(guild_id, ResourceIndex.GUILD_CHANNEL).encode()
-        return iterators.SpecificRedisIterator(
+        return redis_iterators.SpecificRedisIterator(
             self, key, ResourceIndex.GUILD_CHANNEL, self._converter.deserialize_guild_channel, window_size=window_size
         )
 
@@ -833,21 +788,21 @@ class InviteCache(_GuildReference, traits.InviteCache):
 
         return self._converter.deserialize_invite(data)
 
-    def iter_invites(self, *, window_size: int = WINDOW_SIZE) -> CacheIterator[invites.InviteWithMetadata]:
-        return iterators.RedisIterator(
+    def iter_invites(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[invites.InviteWithMetadata]:
+        return redis_iterators.RedisIterator(
             self, ResourceIndex.INVITE, self._converter.deserialize_invite, window_size=window_size
         )
 
     def iter_invites_for_channel(
         self, channel_id: snowflakes.Snowflakeish
-    ) -> CacheIterator[invites.InviteWithMetadata]:
+    ) -> traits.CacheIterator[invites.InviteWithMetadata]:
         raise NotImplementedError
 
     def iter_invites_for_guild(
         self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> CacheIterator[invites.InviteWithMetadata]:
+    ) -> traits.CacheIterator[invites.InviteWithMetadata]:
         key = self._generate_reference_key(guild_id, ResourceIndex.INVITE).encode()
-        return iterators.SpecificRedisIterator(
+        return redis_iterators.SpecificRedisIterator(
             self, key, ResourceIndex.INVITE, self._converter.deserialize_invite, window_size=window_size
         )
 
@@ -997,7 +952,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
 
     def iter_members(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[guilds.Member]:
         # <<Inherited docstring from sake.traits.MemberCache>>
-        return iterators.MultiMapIterator(
+        return redis_iterators.MultiMapIterator(
             self, ResourceIndex.MEMBER, self._converter.deserialize_member, window_size=window_size
         )
 
@@ -1005,7 +960,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
         self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[guilds.Member]:
         # <<Inherited docstring from sake.traits.MemberCache>>
-        return iterators.SpecificMapIterator(
+        return redis_iterators.SpecificMapIterator(
             self,
             str(guild_id).encode(),
             ResourceIndex.MEMBER,
@@ -1098,7 +1053,7 @@ class MessageCache(_GuildReference, traits.MessageCache):
         return self._converter.deserialize_message(data)
 
     def iter_messages(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[messages.Message]:
-        return iterators.RedisIterator(
+        return redis_iterators.RedisIterator(
             self, ResourceIndex.MESSAGE, self._converter.deserialize_message, window_size=window_size
         )
 
@@ -1109,7 +1064,7 @@ class MessageCache(_GuildReference, traits.MessageCache):
         self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[messages.Message]:
         key = self._generate_reference_key(guild_id, ResourceIndex.MESSAGE).encode()
-        return iterators.SpecificRedisIterator(
+        return redis_iterators.SpecificRedisIterator(
             self, key, ResourceIndex.MESSAGE, self._converter.deserialize_message, window_size=window_size
         )
 
@@ -1195,18 +1150,20 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         data = await client.hget(int(guild_id), int(user_id))
         return self._converter.deserialize_presence(data)
 
-    def iter_presences(self, *, window_size: int = WINDOW_SIZE) -> CacheIterator[presences.MemberPresence]:
-        return iterators.MultiMapIterator(
+    def iter_presences(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[presences.MemberPresence]:
+        return redis_iterators.MultiMapIterator(
             self, ResourceIndex.PRESENCE, self._converter.deserialize_presence, window_size=window_size
         )
 
-    def iter_presences_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheIterator[presences.MemberPresence]:
+    def iter_presences_for_user(
+        self, user_id: snowflakes.Snowflakeish
+    ) -> traits.CacheIterator[presences.MemberPresence]:
         raise NotImplementedError
 
     def iter_presences_for_guild(
         self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> CacheIterator[presences.MemberPresence]:
-        return iterators.SpecificMapIterator(
+    ) -> traits.CacheIterator[presences.MemberPresence]:
+        return redis_iterators.SpecificMapIterator(
             self,
             str(guild_id).encode(),
             ResourceIndex.PRESENCE,
@@ -1300,7 +1257,7 @@ class RoleCache(_GuildReference, traits.RoleCache):
 
     def iter_roles(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        return iterators.RedisIterator(
+        return redis_iterators.RedisIterator(
             self, ResourceIndex.ROLE, self._converter.deserialize_role, window_size=window_size
         )
 
@@ -1309,7 +1266,7 @@ class RoleCache(_GuildReference, traits.RoleCache):
     ) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>
         key = self._generate_reference_key(guild_id, ResourceIndex.ROLE).encode()
-        return iterators.SpecificRedisIterator(
+        return redis_iterators.SpecificRedisIterator(
             self, key, ResourceIndex.ROLE, self._converter.deserialize_role, window_size=window_size
         )
 

@@ -6,5 +6,5 @@ import typing
 
 from sake import traits
 from sake.errors import *
-from sake.iterators import *
 from sake.redis import *
+from sake.redis_iterators import *

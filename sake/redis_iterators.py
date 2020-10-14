@@ -12,10 +12,60 @@ import typing
 from sake import redis
 from sake import traits
 
+if typing.TYPE_CHECKING:
+    import aioredis
+
 
 KeyT = typing.TypeVar("KeyT")
 ValueT = typing.TypeVar("ValueT")
-WINDOW_SIZE: typing.Final[int] = 100
+OtherKeyT = typing.TypeVar("OtherKeyT")
+OtherValueT = typing.TypeVar("OtherValueT")
+WINDOW_SIZE: typing.Final[int] = 1000
+
+
+async def global_iter_get(
+    client: aioredis.Redis, window_size: int
+) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    cursor = 0
+    while True:
+        cursor, results = await client.scan(cursor, count=window_size)
+
+        if results:
+            yield await client.mget(*results)
+
+        if not cursor:
+            break
+
+
+async def iter_hget(
+    client: aioredis.Redis, key: redis.RedisValueT, window_size: int
+) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    cursor = 0
+    while True:
+        cursor, results = await client.hscan(key, cursor, count=window_size)
+
+        if results:
+            yield [result for _, result in results]
+
+        if not cursor:
+            break
+
+
+async def reference_iter_get(
+    resource_client: redis.ResourceClient, index: redis.ResourceIndex, key: redis.RedisValueT, window_size: int
+) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    client = await resource_client.get_connection(index)
+    reference_client = await resource_client.get_connection(redis.ResourceIndex.GUILD_REFERENCE)
+    cursor = 0
+
+    while True:
+        cursor, results = await reference_client.sscan(key, cursor, count=window_size)
+
+        if results:
+            yield await client.mget(*results)
+
+        if not cursor:
+            break
 
 
 class RedisIterator(traits.CacheIterator[ValueT]):
@@ -46,7 +96,7 @@ class RedisIterator(traits.CacheIterator[ValueT]):
     async def __anext__(self) -> ValueT:
         if self._windows is None:
             client = await self._client.get_connection(self._index)
-            self._windows = redis.global_iter_get(client, self._window_size)
+            self._windows = global_iter_get(client, self._window_size)
 
         while not self._buffer:
             async for window in self._windows:
@@ -95,7 +145,7 @@ class SpecificRedisIterator(traits.CacheIterator[ValueT]):
 
     async def __anext__(self) -> ValueT:
         if not self._windows:
-            self._windows = redis.reference_iter_get(self._client, self._index, self._key, self._window_size)
+            self._windows = reference_iter_get(self._client, self._index, self._key, self._window_size)
 
         while not self._buffer:
             async for window in self._windows:
@@ -174,7 +224,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
                 break
 
             async for key in self._top_level_keys:
-                self._windows = redis.iter_hget(client, key, self._window_size)
+                self._windows = iter_hget(client, key, self._window_size)
                 break
 
             else:
@@ -219,7 +269,7 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
     async def __anext__(self) -> ValueT:
         if not self._windows:
             client = await self._client.get_connection(self._index)
-            self._windows = redis.iter_hget(client, self._key, self._window_size)
+            self._windows = iter_hget(client, self._key, self._window_size)
 
         assert self._windows is not None
         while not self._buffer and self._windows:

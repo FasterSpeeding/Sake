@@ -38,6 +38,8 @@ ValueT = typing.TypeVar("ValueT")
 
 
 class CacheIterator(iterators.LazyIterator[ValueT], abc.ABC):
+    __slots__: typing.Sequence[str] = ()
+
     @abc.abstractmethod
     async def len(self) -> typing.Optional[int]:
         raise NotImplementedError
@@ -412,3 +414,5 @@ class Cache(
     typing.Protocol,
 ):
     """Protocol of a cache which implements all the defined resources."""
+
+    __slots__: typing.Sequence[str] = ()

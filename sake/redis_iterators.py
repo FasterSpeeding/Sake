@@ -143,6 +143,9 @@ class SpecificRedisIterator(traits.CacheIterator[ValueT]):
         self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = int(window_size)
 
+    def __aiter__(self) -> SpecificRedisIterator[ValueT]:
+        return self
+
     async def __anext__(self) -> ValueT:
         if not self._windows:
             self._windows = reference_iter_get(self._client, self._index, self._key, self._window_size)
@@ -265,6 +268,9 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
         self._len: typing.Optional[int] = None
         self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = window_size
+
+    def __aiter__(self) -> SpecificMapIterator[ValueT]:
+        return self
 
     async def __anext__(self) -> ValueT:
         if not self._windows:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
+    "Cache",
     "Resource",
     "EmojiCache",
     "GuildCache",
@@ -395,3 +396,19 @@ class VoiceStateCache(Resource, typing.Protocol):
 
     async def set_voice_state(self, voice_state: voices.VoiceState) -> None:
         raise NotImplementedError
+
+
+class Cache(
+    GuildCache,
+    EmojiCache,
+    GuildChannelCache,
+    InviteCache,
+    MeCache,
+    MemberCache,
+    MessageCache,
+    PresenceCache,
+    RoleCache,
+    VoiceStateCache,
+    typing.Protocol,
+):
+    """Protocol of a cache which implements all the defined resources."""

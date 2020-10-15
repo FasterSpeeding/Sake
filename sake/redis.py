@@ -294,8 +294,11 @@ class ResourceClient(traits.Resource, abc.ABC):
         return resource in self._clients and not self._clients[resource].closed
 
     async def _optionally_bulk_set_users(self, users_: typing.Iterator[users.User]) -> None:
-        if isinstance(self, UserCache):
+        try:
             client = await self.get_connection(ResourceIndex.USER)
+        except ValueError:
+            pass
+        else:
             windows = chunk_values(users_)
             setters = (
                 client.mset(*((int(user.id), self._converter.serialize_user(user)) for user in window))
@@ -304,8 +307,13 @@ class ResourceClient(traits.Resource, abc.ABC):
             await asyncio.gather(*setters)
 
     async def _optionally_set_user(self, user: users.User) -> None:
-        if isinstance(self, UserCache):
-            await self.set_user(user)
+        try:
+            client = await self.get_connection(ResourceIndex.USER)
+        except ValueError:
+            pass
+        else:
+            data = self._converter.deserialize_user(user)
+            await client.set(int(user.id), data)
 
     async def _spawn_connection(self, resource: ResourceIndex) -> None:
         self._clients[resource] = await aioredis.create_redis_pool(

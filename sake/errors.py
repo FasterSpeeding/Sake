@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
+    "CannotDelete",
+    "EntryNotFound",
+    "InvalidDataFound",
     "SakeException",
 ]
 
@@ -19,16 +22,15 @@ class SakeException(Exception):
         self.message = message
         self.base_exception = exception
 
+    def __repr__(self) -> str:
+        return f"{type.__name__}({self.message!r})"
+
+
+class CannotDelete(SakeException, ValueError):
+    __slots__: typing.Sequence[str] = ()
+
 
 class InvalidDataFound(SakeException, LookupError):
-    __slots__: typing.Sequence[str] = ()
-
-
-class InvalidStructureFound(SakeException, LookupError):
-    __slots__: typing.Sequence[str] = ()
-
-
-class KeptAliveByReference(SakeException, ValueError):
     __slots__: typing.Sequence[str] = ()
 
 

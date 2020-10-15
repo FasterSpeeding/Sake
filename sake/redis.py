@@ -3,7 +3,6 @@ from __future__ import annotations
 __all__: typing.Final[typing.Sequence[str]] = [
     "ResourceClient",
     "EmojiCache",
-    "FullCache",
     "GuildCache",
     "GuildChannelCache",
     "InviteCache",
@@ -11,6 +10,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "MemberCache",
     "MessageCache",
     "PresenceCache",
+    "RedisCache",
     "RoleCache",
     "UserCache",
 ]
@@ -23,8 +23,9 @@ import logging
 import typing
 
 import aioredis
-from hikari import channels, invites
+from hikari import channels
 from hikari import guilds
+from hikari import invites
 from hikari import presences
 from hikari import snowflakes
 from hikari import users
@@ -35,6 +36,7 @@ from hikari.events import message_events
 from hikari.events import role_events
 from hikari.events import shard_events
 from hikari.events import user_events
+from hikari.events import voice_events
 
 from sake import errors
 from sake import marshalling
@@ -49,20 +51,21 @@ if typing.TYPE_CHECKING:
     from hikari import emojis as emojis_
     from hikari import messages
     from hikari import traits as hikari_traits
+    from hikari import voices
 
 
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake")
+"""Type-Hint The logger instance used by this sake implementation."""
 RedisValueT = typing.Union[bytearray, bytes, float, int, str]
 """A type variable of the value types accepted by aioredis."""
 RedisMapT = typing.MutableMapping[str, RedisValueT]
 """A type variable of the mapping type accepted by aioredis"""
 ResourceT = typing.TypeVar("ResourceT", bound="ResourceClient")
+"""Type-Hint A type hint used to represent a resource client instance."""
 KeyT = typing.TypeVar("KeyT")
 OtherKeyT = typing.TypeVar("OtherKeyT")
-"""Type-Hint The logger instance used by this sake implementation."""
 ValueT = typing.TypeVar("ValueT")
 OtherValueT = typing.TypeVar("OtherValueT")
-"""Type-Hint A type hint used to represent a resource client instance."""
 WINDOW_SIZE: typing.Final[int] = 1000
 
 
@@ -680,6 +683,7 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
 
         await self._clear_ids_for_guild(int(guild_id), ResourceIndex.GUILD_CHANNEL)
         client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
+        #  TODO: is there any benefit to chunking on bulk delete?
         await asyncio.gather(*(client.delete(*window) for window in chunk_values(channel_ids)))
 
     async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
@@ -794,7 +798,7 @@ class InviteCache(_GuildReference, traits.InviteCache):
         )
 
     def iter_invites_for_channel(
-        self, channel_id: snowflakes.Snowflakeish
+        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[invites.InviteWithMetadata]:
         raise NotImplementedError
 
@@ -968,7 +972,9 @@ class MemberCache(ResourceClient, traits.MemberCache):
             window_size=window_size,
         )
 
-    def iter_members_for_user(self, user_id: snowflakes.Snowflakeish) -> traits.CacheIterator[guilds.Member]:
+    def iter_members_for_user(
+        self, user_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+    ) -> traits.CacheIterator[guilds.Member]:
         # <<Inherited docstring from sake.traits.MemberCache>>
         raise NotImplementedError
 
@@ -981,7 +987,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
 
 
 class MessageCache(_GuildReference, traits.MessageCache):
-    __slots__: typing.Sequence[str] = ()
+    __slots__: typing.Sequence[str] = ()  # TODO: finish marshalling
 
     @classmethod
     def index(cls) -> ResourceIndex:
@@ -1057,7 +1063,9 @@ class MessageCache(_GuildReference, traits.MessageCache):
             self, ResourceIndex.MESSAGE, self._converter.deserialize_message, window_size=window_size
         )
 
-    def iter_message_for_channel(self, channel_id: snowflakes.Snowflakeish) -> traits.CacheIterator[messages.Message]:
+    def iter_message_for_channel(
+        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+    ) -> traits.CacheIterator[messages.Message]:
         raise NotImplementedError
 
     def iter_messages_for_guild(
@@ -1156,7 +1164,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         )
 
     def iter_presences_for_user(
-        self, user_id: snowflakes.Snowflakeish
+        self, user_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[presences.MemberPresence]:
         raise NotImplementedError
 
@@ -1277,9 +1285,124 @@ class RoleCache(_GuildReference, traits.RoleCache):
         await self._add_ids(role.guild_id, ResourceIndex.ROLE, int(role.id))
 
 
-class FullCache(
-    GuildCache, EmojiCache, GuildChannelCache, InviteCache, MeCache, MemberCache, PresenceCache, RoleCache
+class VoiceStateCache(ResourceClient, traits.VoiceStateCache):
+    __slots__: typing.Sequence[str] = ()
+
+    @classmethod
+    def index(cls) -> ResourceIndex:
+        # <<Inherited docstring from sake.traits.Resource>>
+        return ResourceIndex.VOICE_STATE
+
+    async def __on_guild_channel_delete_event(self, event: channel_events.GuildChannelDeleteEvent) -> None:
+        await self.clear_voice_states_for_channel(event.channel_id)
+
+    async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
+        if isinstance(event, guild_events.GuildLeaveEvent):
+            await self.clear_voice_states_for_guild(event.guild_id)
+
+        elif isinstance(event, guild_events.GuildAvailableEvent):
+            client = await self.get_connection(ResourceIndex.VOICE_STATE)
+            windows = chunk_values(event.voice_states.items())
+            setters = (
+                client.hmset_dict(
+                    int(event.guild_id), cast_map_window(window, int, self._converter.serialize_voice_state)
+                )
+                for window in windows
+            )
+            await asyncio.gather(*setters)
+
+    async def __on_voice_state_update(self, event: voice_events.VoiceStateUpdateEvent) -> None:
+        if event.state.channel_id is None:
+            await self.delete_voice_state(event.state.guild_id, event.state.user_id)
+        else:
+            await self.set_voice_state(event.state)
+
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().subscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.subscribe(
+                channel_events.GuildChannelDeleteEvent, self.__on_guild_channel_delete_event
+            )
+            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.dispatch.dispatcher.subscribe(voice_events.VoiceStateUpdateEvent, self.__on_voice_state_update)
+
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().unsubscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.unsubscribe(
+                channel_events.GuildChannelDeleteEvent, self.__on_guild_channel_delete_event
+            )
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.dispatch.dispatcher.unsubscribe(voice_events.VoiceStateUpdateEvent, self.__on_voice_state_update)
+
+    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+        client = await self.get_connection(ResourceIndex.VOICE_STATE)
+        await client.delete(int(guild_id))
+
+    async def clear_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+        raise NotImplementedError
+
+    async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+        client = await self.get_connection(ResourceIndex.VOICE_STATE)
+        await client.hdel(int(guild_id), int(user_id))
+
+    async def get_voice_state(
+        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish
+    ) -> voices.VoiceState:
+        client = await self.get_connection(ResourceIndex.VOICE_STATE)
+        data = await client.hget(int(guild_id), int(user_id))
+
+        if not data:
+            raise errors.EntryNotFound(f"voice state entry `{user_id}` not found for guild `{guild_id}`")
+
+        return self._converter.deserialize_voice_state(data)
+
+    def iter_voice_states(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[voices.VoiceState]:
+        return redis_iterators.MultiMapIterator(
+            self, ResourceIndex.VOICE_STATE, self._converter.deserialize_voice_state, window_size=window_size
+        )
+
+    def iter_voice_states_for_channel(
+        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+    ) -> traits.CacheIterator[voices.VoiceState]:
+        raise NotImplementedError
+
+    def iter_voice_states_for_guild(
+        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+    ) -> traits.CacheIterator[voices.VoiceState]:
+        return redis_iterators.SpecificMapIterator(
+            self,
+            str(guild_id).encode(),
+            ResourceIndex.VOICE_STATE,
+            self._converter.deserialize_voice_state,
+            window_size=window_size,
+        )
+
+    def iter_voice_states_for_user(
+        self, user_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+    ) -> traits.CacheIterator[voices.VoiceState]:
+        raise NotImplementedError
+
+    async def set_voice_state(self, voice_state: voices.VoiceState) -> None:
+        data = self._converter.serialize_voice_state(voice_state)
+        client = await self.get_connection(ResourceIndex.VOICE_STATE)
+        await client.hset(int(voice_state.guild_id), int(voice_state.user_id), data)
+
+
+class RedisCache(
+    GuildCache,
+    EmojiCache,
+    GuildChannelCache,
+    InviteCache,
+    MeCache,
+    MemberCache,
+    PresenceCache,
+    RoleCache,
+    VoiceStateCache,
+    traits.Cache,
 ):  # MessageCache
-    """A class which implements all the defined cache resoruces."""
+    """A class which implements all the defined cache resources."""
 
     __slots__: typing.Sequence[str] = ()

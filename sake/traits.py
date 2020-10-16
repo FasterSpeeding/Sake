@@ -1,4 +1,14 @@
-"""Traits for the cache resources defined by this standard."""
+"""Protocols and abstract classes for the cache resources defined by this standard.
+
+!!! note
+    Unlike the abstract classes defined here, there is no guarantee that the
+    protocols defined here will be included in the MRO of the classes which
+    implement them.
+
+!!! note
+    Mypy should be used to check for compatibility between protocols and
+    their relevant implementations.
+"""
 
 from __future__ import annotations
 

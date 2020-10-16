@@ -313,11 +313,11 @@ class ResourceClient(traits.Resource, abc.ABC):
                 #
                 # expire_setters.append(transaction.execute())
                 #  TODO: benchmark bulk setting expire with transaction vs this
-                expire_setters.extend((client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
                 user_setters.append(client.mset(processed_window))
+                expire_setters.extend((client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
 
-            await asyncio.gather(*user_setters)
-            await asyncio.gather(*expire_setters)
+            asyncio.gather(*user_setters)
+            asyncio.gather(*expire_setters)
 
     async def _optionally_set_user(self, user: users.User) -> None:
         try:
@@ -490,7 +490,7 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
             for window in windows
         )
         user_setter = self._optionally_bulk_set_users(emoji.user for emoji in emojis if emoji.user is not None)
-        await asyncio.gather(*setters, user_setter)
+        asyncio.gather(*setters, user_setter)
 
     async def __on_emojis_update(self, event: guild_events.EmojisUpdateEvent) -> None:
         await self.clear_emojis_for_guild(event.guild_id)
@@ -534,7 +534,7 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
 
         await self._clear_ids_for_guild(guild_id, ResourceIndex.EMOJI)
         client = await self.get_connection(ResourceIndex.EMOJI)
-        await asyncio.gather(*(client.delete(*window) for window in chunk_values(emoji_ids)))
+        asyncio.gather(*(client.delete(*window) for window in chunk_values(emoji_ids)))
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
@@ -679,7 +679,7 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
                 client.mset(cast_map_window(window, int, self._converter.serialize_guild_channel)) for window in windows
             )
             id_setter = self._add_ids(event.guild_id, ResourceIndex.GUILD_CHANNEL, *map(int, event.channels.keys()))
-            await asyncio.gather(*setters, id_setter)
+            asyncio.gather(*setters, id_setter)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await self.clear_guild_channels_for_guild(event.guild_id)
@@ -711,7 +711,7 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
         await self._clear_ids_for_guild(int(guild_id), ResourceIndex.GUILD_CHANNEL)
         client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
         #  TODO: is there any benefit to chunking on bulk delete?
-        await asyncio.gather(*(client.delete(*window) for window in chunk_values(channel_ids)))
+        asyncio.gather(*(client.delete(*window) for window in chunk_values(channel_ids)))
 
     async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
         client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
@@ -801,7 +801,7 @@ class InviteCache(_GuildReference, traits.InviteCache):
             return
 
         client = await self.get_connection(ResourceIndex.INVITE)
-        await asyncio.gather(*(client.delete(*window) for window in chunk_values(codes)))
+        asyncio.gather(*(client.delete(*window) for window in chunk_values(codes)))
 
     async def delete_invite(self, invite_code: str) -> None:
         client = await self.get_connection(ResourceIndex.INVITE)
@@ -923,7 +923,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
             for window in windows
         )
         user_setter = self._optionally_bulk_set_users(member.user for member in members.values())
-        await asyncio.gather(*setters, user_setter)
+        asyncio.gather(*setters, user_setter)
 
     async def __on_guild_availability(self, event: guild_events.GuildAvailableEvent) -> None:
         await self.__bulk_add_members(event.guild_id, event.members)
@@ -1029,7 +1029,7 @@ class MessageCache(_GuildReference, traits.MessageCache):
 
     async def __bulk_delete_messages(self, message_ids: typing.Iterable[int]) -> None:
         client = await self.get_connection(ResourceIndex.MESSAGE)
-        await asyncio.gather(*(client.delete(*window) for window in chunk_values(message_ids)))
+        asyncio.gather(*(client.delete(*window) for window in chunk_values(message_ids)))
 
     async def __on_channel_delete(self, event: channel_events.ChannelDeleteEvent) -> None:
         await self.clear_messages_for_channel(event.channel_id)
@@ -1137,7 +1137,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
             client.hmset_dict(int(guild_id), cast_map_window(window, int, self._converter.serialize_presence))
             for window in windows
         )
-        await asyncio.gather(*setters)
+        asyncio.gather(*setters)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, guild_events.GuildAvailableEvent):
@@ -1233,7 +1233,7 @@ class RoleCache(_GuildReference, traits.RoleCache):
             windows = chunk_values(event.roles.items())
             setters = (client.mset(cast_map_window(window, int, self._converter.serialize_role)) for window in windows)
             id_setter = self._add_ids(event.guild_id, ResourceIndex.ROLE, *map(int, event.roles.keys()))
-            await asyncio.gather(*setters, id_setter)
+            asyncio.gather(*setters, id_setter)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await self.clear_roles_for_guild(event.guild_id)
@@ -1273,7 +1273,7 @@ class RoleCache(_GuildReference, traits.RoleCache):
 
         await self._clear_ids_for_guild(guild_id, ResourceIndex.ROLE)
         client = await self.get_connection(ResourceIndex.ROLE)
-        await asyncio.gather(*(client.delete(*window) for window in chunk_values(role_ids)))
+        asyncio.gather(*(client.delete(*window) for window in chunk_values(role_ids)))
 
     async def delete_role(self, role_id: snowflakes.Snowflakeish) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
@@ -1344,7 +1344,7 @@ class VoiceStateCache(ResourceClient, traits.VoiceStateCache):
                 for window in windows
             )
             user_setter = self._optionally_bulk_set_users(state.member.user for state in event.voice_states.values())
-            await asyncio.gather(*setters, user_setter)
+            asyncio.gather(*setters, user_setter)
 
     async def __on_voice_state_update(self, event: voice_events.VoiceStateUpdateEvent) -> None:
         if event.state.channel_id is None:

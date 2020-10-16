@@ -195,7 +195,7 @@ class ResourceClient(traits.Resource, abc.ABC):
 
     @classmethod
     @abc.abstractmethod  # TODO: should this return a sequence?
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         """The index for the resource which this class is linked to.
 
         !!! note
@@ -271,12 +271,12 @@ class ResourceClient(traits.Resource, abc.ABC):
             raise ValueError(f"Resource index `{resource}` is invalid for this client") from None
 
     def _get_indexes(self) -> typing.MutableSet[ResourceIndex]:
-        results = set()
+        results: typing.Set[ResourceIndex] = set()
         for cls in type(self).mro():
             if not issubclass(cls, ResourceClient) or cls is ResourceClient:
                 continue
 
-            results.add(cls.index())
+            results.update(cls.index())
 
         return results
 
@@ -378,9 +378,9 @@ class _GuildReference(ResourceClient):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return ResourceIndex.GUILD_REFERENCE
+        return (ResourceIndex.GUILD_REFERENCE,)
 
     @staticmethod
     def _generate_reference_key(guild_id: snowflakes.Snowflakeish, resource: ResourceIndex) -> str:
@@ -426,9 +426,9 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
     __ME_KEY: typing.Final[str] = "ME"
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return ResourceIndex.USER
+        return (ResourceIndex.USER,)
 
     async def __on_own_user_update(self, event: user_events.OwnUserUpdateEvent) -> None:
         await self.set_me(event.user)
@@ -516,9 +516,9 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return ResourceIndex.EMOJI
+        return (ResourceIndex.EMOJI,)
 
     async def __bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
         client = await self.get_connection(ResourceIndex.EMOJI)
@@ -626,9 +626,9 @@ class GuildCache(ResourceClient, traits.GuildCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return ResourceIndex.GUILD
+        return (ResourceIndex.GUILD,)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)
@@ -689,9 +689,9 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.traits.Resource>>
-        return ResourceIndex.GUILD_CHANNEL
+        return (ResourceIndex.GUILD_CHANNEL,)
 
     async def __on_guild_channel_event(self, event: channel_events.GuildChannelEvent) -> None:
         if isinstance(event, (channel_events.GuildChannelCreateEvent, channel_events.GuildChannelUpdateEvent)):
@@ -796,9 +796,9 @@ class InviteCache(_GuildReference, traits.InviteCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.traits.Resource>>
-        return ResourceIndex.INVITE
+        return (ResourceIndex.INVITE,)
 
     async def __on_guild_channel_delete_event(self, event: channel_events.GuildChannelDeleteEvent) -> None:
         await self.clear_invites_for_channel(event.channel_id)
@@ -911,9 +911,9 @@ class MemberCache(ResourceClient, traits.MemberCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.traits.Resource>>
-        return ResourceIndex.MEMBER
+        return (ResourceIndex.MEMBER,)
 
     async def __bulk_add_members(
         self, guild_id: snowflakes.Snowflakeish, members: typing.Mapping[snowflakes.Snowflake, guilds.Member]
@@ -1025,9 +1025,9 @@ class MessageCache(_GuildReference, traits.MessageCache):
     __slots__: typing.Sequence[str] = ()  # TODO: finish marshalling
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.traits.Resource>>
-        return ResourceIndex.MESSAGE
+        return (ResourceIndex.MESSAGE,)
 
     async def __bulk_delete_messages(self, message_ids: typing.Iterable[int]) -> None:
         client = await self.get_connection(ResourceIndex.MESSAGE)
@@ -1136,9 +1136,9 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return ResourceIndex.PRESENCE
+        return (ResourceIndex.PRESENCE,)
 
     async def __bulk_add_presences(
         self, guild_id: snowflakes.Snowflake, presences: typing.Mapping[snowflakes.Snowflake, presences_.MemberPresence]
@@ -1243,9 +1243,9 @@ class RoleCache(_GuildReference, traits.RoleCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return ResourceIndex.ROLE
+        return (ResourceIndex.ROLE,)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
@@ -1343,9 +1343,9 @@ class VoiceStateCache(ResourceClient, traits.VoiceStateCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
-    def index(cls) -> ResourceIndex:
+    def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.traits.Resource>>
-        return ResourceIndex.VOICE_STATE
+        return (ResourceIndex.VOICE_STATE,)
 
     async def __on_guild_channel_delete_event(self, event: channel_events.GuildChannelDeleteEvent) -> None:
         await self.clear_voice_states_for_channel(event.channel_id)

@@ -410,6 +410,7 @@ class Cache(
     MessageCache,
     PresenceCache,
     RoleCache,
+    UserCache,
     VoiceStateCache,
     typing.Protocol,
 ):

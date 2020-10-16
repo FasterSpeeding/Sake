@@ -26,7 +26,7 @@ import aioredis
 from hikari import channels
 from hikari import guilds
 from hikari import invites
-from hikari import presences
+from hikari import presences as presences_
 from hikari import snowflakes
 from hikari import users
 from hikari.events import channel_events
@@ -67,6 +67,7 @@ OtherKeyT = typing.TypeVar("OtherKeyT")
 ValueT = typing.TypeVar("ValueT")
 OtherValueT = typing.TypeVar("OtherValueT")
 WINDOW_SIZE: typing.Final[int] = 1000
+DEFAULT_EXPIRE: typing.Final[int] = 300000
 
 
 class ResourceIndex(enum.IntEnum):
@@ -299,12 +300,24 @@ class ResourceClient(traits.Resource, abc.ABC):
         except ValueError:
             pass
         else:
-            windows = chunk_values(users_)
-            setters = (
-                client.mset(*((int(user.id), self._converter.serialize_user(user)) for user in window))
-                for window in windows
-            )
-            await asyncio.gather(*setters)
+            expire_time = int(self.metadata["expire_user"]) if "expire_user" in self.metadata else DEFAULT_EXPIRE
+            user_setters = []
+            expire_setters: typing.MutableSequence[typing.Coroutine[typing.Any, typing.Any, None]] = []
+
+            for window in chunk_values(users_):
+                processed_window = {int(user.id): self._converter.serialize_user(user) for user in window}
+                # transaction = client.multi_exec()
+                #
+                # for user_id in processed_window.keys():
+                #     transaction.pexpire(user_id, expire_time)
+                #
+                # expire_setters.append(transaction.execute())
+                #  TODO: benchmark bulk setting expire with transaction vs this
+                expire_setters.extend((client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
+                user_setters.append(client.mset(processed_window))
+
+            await asyncio.gather(*user_setters)
+            await asyncio.gather(*expire_setters)
 
     async def _optionally_set_user(self, user: users.User) -> None:
         try:
@@ -312,8 +325,9 @@ class ResourceClient(traits.Resource, abc.ABC):
         except ValueError:
             pass
         else:
-            data = self._converter.deserialize_user(user)
-            await client.set(int(user.id), data)
+            data = self._converter.serialize_user(user)
+            expire_time = int(self.metadata["expire_user"]) if "expire_user" in self.metadata else DEFAULT_EXPIRE
+            await client.set(int(user.id), data, pexpire=expire_time)
 
     async def _spawn_connection(self, resource: ResourceIndex) -> None:
         self._clients[resource] = await aioredis.create_redis_pool(
@@ -450,10 +464,14 @@ class UserCache(ResourceClient, traits.UserCache):
             self, ResourceIndex.USER, self._converter.deserialize_user, window_size=window_size
         )
 
-    async def set_user(self, user: users.User) -> None:
+    async def set_user(self, user: users.User, *, expire_time: typing.Optional[int] = None) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
-        await client.set(int(user.id), self._converter.serialize_user(user))
+
+        if expire_time is None:
+            expire_time = int(self.metadata["expire_user"]) or DEFAULT_EXPIRE
+
+        await client.set(int(user.id), self._converter.serialize_user(user), pexpire=expire_time)
 
 
 class EmojiCache(_GuildReference, traits.EmojiCache):
@@ -471,7 +489,8 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
             client.mset({int(emoji.id): self._converter.serialize_emoji(emoji) for emoji in window})
             for window in windows
         )
-        await asyncio.gather(*setters)
+        user_setter = self._optionally_bulk_set_users(emoji.user for emoji in emojis if emoji.user is not None)
+        await asyncio.gather(*setters, user_setter)
 
     async def __on_emojis_update(self, event: guild_events.EmojisUpdateEvent) -> None:
         await self.clear_emojis_for_guild(event.guild_id)
@@ -826,6 +845,12 @@ class InviteCache(_GuildReference, traits.InviteCache):
         if invite.guild_id is not None:
             await self._add_ids(int(invite.guild_id), ResourceIndex.INVITE, str(invite.code))
 
+        if invite.target_user is not None:
+            await self._optionally_set_user(invite.target_user)
+
+        if invite.inviter is not None:
+            await self._optionally_set_user(invite.inviter)
+
 
 class MeCache(ResourceClient, traits.MeCache):
     __slots__: typing.Sequence[str] = ()
@@ -897,7 +922,8 @@ class MemberCache(ResourceClient, traits.MemberCache):
             client.hmset_dict(int(guild_id), cast_map_window(window, int, self._converter.serialize_member))
             for window in windows
         )
-        await asyncio.gather(*setters, self._optionally_bulk_set_users(member.user for member in members.values()))
+        user_setter = self._optionally_bulk_set_users(member.user for member in members.values())
+        await asyncio.gather(*setters, user_setter)
 
     async def __on_guild_availability(self, event: guild_events.GuildAvailableEvent) -> None:
         await self.__bulk_add_members(event.guild_id, event.members)
@@ -911,8 +937,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
                 user = await self.rest.rest.fetch_my_user()
                 self.metadata["own_id"] = user.id
 
-            own_id = self.metadata["own_id"]
-            assert isinstance(own_id, snowflakes.Snowflake)
+            own_id = snowflakes.Snowflake(self.metadata["own_id"])
             if event.user_id == own_id:
                 await self.clear_members_for_guild(event.guild_id)
             else:
@@ -1104,15 +1129,15 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         return ResourceIndex.PRESENCE
 
     async def __bulk_add_presences(
-        self, guild_id: snowflakes.Snowflake, presence: typing.Mapping[snowflakes.Snowflake, presences.MemberPresence]
+        self, guild_id: snowflakes.Snowflake, presences: typing.Mapping[snowflakes.Snowflake, presences_.MemberPresence]
     ) -> None:
         client = await self.get_connection(ResourceIndex.PRESENCE)
-        windows = chunk_values(presence.items())
+        windows = chunk_values(presences.items())
         setters = (
             client.hmset_dict(int(guild_id), cast_map_window(window, int, self._converter.serialize_presence))
             for window in windows
         )
-        await asyncio.gather(*setters)  # self._optionally_bulk_set_users
+        await asyncio.gather(*setters)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, guild_events.GuildAvailableEvent):
@@ -1125,8 +1150,9 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         await self.__bulk_add_presences(event.guild_id, event.presences)
 
     async def __on_presence_update_event(self, event: guild_events.PresenceUpdateEvent) -> None:
-        if event.presence.visible_status is presences.Status.OFFLINE:
+        if event.presence.visible_status is presences_.Status.OFFLINE:
             await self.delete_presence(event.guild_id, event.user_id)
+            # TODO: handle presence.user?
 
         else:
             await self.set_presence(event.presence)
@@ -1161,24 +1187,24 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
 
     async def get_presence(
         self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish
-    ) -> presences.MemberPresence:
+    ) -> presences_.MemberPresence:
         client = await self.get_connection(ResourceIndex.PRESENCE)
         data = await client.hget(int(guild_id), int(user_id))
         return self._converter.deserialize_presence(data)
 
-    def iter_presences(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[presences.MemberPresence]:
+    def iter_presences(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[presences_.MemberPresence]:
         return redis_iterators.MultiMapIterator(
             self, ResourceIndex.PRESENCE, self._converter.deserialize_presence, window_size=window_size
         )
 
     def iter_presences_for_user(
         self, user_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> traits.CacheIterator[presences.MemberPresence]:
+    ) -> traits.CacheIterator[presences_.MemberPresence]:
         raise NotImplementedError
 
     def iter_presences_for_guild(
         self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> traits.CacheIterator[presences.MemberPresence]:
+    ) -> traits.CacheIterator[presences_.MemberPresence]:
         return redis_iterators.SpecificMapIterator(
             self,
             str(guild_id).encode(),
@@ -1187,7 +1213,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
             window_size=window_size,
         )
 
-    async def set_presence(self, presence: presences.MemberPresence) -> None:
+    async def set_presence(self, presence: presences_.MemberPresence) -> None:
         data = self._converter.serialize_presence(presence)
         client = await self.get_connection(ResourceIndex.PRESENCE)
         await client.hset(int(presence.guild_id), int(presence.user_id), data)
@@ -1317,7 +1343,8 @@ class VoiceStateCache(ResourceClient, traits.VoiceStateCache):
                 )
                 for window in windows
             )
-            await asyncio.gather(*setters)
+            user_setter = self._optionally_bulk_set_users(state.member.user for state in event.voice_states.values())
+            await asyncio.gather(*setters, user_setter)
 
     async def __on_voice_state_update(self, event: voice_events.VoiceStateUpdateEvent) -> None:
         if event.state.channel_id is None:
@@ -1397,6 +1424,7 @@ class VoiceStateCache(ResourceClient, traits.VoiceStateCache):
         data = self._converter.serialize_voice_state(voice_state)
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
         await client.hset(int(voice_state.guild_id), int(voice_state.user_id), data)
+        await self._optionally_set_user(voice_state.member.user)
 
 
 class RedisCache(
@@ -1408,6 +1436,7 @@ class RedisCache(
     MemberCache,
     PresenceCache,
     RoleCache,
+    UserCache,
     VoiceStateCache,
     traits.Cache,
 ):  # MessageCache

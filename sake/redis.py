@@ -972,15 +972,17 @@ class MemberCache(_Reference, traits.MemberCache):
         if isinstance(event, (member_events.MemberCreateEvent, member_events.MemberUpdateEvent)):
             await self.set_member(event.member)
         elif isinstance(event, member_events.MemberDeleteEvent):
-            if "own_id" not in self.metadata:
-                #  TODO: this is racey
-                async for _ in rate_limits.ExponentialBackOff():
-                    try:
-                        user = await self.rest.rest.fetch_my_user()
-                    except rate_limits.BACKOFF_ERRORS:
-                        pass
-                    else:
-                        self.metadata["own_id"] = user.id
+            async for _ in rate_limits.BackOff():
+                if "own_id" in self.metadata:
+                    break
+
+                try:
+                    user = await self.rest.rest.fetch_my_user()
+                except rate_limits.BACKOFF_ERRORS:
+                    pass
+                else:
+                    self.metadata["own_id"] = user.id
+                    break
 
             own_id = snowflakes.Snowflake(self.metadata["own_id"])
             if event.user_id == own_id:

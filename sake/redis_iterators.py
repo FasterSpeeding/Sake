@@ -275,7 +275,7 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
                     break
 
             else:
-                raise RuntimeError("Couldn't find reference key")
+                raise LookupError("Couldn't find reference key")
 
             client = await self._client.get_connection(self._index)
             windows = (

@@ -148,6 +148,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         self,
         rest: hikari_traits.RESTAware,
         dispatch: typing.Optional[hikari_traits.DispatcherAware] = None,
+        /,
         *,
         address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
         password: typing.Optional[str] = None,
@@ -231,7 +232,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         """
         return self._rest
 
-    async def get_connection(self, resource: ResourceIndex) -> aioredis.Redis:
+    async def get_connection(self, resource: ResourceIndex, /) -> aioredis.Redis:
         """Get the connection for a specific resource.
 
         Parameters
@@ -269,7 +270,7 @@ class ResourceClient(traits.Resource, abc.ABC):
 
         return results
 
-    async def get_connection_status(self, resource: ResourceIndex) -> bool:
+    async def get_connection_status(self, resource: ResourceIndex, /) -> bool:
         """Get the status of the internal connection for a specific resource.
 
         Parameters
@@ -466,7 +467,7 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
         client = await self.get_connection(ResourceIndex.USER)
         await client.delete(self.__ME_KEY)
 
-    async def delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
         await client.delete(int(user_id))
@@ -481,7 +482,7 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
 
         return self._marshaller.deserialize_me(data)
 
-    async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
+    async def get_user(self, user_id: snowflakes.Snowflakeish, /) -> users.User:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
         data = await client.get(int(user_id))
@@ -499,14 +500,14 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
             self, ResourceIndex.USER, self._marshaller.deserialize_user, window_size=window_size
         )
 
-    async def set_me(self, me: users.OwnUser) -> None:
+    async def set_me(self, me: users.OwnUser, /) -> None:
         # <<Inherited docstring from sake.traits.MeCache>>
         data = self._marshaller.serialize_me(me)
         client = await self.get_connection(ResourceIndex.USER)
         await client.set(self.__ME_KEY, data)
         await self._optionally_set_user(me)
 
-    async def set_user(self, user: users.User, *, expire_time: typing.Optional[int] = None) -> None:
+    async def set_user(self, user: users.User, /, *, expire_time: typing.Optional[int] = None) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
 
@@ -569,7 +570,7 @@ class EmojiCache(_Reference, traits.EmojiCache):
         client = await self.get_connection(ResourceIndex.EMOJI)
         await client.flushdb()
 
-    async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         emoji_ids = await self._get_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, cast=bytes)
         if not emoji_ids:
@@ -579,7 +580,7 @@ class EmojiCache(_Reference, traits.EmojiCache):
         client = await self.get_connection(ResourceIndex.EMOJI)
         asyncio.gather(*(client.delete(*window) for window in redis_iterators.chunk_values(emoji_ids)))
 
-    async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
+    async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         data = await client.get(int(emoji_id))
@@ -591,7 +592,7 @@ class EmojiCache(_Reference, traits.EmojiCache):
         await self._delete_ids(ResourceIndex.GUILD, int(emoji.guild_id), ResourceIndex.EMOJI, int(emoji.id))
         await client.delete(int(emoji_id))
 
-    async def get_emoji(self, emoji_id: snowflakes.Snowflakeish) -> emojis_.KnownCustomEmoji:
+    async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis_.KnownCustomEmoji:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         data = await client.get(int(emoji_id))
@@ -608,7 +609,7 @@ class EmojiCache(_Reference, traits.EmojiCache):
         )
 
     def iter_emojis_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI).encode()
@@ -616,7 +617,7 @@ class EmojiCache(_Reference, traits.EmojiCache):
             self, key, ResourceIndex.EMOJI, self._marshaller.deserialize_emoji, window_size=window_size
         )
 
-    async def set_emoji(self, emoji: emojis_.KnownCustomEmoji) -> None:
+    async def set_emoji(self, emoji: emojis_.KnownCustomEmoji, /) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         data = self._marshaller.serialize_emoji(emoji)
@@ -662,12 +663,12 @@ class GuildCache(ResourceClient, traits.GuildCache):
         client = await self.get_connection(ResourceIndex.GUILD)
         await client.flushdb()
 
-    async def delete_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def delete_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
         await client.delete(int(guild_id))
 
-    async def get_guild(self, guild_id: snowflakes.Snowflakeish) -> guilds.GatewayGuild:
+    async def get_guild(self, guild_id: snowflakes.Snowflakeish, /) -> guilds.GatewayGuild:
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
         data = await client.get(int(guild_id))
@@ -683,7 +684,7 @@ class GuildCache(ResourceClient, traits.GuildCache):
             self, ResourceIndex.GUILD, self._marshaller.deserialize_guild, window_size=window_size
         )
 
-    async def set_guild(self, guild: guilds.GatewayGuild) -> None:
+    async def set_guild(self, guild: guilds.GatewayGuild, /) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
         data = self._marshaller.serialize_guild(guild)
@@ -752,7 +753,7 @@ class GuildChannelCache(_Reference, traits.GuildChannelCache):
         await client.flushdb()
         await self._clear_ids_for_resource(ResourceIndex.GUILD, ResourceIndex.CHANNEL)
 
-    async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
         channel_ids = await self._get_ids(ResourceIndex.GUILD, int(guild_id), ResourceIndex.CHANNEL, cast=bytes)
         if not channel_ids:
@@ -763,12 +764,12 @@ class GuildChannelCache(_Reference, traits.GuildChannelCache):
         #  TODO: is there any benefit to chunking on bulk delete?
         asyncio.gather(*(client.delete(*window) for window in redis_iterators.chunk_values(channel_ids)))
 
-    async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+    async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
         client = await self.get_connection(ResourceIndex.CHANNEL)
         await client.delete(int(channel_id))
 
-    async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> channels.GuildChannel:
+    async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> channels.GuildChannel:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
         client = await self.get_connection(ResourceIndex.CHANNEL)
         data = await client.get(int(channel_id))
@@ -785,7 +786,7 @@ class GuildChannelCache(_Reference, traits.GuildChannelCache):
         )
 
     def iter_guild_channels_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[channels.GuildChannel]:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL).encode()
@@ -793,7 +794,7 @@ class GuildChannelCache(_Reference, traits.GuildChannelCache):
             self, key, ResourceIndex.CHANNEL, self._marshaller.deserialize_guild_channel, window_size=window_size
         )
 
-    async def set_guild_channel(self, channel: channels.GuildChannel) -> None:
+    async def set_guild_channel(self, channel: channels.GuildChannel, /) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
         client = await self.get_connection(ResourceIndex.CHANNEL)
         data = self._marshaller.serialize_guild_channel(channel)
@@ -850,11 +851,11 @@ class InviteCache(_Reference, traits.InviteCache):
         await client.flushdb()
         await self._clear_ids_for_resource(ResourceIndex.CHANNEL, ResourceIndex.INVITE)
 
-    async def clear_invites_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+    async def clear_invites_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
         raise NotImplementedError
 
-    async def clear_invites_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_invites_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
         invites = await self.iter_invites_for_guild(guild_id)
@@ -875,7 +876,7 @@ class InviteCache(_Reference, traits.InviteCache):
         )  # TODO: use this style where we delete specific entries instead of just clearing to avoid racey code
         asyncio.gather(*reference_deleters)
 
-    async def delete_invite(self, invite_code: str) -> None:
+    async def delete_invite(self, invite_code: str, /) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
         # Aioredis treats keys and values as type invariant so we want to ensure this is a str and not a class which
@@ -893,7 +894,7 @@ class InviteCache(_Reference, traits.InviteCache):
                 str(invite.code),
             )
 
-    async def get_invite(self, invite_code: str) -> invites_.InviteWithMetadata:
+    async def get_invite(self, invite_code: str, /) -> invites_.InviteWithMetadata:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
         # Aioredis treats keys and values as type invariant so we want to ensure this is a str and not a class which
@@ -911,7 +912,7 @@ class InviteCache(_Reference, traits.InviteCache):
         )
 
     def iter_invites_for_channel(
-        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, channel_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[invites_.InviteWithMetadata]:
         # <<Inherited docstring from sake.traits.InviteCache>>
         key = self._generate_reference_key(ResourceIndex.CHANNEL, channel_id, ResourceIndex.INVITE).encode()
@@ -920,7 +921,7 @@ class InviteCache(_Reference, traits.InviteCache):
         )
 
     def iter_invites_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[invites_.InviteWithMetadata]:
         # <<Inherited docstring from sake.traits.InviteCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.INVITE).encode()
@@ -928,7 +929,7 @@ class InviteCache(_Reference, traits.InviteCache):
             self, key, ResourceIndex.INVITE, self._marshaller.deserialize_invite, window_size=window_size
         )
 
-    async def set_invite(self, invite: invites_.InviteWithMetadata) -> None:
+    async def set_invite(self, invite: invites_.InviteWithMetadata, /) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
         data = self._marshaller.serialize_invite(invite)
@@ -1014,17 +1015,17 @@ class MemberCache(_Reference, traits.MemberCache):
         client = await self.get_connection(ResourceIndex.MEMBER)
         await client.flushdb()
 
-    async def clear_members_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_members_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.MemberCache>>
         client = await self.get_connection(ResourceIndex.MEMBER)
         await client.delete(int(guild_id))
 
-    async def delete_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.MemberCache>>
         client = await self.get_connection(ResourceIndex.MEMBER)
         await client.hdel(int(guild_id), int(user_id))
 
-    async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> guilds.Member:
+    async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> guilds.Member:
         # <<Inherited docstring from sake.traits.MemberCache>>
         client = await self.get_connection(ResourceIndex.MEMBER)
         data = await client.hget(int(guild_id), int(user_id))
@@ -1041,7 +1042,7 @@ class MemberCache(_Reference, traits.MemberCache):
         )
 
     def iter_members_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[guilds.Member]:
         # <<Inherited docstring from sake.traits.MemberCache>>
         return redis_iterators.SpecificMapIterator(
@@ -1053,12 +1054,12 @@ class MemberCache(_Reference, traits.MemberCache):
         )
 
     def iter_members_for_user(
-        self, user_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, user_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[guilds.Member]:
         # <<Inherited docstring from sake.traits.MemberCache>>
         raise NotImplementedError
 
-    async def set_member(self, member: guilds.Member) -> None:
+    async def set_member(self, member: guilds.Member, /) -> None:
         # <<Inherited docstring from sake.traits.MemberCache>>
         client = await self.get_connection(ResourceIndex.MEMBER)
         data = self._marshaller.serialize_member(member)
@@ -1134,11 +1135,11 @@ class MessageCache(_Reference, traits.MessageCache):
         await self._clear_ids_for_resource(ResourceIndex.GUILD, ResourceIndex.INVITE)
         await client.flushdb()
 
-    async def clear_messages_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+    async def clear_messages_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
         NotImplementedError
 
-    async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
         message_ids = await self._get_ids(ResourceIndex.GUILD, int(guild_id), ResourceIndex.MESSAGE, cast=bytes)
         if not message_ids:
@@ -1146,7 +1147,7 @@ class MessageCache(_Reference, traits.MessageCache):
 
         await self.__bulk_delete_guild_messages(int(guild_id), message_ids)
 
-    async def delete_message(self, message_id: snowflakes.Snowflakeish) -> None:
+    async def delete_message(self, message_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
         client = await self.get_connection(ResourceIndex.MESSAGE)
         try:
@@ -1160,7 +1161,7 @@ class MessageCache(_Reference, traits.MessageCache):
             if message.guild_id is not None:
                 await self._delete_ids(ResourceIndex.GUILD, message.guild_id, ResourceIndex.MESSAGE, int(message.id))
 
-    async def get_message(self, message_id: snowflakes.Snowflakeish) -> messages.Message:
+    async def get_message(self, message_id: snowflakes.Snowflakeish, /) -> messages.Message:
         # <<Inherited docstring from sake.traits.MessageCache>>
         client = await self.get_connection(ResourceIndex.MESSAGE)
         data = await client.get(int(message_id))
@@ -1176,13 +1177,13 @@ class MessageCache(_Reference, traits.MessageCache):
         )
 
     def iter_message_for_channel(
-        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, channel_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[messages.Message]:
         # <<Inherited docstring from sake.traits.MessageCache>>
         raise NotImplementedError
 
     def iter_messages_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[messages.Message]:
         # <<Inherited docstring from sake.traits.MessageCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.MESSAGE).encode()
@@ -1190,7 +1191,7 @@ class MessageCache(_Reference, traits.MessageCache):
             self, key, ResourceIndex.MESSAGE, self._marshaller.deserialize_message, window_size=window_size
         )
 
-    async def set_message(self, message: messages.Message) -> None:
+    async def set_message(self, message: messages.Message, /) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
         data = self._marshaller.serialize_message(message)
         client = await self.get_connection(ResourceIndex.MESSAGE)
@@ -1201,7 +1202,7 @@ class MessageCache(_Reference, traits.MessageCache):
         if message.guild_id is not None:
             await self._add_ids(ResourceIndex.GUILD, message.guild_id, ResourceIndex.MESSAGE, int(message.id))
 
-    async def update_message(self, message: messages.PartialMessage) -> bool:
+    async def update_message(self, message: messages.PartialMessage, /) -> bool:
         # <<Inherited docstring from sake.traits.MessageCache>>
         # This is a special case method for handling the partial message updates we get
         raise NotImplementedError
@@ -1265,18 +1266,18 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         client = await self.get_connection(ResourceIndex.PRESENCE)
         await client.flushdb()
 
-    async def clear_presences_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_presences_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         client = await self.get_connection(ResourceIndex.PRESENCE)
         await client.delete(int(guild_id))
 
-    async def delete_presence(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_presence(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         client = await self.get_connection(ResourceIndex.PRESENCE)
         await client.hdel(int(guild_id), int(user_id))
 
     async def get_presence(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish
+        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
     ) -> presences_.MemberPresence:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         client = await self.get_connection(ResourceIndex.PRESENCE)
@@ -1290,7 +1291,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         )
 
     def iter_presences_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[presences_.MemberPresence]:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         return redis_iterators.SpecificMapIterator(
@@ -1301,7 +1302,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
             window_size=window_size,
         )
 
-    async def set_presence(self, presence: presences_.MemberPresence) -> None:
+    async def set_presence(self, presence: presences_.MemberPresence, /) -> None:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         data = self._marshaller.serialize_presence(presence)
         client = await self.get_connection(ResourceIndex.PRESENCE)
@@ -1357,7 +1358,7 @@ class RoleCache(_Reference, traits.RoleCache):
         client = await self.get_connection(ResourceIndex.ROLE)
         await client.flushdb()
 
-    async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
         role_ids = await self._get_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, cast=bytes)
         if not role_ids:
@@ -1367,7 +1368,7 @@ class RoleCache(_Reference, traits.RoleCache):
         client = await self.get_connection(ResourceIndex.ROLE)
         asyncio.gather(*(client.delete(*window) for window in redis_iterators.chunk_values(role_ids)))
 
-    async def delete_role(self, role_id: snowflakes.Snowflakeish) -> None:
+    async def delete_role(self, role_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
         data = await client.get(int(role_id))
@@ -1379,7 +1380,7 @@ class RoleCache(_Reference, traits.RoleCache):
         await self._delete_ids(ResourceIndex.GUILD, int(role.guild_id), ResourceIndex.ROLE, int(role.id))
         await client.delete(int(role_id))
 
-    async def get_role(self, role_id: snowflakes.Snowflakeish) -> guilds.Role:
+    async def get_role(self, role_id: snowflakes.Snowflakeish, /) -> guilds.Role:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
         data = await client.get(int(role_id))
@@ -1396,7 +1397,7 @@ class RoleCache(_Reference, traits.RoleCache):
         )
 
     def iter_roles_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE).encode()
@@ -1404,7 +1405,7 @@ class RoleCache(_Reference, traits.RoleCache):
             self, key, ResourceIndex.ROLE, self._marshaller.deserialize_role, window_size=window_size
         )
 
-    async def set_role(self, role: guilds.Role) -> None:
+    async def set_role(self, role: guilds.Role, /) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
         await client.set(int(role.id), self._marshaller.serialize_role(role))
@@ -1496,7 +1497,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         raise NotImplementedError
 
-    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
         states = await self.iter_voice_states_for_guild(guild_id)
@@ -1505,7 +1506,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         asyncio.gather(client.srem(key, *values) for key, values in references.items())
 
     async def clear_voice_states_for_channel(
-        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, channel_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         ids = await self._get_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE, cast=bytes)
@@ -1520,7 +1521,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             # TODO: do this instead of "clearing" more consistently
             # TODO: have a more general look into race-conditions around referencing stuff
 
-    async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
 
@@ -1540,7 +1541,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             )
 
     async def get_voice_state(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish
+        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
     ) -> voices.VoiceState:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
@@ -1558,7 +1559,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         )
 
     def iter_voice_states_for_channel(
-        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, channel_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[voices.VoiceState]:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         key = self._generate_reference_key(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE).encode()
@@ -1571,7 +1572,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         )
 
     def iter_voice_states_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[voices.VoiceState]:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         return redis_iterators.SpecificMapIterator(
@@ -1582,7 +1583,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             window_size=window_size,
         )
 
-    async def set_voice_state(self, voice_state: voices.VoiceState) -> None:
+    async def set_voice_state(self, voice_state: voices.VoiceState, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         if voice_state.channel_id is None:
             raise ValueError("Cannot set a voice state which isn't bound to a channel")

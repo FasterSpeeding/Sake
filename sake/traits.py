@@ -315,9 +315,6 @@ class PresenceCache(Resource, typing.Protocol):
     ) -> CacheIterator[presences.MemberPresence]:
         raise NotImplementedError
 
-    def iter_presences_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheIterator[presences.MemberPresence]:
-        raise NotImplementedError
-
     def iter_presences_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[presences.MemberPresence]:
         raise NotImplementedError
 
@@ -380,6 +377,9 @@ class UserCache(Resource, typing.Protocol):
 class VoiceStateCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
+    async def clear_voice_states(self) -> None:
+        raise NotImplementedError
+
     async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
         raise NotImplementedError
 
@@ -401,9 +401,6 @@ class VoiceStateCache(Resource, typing.Protocol):
         raise NotImplementedError
 
     def iter_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[voices.VoiceState]:
-        raise NotImplementedError
-
-    def iter_voice_states_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheIterator[voices.VoiceState]:
         raise NotImplementedError
 
     async def set_voice_state(self, voice_state: voices.VoiceState) -> None:

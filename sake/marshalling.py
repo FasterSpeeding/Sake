@@ -696,6 +696,7 @@ class JSONMarshaller(ObjectMarshaller):
         except KeyError:
             deserializer = _generate_json_deserializer(
                 channels.GuildNewsChannel,
+                *self._guild_channel_deserialize_rules(),
                 "topic",
                 ("last_message_id", _optional_cast(snowflakes.Snowflake)),
                 ("last_pin_timestamp", _optional_cast(_deserialize_datetime)),
@@ -882,11 +883,16 @@ class JSONMarshaller(ObjectMarshaller):
             ("guild_id", _optional_cast(snowflakes.Snowflake)),
             ("channel", _optional_cast(channel_deserializer)),
             ("channel_id", snowflakes.Snowflake),
-            ("inviter", _optional_cast(self._get_user_serializer())),
-            ("target_user", _optional_cast(self._get_user_serializer())),
+            ("inviter", _optional_cast(self._get_user_deserializer())),
+            ("target_user", _optional_cast(self._get_user_deserializer())),
             ("target_user_type", _optional_cast(invites.TargetUserType)),
             "approximate_active_member_count",
             "approximate_member_count",
+            "uses",
+            "max_uses",
+            ("max_age", _optional_cast(_deserialize_timedelta)),
+            "is_temporary",
+            ("created_at", _deserialize_datetime),
         )
         self._deserializers[invites.InviteWithMetadata] = deserializer
         return deserializer
@@ -940,6 +946,11 @@ class JSONMarshaller(ObjectMarshaller):
             "target_user_type",
             "approximate_active_member_count",
             "approximate_member_count",
+            "uses",
+            "max_uses",
+            ("max_age", _optional_cast(_serialize_timedelta)),
+            "is_temporary",
+            ("created_at", _serialize_datetime),
         )
         self._serializers[invites.InviteWithMetadata] = serializer
         return serializer

@@ -29,24 +29,17 @@ WINDOW_SIZE: typing.Final[int] = 1000
 def chunk_values(
     values: typing.Iterable[ValueT], window_size: int = WINDOW_SIZE
 ) -> typing.Iterator[typing.Sequence[ValueT]]:
-    if window_size <= 0:
-        raise ValueError("Window size must be a positive integer")
-
     iterator = iter(values)
+
     while result := list(itertools.islice(iterator, window_size)):
         yield result
-
-
-async def ignore_null_values(iterator: typing.AsyncIterator[typing.Optional[ValueT]]) -> typing.AsyncIterator[ValueT]:
-    async for value in iterator:
-        if value is not None:
-            yield value
 
 
 async def iter_keys(
     client: aioredis.Redis, *, window_size: int = WINDOW_SIZE, match: typing.Optional[str] = None
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
     cursor = 0
+
     while True:
         cursor, window = await client.scan(cursor, count=window_size, match=match)
 
@@ -72,6 +65,7 @@ async def iter_hash_keys(
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
     cursor = 0
+
     while True:
         cursor, window = await client.hscan(key, cursor, count=window_size, match=match)
 
@@ -257,7 +251,7 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
         self._window_size = int(window_size)
 
     @staticmethod
-    def generate_hash_key(hash_key: snowflakes.Snowflakeish) -> str:
+    def hash_key(hash_key: snowflakes.Snowflakeish) -> str:
         return f"KEY.{int(hash_key)}"
 
     def __aiter__(self) -> HashReferenceIterator[ValueT]:
@@ -268,11 +262,10 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
             reference_client = await self._client.get_connection(redis.ResourceIndex.REFERENCE)
             keys: typing.MutableSequence[bytes] = await reference_client.smembers(self._key)
 
-            for key in keys:
-                if key.startswith(b"KEY."):
-                    hash_key = key[4:]
-                    keys.remove(key)
-                    break
+            for key in filter(lambda k: k.startswith(b"KEY."), keys):
+                hash_key = key[4:]
+                keys.remove(key)
+                break
 
             else:
                 raise LookupError("Couldn't find reference key")
@@ -411,8 +404,7 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
             client = await self._client.get_connection(self._index)
             self._windows = iter_hash_values(client, self._key, window_size=self._window_size)
 
-        assert self._windows is not None
-        while not self._buffer and self._windows:
+        while not self._buffer:
             async for window in self._windows:
                 self._buffer.extend(window)
                 break

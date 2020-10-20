@@ -43,99 +43,99 @@ OtherValueT = typing.TypeVar("OtherValueT")
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.conversion")
 
 
-class ObjectMarshaller(abc.ABC):
+class ObjectMarshaller(abc.ABC, typing.Generic[ValueT]):
     __slots__: typing.Sequence[str] = ()
 
     @abc.abstractmethod
-    def deserialize_emoji(self, value: bytes) -> emojis.KnownCustomEmoji:
+    def deserialize_emoji(self, value: ValueT) -> emojis.KnownCustomEmoji:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_emoji(self, emoji: emojis.KnownCustomEmoji) -> bytes:
+    def serialize_emoji(self, emoji: emojis.KnownCustomEmoji) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_guild(self, value: bytes) -> guilds.GatewayGuild:
+    def deserialize_guild(self, value: ValueT) -> guilds.GatewayGuild:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_guild(self, guild: guilds.GatewayGuild) -> bytes:
+    def serialize_guild(self, guild: guilds.GatewayGuild) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_guild_channel(self, value: bytes) -> channels.GuildChannel:
+    def deserialize_guild_channel(self, value: ValueT) -> channels.GuildChannel:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_guild_channel(self, channel: channels.GuildChannel) -> bytes:
+    def serialize_guild_channel(self, channel: channels.GuildChannel) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_invite(self, value: bytes) -> invites.InviteWithMetadata:
+    def deserialize_invite(self, value: ValueT) -> invites.InviteWithMetadata:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_invite(self, invite: invites.InviteWithMetadata) -> bytes:
+    def serialize_invite(self, invite: invites.InviteWithMetadata) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_me(self, value: bytes) -> users.OwnUser:
+    def deserialize_me(self, value: ValueT) -> users.OwnUser:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_me(self, me: users.OwnUser) -> bytes:
+    def serialize_me(self, me: users.OwnUser) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_member(self, value: bytes) -> guilds.Member:
+    def deserialize_member(self, value: ValueT) -> guilds.Member:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_member(self, member: guilds.Member) -> bytes:
+    def serialize_member(self, member: guilds.Member) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_message(self, value: bytes) -> messages.Message:
+    def deserialize_message(self, value: ValueT) -> messages.Message:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_message(self, message: messages.Message) -> bytes:
+    def serialize_message(self, message: messages.Message) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_presence(self, value: bytes) -> presences.MemberPresence:
+    def deserialize_presence(self, value: ValueT) -> presences.MemberPresence:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_presence(self, presence: presences.MemberPresence) -> bytes:
+    def serialize_presence(self, presence: presences.MemberPresence) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_role(self, value: bytes) -> guilds.Role:
+    def deserialize_role(self, value: ValueT) -> guilds.Role:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_role(self, role: guilds.Role) -> bytes:
+    def serialize_role(self, role: guilds.Role) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_user(self, value: bytes) -> users.User:
+    def deserialize_user(self, value: ValueT) -> users.User:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_user(self, user: users.User) -> bytes:
+    def serialize_user(self, user: users.User) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_voice_state(self, value: bytes) -> voices.VoiceState:
+    def deserialize_voice_state(self, value: ValueT) -> voices.VoiceState:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_voice_state(self, voice_state: voices.VoiceState) -> bytes:
+    def serialize_voice_state(self, voice_state: voices.VoiceState) -> ValueT:
         raise NotImplementedError
 
 
-class PickleMarshaller(ObjectMarshaller):
+class PickleMarshaller(ObjectMarshaller[bytes]):
     __slots__: typing.Sequence[str] = ("_app",)
 
     def __init__(self, app: traits.RESTAware) -> None:
@@ -460,7 +460,7 @@ def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
     return ("id", "discriminator", "username", "avatar_hash", "is_bot", "is_system", "flags")
 
 
-class JSONMarshaller(ObjectMarshaller):
+class JSONMarshaller(ObjectMarshaller[bytes]):
     __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder")
 
     _deserializers: typing.MutableMapping[

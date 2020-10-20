@@ -17,6 +17,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
 import abc
 import asyncio
 import enum
+import itertools
 import logging
 import typing
 
@@ -303,12 +304,14 @@ class ResourceClient(traits.Resource, abc.ABC):
                 #     transaction.pexpire(user_id, expire_time)
                 #
                 # expire_setters.append(transaction.execute())
+                await client.mset(processed_window)
+                asyncio.gather(*(client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
                 #  TODO: benchmark bulk setting expire with transaction vs this
-                user_setters.append(client.mset(processed_window))
-                expire_setters.extend((client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
+                # user_setters.append(client.mset(processed_window))
+                # expire_setters.extend((client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
 
-            asyncio.gather(*user_setters)
-            asyncio.gather(*expire_setters)
+            # asyncio.gather(*user_setters)
+            # asyncio.gather(*expire_setters)
 
     async def _optionally_set_user(self, user: users.User) -> None:
         try:
@@ -387,8 +390,8 @@ class _Reference(ResourceClient):
         self, master: ResourceIndex, slave: ResourceIndex, *, window_size: int = WINDOW_SIZE
     ) -> None:
         client = await self.get_connection(ResourceIndex.REFERENCE)
-        windows = redis_iterators.iter_keys(client, window_size=window_size, match=f"{master}:*:{slave}")
-        asyncio.gather(*[client.delete(*window) async for window in windows])
+        windows = await client.keys(f"{master}:*:{slave}")
+        asyncio.gather(*itertools.starmap(client.delete, windows))
 
     async def _clear_ids_for_slave(
         self, master: ResourceIndex, master_id: snowflakes.Snowflakeish, slave: ResourceIndex
@@ -412,6 +415,16 @@ class _Reference(ResourceClient):
         if reference_key and await client.scard(key) == 1:
             await client.delete(key)
 
+    async def _dump_relationship(
+        self, master: ResourceIndex, slave: ResourceIndex
+    ) -> typing.MutableMapping[bytes, typing.MutableSequence[bytes]]:
+        client = await self.get_connection(ResourceIndex.REFERENCE)
+        keys = await client.keys(pattern=f"{master}:*:{slave}")
+        values = await asyncio.gather(*map(client.smembers, keys))
+        result = {keys[index]: value for index, value in enumerate(values)}
+        asyncio.gather(*(client.srem(key, *members) for key, members in result.items() if members))
+        return result
+
     async def _get_ids(
         self,
         master: ResourceIndex,
@@ -419,10 +432,10 @@ class _Reference(ResourceClient):
         slave: ResourceIndex,
         *,
         cast: typing.Callable[[bytes], ValueT],
-    ) -> typing.Sequence[ValueT]:
+    ) -> typing.MutableSequence[ValueT]:
         key = self._generate_reference_key(master, master_id, slave)
         client = await self.get_connection(ResourceIndex.REFERENCE)
-        return (*map(cast, await client.smembers(key)),)
+        return [*map(cast, await client.smembers(key))]
 
 
 class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
@@ -578,7 +591,7 @@ class EmojiCache(_Reference, traits.EmojiCache):
 
         await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, *emoji_ids)
         client = await self.get_connection(ResourceIndex.EMOJI)
-        asyncio.gather(*(client.delete(*window) for window in redis_iterators.chunk_values(emoji_ids)))
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(emoji_ids)))
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
@@ -762,7 +775,7 @@ class GuildChannelCache(_Reference, traits.GuildChannelCache):
         await self._delete_ids(ResourceIndex.GUILD, int(guild_id), ResourceIndex.CHANNEL, *channel_ids)
         client = await self.get_connection(ResourceIndex.CHANNEL)
         #  TODO: is there any benefit to chunking on bulk delete?
-        asyncio.gather(*(client.delete(*window) for window in redis_iterators.chunk_values(channel_ids)))
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(channel_ids)))
 
     async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
@@ -860,7 +873,7 @@ class InviteCache(_Reference, traits.InviteCache):
         client = await self.get_connection(ResourceIndex.INVITE)
         invites = await self.iter_invites_for_guild(guild_id)
         asyncio.gather(
-            *(client.delete(*window) for window in redis_iterators.chunk_values(invite.code for invite in invites))
+            *itertools.starmap(client.delete, redis_iterators.chunk_values(invite.code for invite in invites))
         )
 
         references: typing.MutableMapping[snowflakes.Snowflake, typing.MutableSet[str]] = {}
@@ -1077,7 +1090,7 @@ class MessageCache(_Reference, traits.MessageCache):
 
     async def __bulk_delete_messages(self, message_ids: typing.Iterable[bytes]) -> None:
         client = await self.get_connection(ResourceIndex.MESSAGE)
-        asyncio.gather(*(client.delete(*window) for window in redis_iterators.chunk_values(message_ids)))
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(message_ids)))
 
     async def __bulk_delete_guild_messages(self, guild_id: int, message_ids: typing.Iterable[bytes]) -> None:
         await self.__bulk_delete_messages(message_ids)
@@ -1356,7 +1369,8 @@ class RoleCache(_Reference, traits.RoleCache):
         # TODO: this is racey
         await self._clear_ids_for_resource(ResourceIndex.GUILD, ResourceIndex.ROLE)
         client = await self.get_connection(ResourceIndex.ROLE)
-        await client.flushdb()
+        ids = await client.keys("*")
+        #  TODO: finish this
 
     async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
@@ -1366,7 +1380,7 @@ class RoleCache(_Reference, traits.RoleCache):
 
         await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, *role_ids)
         client = await self.get_connection(ResourceIndex.ROLE)
-        asyncio.gather(*(client.delete(*window) for window in redis_iterators.chunk_values(role_ids)))
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(role_ids)))
 
     async def delete_role(self, role_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
@@ -1437,9 +1451,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
                 if not include_reference_key:
                     continue
 
-                references[state.channel_id].add(
-                    redis_iterators.HashReferenceIterator.generate_hash_key(state.guild_id)
-                )
+                references[state.channel_id].add(redis_iterators.HashReferenceIterator.hash_key(state.guild_id))
 
             references[state.channel_id].add(str(state.user_id))
 
@@ -1503,7 +1515,10 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         states = await self.iter_voice_states_for_guild(guild_id)
         await client.delete(int(guild_id))  # TODO: delete specific ids, not just clear all
         references = self.__generate_references(states, include_reference_key=False)
-        asyncio.gather(client.srem(key, *values) for key, values in references.items())
+        asyncio.gather(
+            self._delete_ids(ResourceIndex.CHANNEL, key, ResourceIndex.VOICE_STATE, *values, reference_key=True)
+            for key, values in references.items()
+        )
 
     async def clear_voice_states_for_channel(
         self, channel_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
@@ -1515,7 +1530,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             await self._clear_ids_for_slave(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE)
             client = await self.get_connection(ResourceIndex.VOICE_STATE)
             asyncio.gather(
-                *(client.delete(*window) for window in redis_iterators.chunk_values(ids, window_size=window_size))
+                *itertools.starmap(client.delete, redis_iterators.chunk_values(ids, window_size=window_size))
             )
             await self._delete_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.INVITE, *ids, reference_key=True)
             # TODO: do this instead of "clearing" more consistently
@@ -1599,7 +1614,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             voice_state.channel_id,
             ResourceIndex.VOICE_STATE,
             int(voice_state.user_id),
-            redis_iterators.HashReferenceIterator.generate_hash_key(voice_state.guild_id),
+            redis_iterators.HashReferenceIterator.hash_key(voice_state.guild_id),
         )
 
 

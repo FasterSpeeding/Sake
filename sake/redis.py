@@ -27,6 +27,7 @@ from hikari import guilds
 from hikari import invites as invites_
 from hikari import presences as presences_
 from hikari import snowflakes
+from hikari import undefined
 from hikari import users
 from hikari import voices
 from hikari.events import channel_events
@@ -1090,7 +1091,70 @@ class MessageCache(ResourceClient, traits.MessageCache):
     async def update_message(self, message: messages.PartialMessage, /) -> bool:
         # <<Inherited docstring from sake.traits.MessageCache>>
         # This is a special case method for handling the partial message updates we get
-        raise NotImplementedError
+        try:
+            full_message = await self.get_message(message.id)
+        except errors.EntryNotFound:
+            return False
+
+        if message.content is not undefined.UNDEFINED:
+            full_message.content = message.content
+
+        if message.timestamp is not undefined.UNDEFINED:
+            full_message.timestamp = message.timestamp
+
+        if message.edited_timestamp is not undefined.UNDEFINED:
+            full_message.edited_timestamp = message.edited_timestamp
+
+        if message.is_tts is not undefined.UNDEFINED:
+            full_message.is_tts = message.is_tts
+
+        if message.is_mentioning_everyone is not undefined.UNDEFINED:
+            full_message.is_mentioning_everyone = message.is_mentioning_everyone
+
+        if message.user_mentions is not undefined.UNDEFINED:
+            full_message.user_mentions = message.user_mentions
+
+        if message.role_mentions is not undefined.UNDEFINED:
+            full_message.role_mentions = message.role_mentions
+
+        if message.channel_mentions is not undefined.UNDEFINED:
+            full_message.channel_mentions = message.channel_mentions
+
+        if message.attachments is not undefined.UNDEFINED:
+            full_message.attachments = message.attachments
+
+        if message.embeds is not undefined.UNDEFINED:
+            full_message.embeds = message.embeds
+
+        if message.reactions is not undefined.UNDEFINED:
+            full_message.reactions = message.reactions
+
+        if message.is_pinned is not undefined.UNDEFINED:
+            full_message.is_pinned = message.is_pinned
+
+        if message.webhook_id is not undefined.UNDEFINED:
+            full_message.webhook_id = message.webhook_id
+
+        if message.type is not undefined.UNDEFINED:
+            full_message.type = message.type
+
+        if message.activity is not undefined.UNDEFINED:
+            full_message.activity = message.activity
+
+        if message.application is not undefined.UNDEFINED:
+            full_message.application = message.application
+
+        if message.message_reference is not undefined.UNDEFINED:
+            full_message.message_reference = message.message_reference
+
+        if message.flags is not undefined.UNDEFINED:
+            full_message.flags = message.flags
+
+        if message.nonce is not undefined.UNDEFINED:
+            full_message.nonce = message.nonce
+
+        await self.set_message(full_message)
+        return True
 
 
 class PresenceCache(ResourceClient, traits.PresenceCache):

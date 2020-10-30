@@ -374,7 +374,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         return None
 
 
-class _Reference(ResourceClient):
+class _Reference(ResourceClient, abc.ABC):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -531,7 +531,9 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.EMOJI,)
 
-    async def __bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
+    async def __bulk_add_emojis(
+        self, emojis: typing.Iterable[emojis_.KnownCustomEmoji], guild_id: snowflakes.Snowflake
+    ) -> None:
         client = await self.get_connection(ResourceIndex.EMOJI)
         windows = redis_iterators.chunk_values(emojis)
         setters = (
@@ -539,16 +541,23 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
             for window in windows
         )
         user_setter = self._optionally_bulk_set_users(emoji.user for emoji in emojis if emoji.user is not None)
-        asyncio.gather(*setters, user_setter)
+        reference_setter = self._add_ids(
+            ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, *(int(emoji.id) for emoji in emojis)
+        )
+        asyncio.gather(*setters, user_setter, reference_setter)
 
     async def __on_emojis_update(self, event: guild_events.EmojisUpdateEvent) -> None:
         await self.clear_emojis_for_guild(event.guild_id)
-        await self.__bulk_add_emojis(event.emojis)
+
+        if event.emojis:
+            await self.__bulk_add_emojis(event.emojis, event.guild_id)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
             await self.clear_emojis_for_guild(event.guild_id)
-            await self.__bulk_add_emojis(event.emojis.values())
+
+            if event.emojis:
+                await self.__bulk_add_emojis(event.emojis.values(), event.guild_id)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await self.clear_emojis_for_guild(event.guild_id)
@@ -587,15 +596,16 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
+        emoji_id = int(emoji_id)
         client = await self.get_connection(ResourceIndex.EMOJI)
-        data = await client.get(int(emoji_id))
+        data = await client.get(emoji_id)
 
         if not data:
             return
 
         emoji = self.marshaller.deserialize_emoji(data)  # TODO: can i avoid this?
         await self._delete_ids(ResourceIndex.GUILD, int(emoji.guild_id), ResourceIndex.EMOJI, int(emoji.id))
-        await client.delete(int(emoji_id))
+        await client.delete(emoji_id)
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis_.KnownCustomEmoji:
         # <<Inherited docstring from sake.traits.EmojiCache>>
@@ -760,19 +770,28 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
 
     async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        channel_ids = await self._get_ids(ResourceIndex.GUILD, int(guild_id), ResourceIndex.CHANNEL, cast=bytes)
+        guild_id = int(guild_id)
+        channel_ids = await self._get_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, cast=bytes)
         if not channel_ids:
             return
 
-        await self._delete_ids(ResourceIndex.GUILD, int(guild_id), ResourceIndex.CHANNEL, *channel_ids)
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, *channel_ids)
         client = await self.get_connection(ResourceIndex.CHANNEL)
         #  TODO: is there any benefit to chunking on bulk delete?
         asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(channel_ids)))
 
     async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
+        channel_id = int(channel_id)
         client = await self.get_connection(ResourceIndex.CHANNEL)
-        await client.delete(int(channel_id))
+        data = await client.get(channel_id)
+
+        if not data:
+            return
+
+        channel = self.marshaller.deserialize_guild_channel(data)
+        await self._delete_ids(ResourceIndex.GUILD, int(channel.guild_id), ResourceIndex.CHANNEL, channel_id)
+        await client.delete(channel_id)
 
     async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> channels.GuildChannel:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
@@ -842,6 +861,8 @@ class InviteCache(ResourceClient, traits.InviteCache):
     async def delete_invite(self, invite_code: str, /) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
+        # Aioredis treats keys and values as type invariant so we want to ensure this is a str and not a class which
+        # subclasses str.
         await client.delete(str(invite_code))
 
     async def get_invite(self, invite_code: str, /) -> invites_.InviteWithMetadata:
@@ -1235,15 +1256,16 @@ class RoleCache(_Reference, traits.RoleCache):
 
     async def delete_role(self, role_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
+        role_id = int(role_id)
         client = await self.get_connection(ResourceIndex.ROLE)
-        data = await client.get(int(role_id))
+        data = await client.get(role_id)
 
         if not data:
             return
 
         role = self.marshaller.deserialize_role(data)  # TODO: can i avoid this?
         await self._delete_ids(ResourceIndex.GUILD, int(role.guild_id), ResourceIndex.ROLE, int(role.id))
-        await client.delete(int(role_id))
+        await client.delete(role_id)
 
     async def get_role(self, role_id: snowflakes.Snowflakeish, /) -> guilds.Role:
         # <<Inherited docstring from sake.traits.RoleCache>>
@@ -1326,7 +1348,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             reference_setters = (
                 self._add_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE, *state_ids)
                 for channel_id, state_ids in references.items()
-            )  # TODO: could there be a race condition between the references being set and voice states being removed?
+            )
             user_setter = self._optionally_bulk_set_users(state.member.user for state in event.voice_states.values())
             asyncio.gather(*setters, user_setter, *reference_setters)
 
@@ -1356,19 +1378,37 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
             self.dispatch.dispatcher.unsubscribe(voice_events.VoiceStateUpdateEvent, self.__on_voice_state_update)
 
+    @staticmethod
+    def _pop_reference(keys: typing.MutableSequence[bytes]) -> typing.Tuple[bytes, typing.Sequence[bytes]]:
+        for key in keys:
+            if key.startswith(b"KEY."):
+                keys.remove(key)
+                return key[4:], keys
+
+        raise ValueError("Couldn't find reference key")
+
     async def clear_voice_states(self) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
-        raise NotImplementedError
+        references = await self._dump_relationship(ResourceIndex.CHANNEL, ResourceIndex.VOICE_STATE)
+        client = await self.get_connection(ResourceIndex.VOICE_STATE)
+        asyncio.gather(
+            *(client.hdel(key, *values) for key, values in map(self._pop_reference, references.values()) if values)
+        )
 
     async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
         states = await self.iter_voice_states_for_guild(guild_id)
-        await client.delete(int(guild_id))  # TODO: delete specific ids, not just clear all
         references = self.__generate_references(states, include_reference_key=False)
         asyncio.gather(
             self._delete_ids(ResourceIndex.CHANNEL, key, ResourceIndex.VOICE_STATE, *values, reference_key=True)
             for key, values in references.items()
+        )
+        asyncio.gather(
+            *(
+                client.hdel(int(guild_id), *values)
+                for values in redis_iterators.chunk_values(state.user_id for state in states)
+            )
         )
 
     async def clear_voice_states_for_channel(
@@ -1384,8 +1424,6 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
         asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(ids, window_size=window_size)))
         await self._delete_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.INVITE, *ids, reference_key=True)
-        # TODO: do this instead of "clearing" more consistently
-        # TODO: have a more general look into race-conditions around referencing stuff
 
     async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>

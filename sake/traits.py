@@ -311,10 +311,16 @@ class MessageCache(Resource, typing.Protocol):
 class RefMessageCache(MessageCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
+    async def clear_messages_for_author(self, user_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
     async def clear_messages_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
     async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    def iter_messages_for_author(self, user_id: snowflakes.Snowflakeish, /) -> CacheIterator[messages.Message]:
         raise NotImplementedError
 
     def iter_message_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> CacheIterator[messages.Message]:
@@ -444,7 +450,7 @@ class VoiceStateCache(Resource, typing.Protocol):
 
 
 class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
-    __slots__: typing.Sequence[str] = ()
+    __slots__: typing.Sequence[str] = ()  # TODO: for user?
 
     async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError

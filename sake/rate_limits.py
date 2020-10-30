@@ -9,7 +9,7 @@ from hikari import errors as hikari_errors
 from hikari.impl import rate_limits as _rate_limits
 
 
-BACKOFF_ERRORS: typing.Final[typing.Sequence[BaseException]] = (
+BACKOFF_ERRORS: typing.Final[typing.Sequence[typing.Type[BaseException]]] = (
     hikari_errors.RateLimitedError,
     hikari_errors.InternalServerError,
 )

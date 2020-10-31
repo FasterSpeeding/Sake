@@ -14,7 +14,6 @@ from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
     "Cache",
-    "Resource",
     "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
@@ -22,6 +21,18 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "MeCache",
     "MemberCache",
     "PresenceCache",
+    "Resource",
+    "RefCache",
+    "RefEmojiCache",
+    "RefGuildCache",
+    "RefGuildChannelCache",
+    "RefInviteCache",
+    "RefMeCache",
+    "RefMemberCache",
+    "RefPresenceCache",
+    "RefRoleCache",
+    "RefUserCache",
+    "RefVoiceStateCache",
     "RoleCache",
     "UserCache",
     "VoiceStateCache",
@@ -499,6 +510,6 @@ class RefCache(
     RefVoiceStateCache,
     typing.Protocol,
 ):
-    """Protocol of a cache which implements all the defined resources."""
+    """Protocol of a cache which implements all the defined reference resources."""
 
     __slots__: typing.Sequence[str] = ()

@@ -102,6 +102,7 @@ def cast_map_window(
 
 
 async def _close_client(client: aioredis.Redis) -> None:
+    # TODO: will we need to catch errors here?
     await client.close()
 
 
@@ -202,7 +203,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         ResourceIndex
             The index of the resource this class is linked to.
         """
-        raise NotImplementedError
+        return ()
 
     @property  # As a note, this will only be set if this is actively hooked into event dispatchers
     def dispatch(self) -> typing.Optional[hikari_traits.DispatcherAware]:
@@ -269,13 +270,12 @@ class ResourceClient(traits.Resource, abc.ABC):
         except KeyError:
             raise ValueError(f"Resource index `{resource}` is invalid for this client") from None
 
-    def _get_indexes(self) -> typing.MutableSet[ResourceIndex]:
+    @classmethod
+    def _get_indexes(cls) -> typing.MutableSet[ResourceIndex]:
         results: typing.Set[ResourceIndex] = set()
-        for cls in type(self).mro():
-            if not issubclass(cls, ResourceClient) or cls is ResourceClient:
-                continue
-
-            results.update(cls.index())
+        for sub_class in cls.mro():
+            if issubclass(sub_class, ResourceClient):
+                results.update(sub_class.index())
 
         return results
 
@@ -345,7 +345,15 @@ class ResourceClient(traits.Resource, abc.ABC):
         if self.__started:
             return
 
-        await asyncio.gather(*map(self._spawn_connection, self._get_indexes()))
+        try:
+            await asyncio.gather(*map(self._spawn_connection, self._get_indexes()))
+        except aioredis.RedisError:
+            # Ensure no dangling clients are left if this fails to start.
+            clients = self.__clients
+            self.__clients = {}
+            await asyncio.gather(*map(_close_client, clients.values()))
+            raise
+
         self.subscribe_listeners()
         self.__started = True
 
@@ -432,7 +440,8 @@ class _Reference(ResourceClient, abc.ABC):
         return [*map(cast, await client.smembers(key))]
 
 
-class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
+# To avoid breaking Mro conflicts this is kept as a separate class despite only being exposed through the UserCache.
+class _MeCache(ResourceClient, traits.MeCache):
     __slots__: typing.Sequence[str] = ()
 
     __ME_KEY: typing.Final[str] = "ME"
@@ -440,7 +449,8 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
     @classmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return (ResourceIndex.USER,)
+        # This isn't a full MeCache implementation in itself as it's reliant on the UserCache implementation.
+        return ()
 
     async def __on_own_user_update(self, event: user_events.OwnUserUpdateEvent) -> None:
         await self.set_me(event.user)
@@ -450,7 +460,6 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        # The users cache is a special case as it doesn't directly map to any events for most user entries.
         super().subscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.subscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
@@ -458,26 +467,15 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        # The users cache is a special case as it doesn't directly map to any events for most user entries.
         super().unsubscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.subscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
             self.dispatch.dispatcher.subscribe(shard_events.ShardReadyEvent, self.__on_shard_ready)
 
-    async def clear_users(self) -> None:
-        # <<Inherited docstring from sake.traits.UserCache>>
-        client = await self.get_connection(ResourceIndex.USER)
-        await client.flushdb()
-
     async def delete_me(self) -> None:
         # <<Inherited docstring from sake.traits.MeCache>>
         client = await self.get_connection(ResourceIndex.USER)
         await client.delete(self.__ME_KEY)
-
-    async def delete_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
-        # <<Inherited docstring from sake.traits.UserCache>>
-        client = await self.get_connection(ResourceIndex.USER)
-        await client.delete(int(user_id))
 
     async def get_me(self) -> users.OwnUser:
         # <<Inherited docstring from sake.traits.MeCache>>
@@ -488,6 +486,42 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
             raise errors.EntryNotFound("Me entry not found")
 
         return self.marshaller.deserialize_me(data)
+
+    async def set_me(self, me: users.OwnUser, /) -> None:
+        # <<Inherited docstring from sake.traits.MeCache>>
+        data = self.marshaller.serialize_me(me)
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.set(self.__ME_KEY, data)
+        await self._optionally_set_user(me)
+
+
+class UserCache(_MeCache, traits.UserCache):
+    __slots__: typing.Sequence[str] = ()
+
+    @classmethod
+    def index(cls) -> typing.Sequence[ResourceIndex]:
+        # <<Inherited docstring from ResourceClient>>
+        return (ResourceIndex.USER,)
+
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        # The users cache is a special case as it doesn't directly map to any events for most user entries.
+        super().subscribe_listeners()
+
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        # The users cache is a special case as it doesn't directly map to any events for most user entries.
+        super().unsubscribe_listeners()
+
+    async def clear_users(self) -> None:
+        # <<Inherited docstring from sake.traits.UserCache>>
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.flushdb()
+
+    async def delete_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
+        # <<Inherited docstring from sake.traits.UserCache>>
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.delete(int(user_id))
 
     async def get_user(self, user_id: snowflakes.Snowflakeish, /) -> users.User:
         # <<Inherited docstring from sake.traits.UserCache>>
@@ -506,13 +540,6 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
         return redis_iterators.Iterator(
             self, ResourceIndex.USER, self.marshaller.deserialize_user, window_size=window_size
         )
-
-    async def set_me(self, me: users.OwnUser, /) -> None:
-        # <<Inherited docstring from sake.traits.MeCache>>
-        data = self.marshaller.serialize_me(me)
-        client = await self.get_connection(ResourceIndex.USER)
-        await client.set(self.__ME_KEY, data)
-        await self._optionally_set_user(me)
 
     async def set_user(self, user: users.User, /, *, expire_time: typing.Optional[int] = None) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
@@ -663,7 +690,6 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        #  TODO: on member chunk
         super().subscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
@@ -1577,11 +1603,12 @@ class RedisCache(
     GuildChannelCache,
     InviteCache,
     MemberCache,
-    # MessageCache,
+    MessageCache,
     PresenceCache,
     RoleCache,
     UserCache,
     VoiceStateCache,
+    traits.Cache,
 ):
     """A Redis implementation of all the defined cache resources."""
 

@@ -23,7 +23,8 @@ KeyT = typing.TypeVar("KeyT")
 ValueT = typing.TypeVar("ValueT")
 OtherKeyT = typing.TypeVar("OtherKeyT")
 OtherValueT = typing.TypeVar("OtherValueT")
-WINDOW_SIZE: typing.Final[int] = 1000
+WINDOW_SIZE: typing.Final[int] = 1_000
+"""The default size used for "windowed" chunking in this client."""
 
 
 def chunk_values(

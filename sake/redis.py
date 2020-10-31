@@ -68,12 +68,14 @@ KeyT = typing.TypeVar("KeyT")
 OtherKeyT = typing.TypeVar("OtherKeyT")
 ValueT = typing.TypeVar("ValueT")
 OtherValueT = typing.TypeVar("OtherValueT")
-WINDOW_SIZE: typing.Final[int] = 1000
+WINDOW_SIZE: typing.Final[int] = 1_000
 """The default size used for "windowed" chunking in this client."""
-DEFAULT_EXPIRE: typing.Final[int] = 300000
-"""The default expire time (in milliseconds) used for expiring resources."""
-DEFAULT_INVITE_EXPIRE: typing.Final[int] = 2592000000
-"""A special case default expire time for invite entries of around a month."""
+DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
+"""The default expire time (in milliseconds) used for expiring resources of 60 minutes."""
+DEFAULT_FAST_EXPIRE: typing.Final[int] = 300_000
+"""The default expire time (in milliseconds) used for expiring resources quickly of 5 minutes."""
+DEFAULT_INVITE_EXPIRE: typing.Final[int] = 2_592_000_000
+"""A special case month long default expire time for invite entries without a set "expire_at"."""
 
 
 class ResourceIndex(enum.IntEnum):
@@ -1109,7 +1111,7 @@ class MessageCache(ResourceClient, traits.MessageCache):
         client = await self.get_connection(ResourceIndex.MESSAGE)
 
         if expire_time is None:
-            expire_time = int(self.metadata.get("expire_message", DEFAULT_EXPIRE))
+            expire_time = int(self.metadata.get("expire_message", DEFAULT_FAST_EXPIRE))
 
         await client.set(int(message.id), data, expire=expire_time)
         await self._optionally_set_user(message.author)

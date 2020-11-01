@@ -38,6 +38,7 @@ KeyT = typing.TypeVar("KeyT")
 OtherKeyT = typing.TypeVar("OtherKeyT")
 ValueT = typing.TypeVar("ValueT")
 OtherValueT = typing.TypeVar("OtherValueT")
+JSONValue = typing.Union[str, int, float, bool, None]
 
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.conversion")
 
@@ -864,7 +865,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         if resource_type == "file":
             return typing.cast(
                 "files.Resource[files.AsyncReader]",
-                files.File(data["path"], filename=data["filename"], spoiler=data["is_spoiler"]),
+                files.File(files.ensure_path(data["path"]), filename=data["filename"], spoiler=data["is_spoiler"]),
             )
 
         if resource_type == "bytes":
@@ -1083,7 +1084,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         if isinstance(resource, files.File):
             return {
                 "type": "file",
-                "path": resource.path,
+                "path": str(resource.path),
                 "is_spoiler": resource.is_spoiler,
                 "filename": resource.filename,
             }

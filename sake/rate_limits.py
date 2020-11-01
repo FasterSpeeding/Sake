@@ -46,3 +46,6 @@ class BackOff:
 
     def backoff(self, backoff_: float, /) -> None:
         self._next_backoff = backoff_
+
+    def rest_exponent(self) -> None:
+        self._backoff.reset()

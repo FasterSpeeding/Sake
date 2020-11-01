@@ -1066,7 +1066,7 @@ class MessageCache(ResourceClient, traits.MessageCache):
 
         elif isinstance(event, message_events.MessageDeleteEvent):
             client = await self.get_connection(ResourceIndex.MESSAGE)
-            asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(event.message_ids)))
+            asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(map(int, event.message_ids))))
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -1107,7 +1107,7 @@ class MessageCache(ResourceClient, traits.MessageCache):
 
     async def set_message(self, message: messages.Message, /, *, expire_time: typing.Optional[int] = None) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
-        data = self.marshaller.serialize_message(message)
+        data = await self.marshaller.serialize_message(message)
         client = await self.get_connection(ResourceIndex.MESSAGE)
 
         if expire_time is None:

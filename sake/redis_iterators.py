@@ -374,7 +374,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
 
 
 class SpecificMapIterator(traits.CacheIterator[ValueT]):
-    __slots__ = ("_buffer", "_builder", "_client", "_index", "key", "_len", "_windows", "_window_size")
+    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
 
     def __init__(
         self,

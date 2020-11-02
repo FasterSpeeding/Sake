@@ -14,7 +14,6 @@ from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
     "Cache",
-    "Resource",
     "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
@@ -22,6 +21,18 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "MeCache",
     "MemberCache",
     "PresenceCache",
+    "Resource",
+    "RefCache",
+    "RefEmojiCache",
+    "RefGuildCache",
+    "RefGuildChannelCache",
+    "RefInviteCache",
+    "RefMeCache",
+    "RefMemberCache",
+    "RefPresenceCache",
+    "RefRoleCache",
+    "RefUserCache",
+    "RefVoiceStateCache",
     "RoleCache",
     "UserCache",
     "VoiceStateCache",
@@ -119,22 +130,26 @@ class EmojiCache(Resource, typing.Protocol):
     async def clear_emojis(self) -> None:
         raise NotImplementedError
 
-    async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
-
-    async def get_emoji(self, emoji_id: snowflakes.Snowflakeish) -> emojis.KnownCustomEmoji:
+    async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis.KnownCustomEmoji:
         raise NotImplementedError
 
     def iter_emojis(self) -> CacheIterator[emojis.KnownCustomEmoji]:
         raise NotImplementedError
 
-    def iter_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[emojis.KnownCustomEmoji]:
+    async def set_emoji(self, emoji: emojis.KnownCustomEmoji, /) -> None:
         raise NotImplementedError
 
-    async def set_emoji(self, emoji: emojis.KnownCustomEmoji) -> None:
+
+class RefEmojiCache(EmojiCache, typing.Protocol):
+    __slots__: typing.Sequence[str] = ()
+
+    async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    def iter_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[emojis.KnownCustomEmoji]:
         raise NotImplementedError
 
 
@@ -144,17 +159,20 @@ class GuildCache(Resource, typing.Protocol):
     async def clear_guilds(self) -> None:
         raise NotImplementedError
 
-    async def delete_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def delete_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def get_guild(self, guild_id: snowflakes.Snowflakeish) -> guilds.GatewayGuild:
+    async def get_guild(self, guild_id: snowflakes.Snowflakeish, /) -> guilds.GatewayGuild:
         raise NotImplementedError
 
     def iter_guilds(self) -> CacheIterator[guilds.GatewayGuild]:
         raise NotImplementedError
 
-    async def set_guild(self, guild: guilds.GatewayGuild) -> None:
+    async def set_guild(self, guild: guilds.GatewayGuild, /) -> None:
         raise NotImplementedError
+
+
+RefGuildCache = GuildCache
 
 
 class GuildChannelCache(Resource, typing.Protocol):
@@ -163,22 +181,28 @@ class GuildChannelCache(Resource, typing.Protocol):
     async def clear_guild_channels(self) -> None:
         raise NotImplementedError
 
-    async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
-
-    async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> channels.GuildChannel:
+    async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> channels.GuildChannel:
         raise NotImplementedError
 
     def iter_guild_channels(self) -> CacheIterator[channels.GuildChannel]:
         raise NotImplementedError
 
-    def iter_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[channels.GuildChannel]:
+    async def set_guild_channel(self, channel: channels.GuildChannel, /) -> None:
         raise NotImplementedError
 
-    async def set_guild_channel(self, channel: channels.GuildChannel) -> None:
+
+class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
+    __slots__: typing.Sequence[str] = ()
+
+    async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    def iter_guild_channels_for_guild(
+        self, guild_id: snowflakes.Snowflakeish, /
+    ) -> CacheIterator[channels.GuildChannel]:
         raise NotImplementedError
 
 
@@ -188,30 +212,34 @@ class InviteCache(Resource, typing.Protocol):
     async def clear_invites(self) -> None:
         raise NotImplementedError
 
-    async def clear_invites_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+    async def delete_invite(self, invite_code: str, /) -> None:
         raise NotImplementedError
 
-    async def clear_invites_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
-
-    async def delete_invite(self, invite_code: str) -> None:
-        raise NotImplementedError
-
-    async def get_invite(self, invite_code: str) -> invites.InviteWithMetadata:
+    async def get_invite(self, invite_code: str, /) -> invites.InviteWithMetadata:
         raise NotImplementedError
 
     def iter_invites(self) -> CacheIterator[invites.InviteWithMetadata]:
         raise NotImplementedError
 
+    async def set_invite(self, invite: invites.InviteWithMetadata, /) -> None:
+        raise NotImplementedError
+
+
+class RefInviteCache(InviteCache, typing.Protocol):
+    __slots__: typing.Sequence[str] = ()
+
+    async def clear_invites_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    async def clear_invites_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
     def iter_invites_for_channel(
-        self, channel_id: snowflakes.Snowflakeish
+        self, channel_id: snowflakes.Snowflakeish, /
     ) -> CacheIterator[invites.InviteWithMetadata]:
         raise NotImplementedError
 
-    def iter_invites_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[invites.InviteWithMetadata]:
-        raise NotImplementedError
-
-    async def set_invite(self, invite: invites.InviteWithMetadata) -> None:
+    def iter_invites_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[invites.InviteWithMetadata]:
         raise NotImplementedError
 
 
@@ -224,8 +252,11 @@ class MeCache(Resource, typing.Protocol):
     async def get_me(self) -> users.OwnUser:
         raise NotImplementedError
 
-    async def set_me(self, me: users.OwnUser) -> None:
+    async def set_me(self, me: users.OwnUser, /) -> None:
         raise NotImplementedError
+
+
+RefMeCache = MeCache
 
 
 class MemberCache(Resource, typing.Protocol):
@@ -234,13 +265,10 @@ class MemberCache(Resource, typing.Protocol):
     async def clear_members(self) -> None:
         raise NotImplementedError
 
-    async def clear_members_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def delete_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def delete_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
-
-    async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> guilds.Member:
+    async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> guilds.Member:
         raise NotImplementedError
 
     def iter_members(
@@ -248,13 +276,23 @@ class MemberCache(Resource, typing.Protocol):
     ) -> CacheIterator[guilds.Member]:
         raise NotImplementedError
 
-    def iter_members_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[guilds.Member]:
+    async def set_member(self, member: guilds.Member, /) -> None:
         raise NotImplementedError
 
-    def iter_members_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheIterator[guilds.Member]:
+
+class RefMemberCache(MemberCache, typing.Protocol):
+    __slots__: typing.Sequence[str] = ()
+
+    async def clear_members_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def set_member(self, member: guilds.Member) -> None:
+    async def clear_members_for_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    def iter_members_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Member]:
+        raise NotImplementedError
+
+    def iter_members_for_user(self, user_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Member]:
         raise NotImplementedError
 
 
@@ -264,32 +302,42 @@ class MessageCache(Resource, typing.Protocol):
     async def clear_messages(self) -> None:
         raise NotImplementedError
 
-    async def clear_messages_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+    async def delete_message(self, message_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
-
-    async def delete_message(self, message_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
-
-    async def get_message(self, message_id: snowflakes.Snowflakeish) -> messages.Message:
+    async def get_message(self, message_id: snowflakes.Snowflakeish, /) -> messages.Message:
         raise NotImplementedError
 
     def iter_messages(self) -> CacheIterator[messages.Message]:
         raise NotImplementedError
 
-    def iter_message_for_channel(self, channel_id: snowflakes.Snowflakeish) -> CacheIterator[messages.Message]:
+    async def set_message(self, message: messages.Message, /) -> None:
         raise NotImplementedError
 
-    def iter_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[messages.Message]:
-        raise NotImplementedError
-
-    async def set_message(self, message: messages.Message) -> None:
-        raise NotImplementedError
-
-    async def update_message(self, message: messages.PartialMessage) -> bool:
+    async def update_message(self, message: messages.PartialMessage, /) -> bool:
         # This is a special case method for handling the partial message updates we get
+        raise NotImplementedError
+
+
+class RefMessageCache(MessageCache, typing.Protocol):
+    __slots__: typing.Sequence[str] = ()
+
+    async def clear_messages_for_author(self, user_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    async def clear_messages_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    def iter_messages_for_author(self, user_id: snowflakes.Snowflakeish, /) -> CacheIterator[messages.Message]:
+        raise NotImplementedError
+
+    def iter_message_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> CacheIterator[messages.Message]:
+        raise NotImplementedError
+
+    def iter_messages_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[messages.Message]:
         raise NotImplementedError
 
 
@@ -299,14 +347,11 @@ class PresenceCache(Resource, typing.Protocol):
     async def clear_presences(self) -> None:
         raise NotImplementedError
 
-    async def clear_presences_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
-
-    async def delete_presence(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_presence(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
     async def get_presence(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish
+        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
     ) -> presences.MemberPresence:
         raise NotImplementedError
 
@@ -315,13 +360,23 @@ class PresenceCache(Resource, typing.Protocol):
     ) -> CacheIterator[presences.MemberPresence]:
         raise NotImplementedError
 
-    def iter_presences_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheIterator[presences.MemberPresence]:
+    async def set_presence(self, presence: presences.MemberPresence, /) -> None:
         raise NotImplementedError
 
-    def iter_presences_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[presences.MemberPresence]:
+
+class RefPresenceCache(PresenceCache, typing.Protocol):
+    __slots__: typing.Sequence[str] = ()
+
+    async def clear_presences_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def set_presence(self, presence: presences.MemberPresence) -> None:
+    async def clear_presences_for_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    def iter_presences_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[presences.MemberPresence]:
+        raise NotImplementedError
+
+    def iter_presences_for_user(self, user_id: snowflakes.Snowflakeish, /) -> CacheIterator[presences.MemberPresence]:
         raise NotImplementedError
 
 
@@ -331,22 +386,26 @@ class RoleCache(Resource, typing.Protocol):
     async def clear_roles(self) -> None:
         raise NotImplementedError
 
-    async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def delete_role(self, role_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def delete_role(self, role_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
-
-    async def get_role(self, role_id: snowflakes.Snowflakeish) -> guilds.Role:
+    async def get_role(self, role_id: snowflakes.Snowflakeish, /) -> guilds.Role:
         raise NotImplementedError
 
     def iter_roles(self) -> CacheIterator[guilds.Role]:
         raise NotImplementedError
 
-    def iter_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[guilds.Role]:
+    async def set_role(self, role: guilds.Role, /) -> None:
         raise NotImplementedError
 
-    async def set_role(self, role: guilds.Role) -> None:
+
+class RefRoleCache(RoleCache, typing.Protocol):
+    __slots__: typing.Sequence[str] = ()
+
+    async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    def iter_roles_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Role]:
         raise NotImplementedError
 
 
@@ -364,49 +423,56 @@ class UserCache(Resource, typing.Protocol):
     async def clear_users(self) -> None:  # TODO: cascade
         raise NotImplementedError
 
-    async def delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
+    async def get_user(self, user_id: snowflakes.Snowflakeish, /) -> users.User:
         raise NotImplementedError
 
     def iter_users(self) -> CacheIterator[users.User]:
         raise NotImplementedError
 
-    async def set_user(self, user: users.User) -> None:
+    async def set_user(self, user: users.User, /) -> None:
         raise NotImplementedError
+
+
+RefUserCache = UserCache
 
 
 class VoiceStateCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_voice_states(self) -> None:
         raise NotImplementedError
 
-    async def clear_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
-        raise NotImplementedError
-
-    async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
     async def get_voice_state(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish
+        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
     ) -> voices.VoiceState:
         raise NotImplementedError
 
     def iter_voice_states(self) -> CacheIterator[voices.VoiceState]:
         raise NotImplementedError
 
-    def iter_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish) -> CacheIterator[voices.VoiceState]:
+    async def set_voice_state(self, voice_state: voices.VoiceState, /) -> None:
         raise NotImplementedError
 
-    def iter_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish) -> CacheIterator[voices.VoiceState]:
+
+class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
+    __slots__: typing.Sequence[str] = ()  # TODO: for user?
+
+    async def clear_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    def iter_voice_states_for_user(self, user_id: snowflakes.Snowflakeish) -> CacheIterator[voices.VoiceState]:
+    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def set_voice_state(self, voice_state: voices.VoiceState) -> None:
+    def iter_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> CacheIterator[voices.VoiceState]:
+        raise NotImplementedError
+
+    def iter_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[voices.VoiceState]:
         raise NotImplementedError
 
 
@@ -425,5 +491,25 @@ class Cache(
     typing.Protocol,
 ):
     """Protocol of a cache which implements all the defined resources."""
+
+    __slots__: typing.Sequence[str] = ()
+
+
+class RefCache(
+    Cache,
+    RefGuildCache,
+    RefEmojiCache,
+    RefGuildChannelCache,
+    RefInviteCache,
+    RefMeCache,
+    RefMemberCache,
+    RefMessageCache,
+    RefPresenceCache,
+    RefRoleCache,
+    RefUserCache,
+    RefVoiceStateCache,
+    typing.Protocol,
+):
+    """Protocol of a cache which implements all the defined reference resources."""
 
     __slots__: typing.Sequence[str] = ()

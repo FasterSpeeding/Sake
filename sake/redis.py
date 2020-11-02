@@ -23,11 +23,14 @@ import typing
 
 import aioredis
 from hikari import channels
+from hikari import errors as hikari_errors
 from hikari import guilds
-from hikari import invites
+from hikari import invites as invites_
 from hikari import presences as presences_
 from hikari import snowflakes
+from hikari import undefined
 from hikari import users
+from hikari import voices
 from hikari.events import channel_events
 from hikari.events import guild_events
 from hikari.events import member_events
@@ -36,9 +39,11 @@ from hikari.events import role_events
 from hikari.events import shard_events
 from hikari.events import user_events
 from hikari.events import voice_events
+from hikari.internal import time
 
 from sake import errors
 from sake import marshalling
+from sake import rate_limits
 from sake import redis_iterators
 from sake import traits
 
@@ -50,7 +55,6 @@ if typing.TYPE_CHECKING:
     from hikari import emojis as emojis_
     from hikari import messages
     from hikari import traits as hikari_traits
-    from hikari import voices
 
 
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake")
@@ -65,10 +69,14 @@ KeyT = typing.TypeVar("KeyT")
 OtherKeyT = typing.TypeVar("OtherKeyT")
 ValueT = typing.TypeVar("ValueT")
 OtherValueT = typing.TypeVar("OtherValueT")
-WINDOW_SIZE: typing.Final[int] = 1000
+WINDOW_SIZE: typing.Final[int] = 1_000
 """The default size used for "windowed" chunking in this client."""
-DEFAULT_EXPIRE: typing.Final[int] = 300000
-"""The default expire time (in milliseconds) used for the user resource."""
+DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
+"""The default expire time (in milliseconds) used for expiring resources of 60 minutes."""
+DEFAULT_FAST_EXPIRE: typing.Final[int] = 300_000
+"""The default expire time (in milliseconds) used for expiring resources quickly of 5 minutes."""
+DEFAULT_INVITE_EXPIRE: typing.Final[int] = 2_592_000_000
+"""A special case month long default expire time for invite entries without a set "expire_at"."""
 
 
 class ResourceIndex(enum.IntEnum):
@@ -76,27 +84,16 @@ class ResourceIndex(enum.IntEnum):
 
     EMOJI = 0
     GUILD = 1
-    GUILD_CHANNEL = 2
+    CHANNEL = 2
     INVITE = 3
     MEMBER = 4
     PRESENCE = 5
     ROLE = 6
     USER = 7
     VOICE_STATE = 8
-    GUILD_REFERENCE = 9
-    #  This is a special case database solely used for linking other entries to their relevant guilds.
+    REFERENCE = 9
+    #  REFERENCE is a special case database solely used for linking other entries to other master entities.
     MESSAGE = 10
-
-
-def chunk_values(
-    values: typing.Iterable[ValueT], window_size: int = WINDOW_SIZE
-) -> typing.Iterator[typing.Sequence[ValueT]]:
-    if window_size <= 0:
-        raise ValueError("Window size must be a positive integer")
-
-    iterator = iter(values)
-    while result := list(itertools.islice(iterator, window_size)):
-        yield result
 
 
 def cast_map_window(
@@ -108,6 +105,7 @@ def cast_map_window(
 
 
 async def _close_client(client: aioredis.Redis) -> None:
+    # TODO: will we need to catch errors here?
     await client.close()
 
 
@@ -144,37 +142,38 @@ class ResourceClient(traits.Resource, abc.ABC):
     """
 
     __slots__: typing.Sequence[str] = (
-        "_address",
-        "_clients",
-        "_converter",
-        "_dispatch",
-        "_metadata",
-        "_password",
-        "_rest",
-        "_ssl",
-        "_started",
+        "__address",
+        "__clients",
+        "__marshaller",
+        "__dispatch",
+        "__metadata",
+        "__password",
+        "__rest",
+        "__ssl",
+        "__started",
     )
 
     def __init__(
         self,
         rest: hikari_traits.RESTAware,
         dispatch: typing.Optional[hikari_traits.DispatcherAware] = None,
+        /,
         *,
         address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
         password: typing.Optional[str] = None,
         ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
         metadata: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
-        object_marshaller: typing.Optional[marshalling.ObjectMarshaller] = None,
+        object_marshaller: typing.Optional[marshalling.ObjectMarshaller[bytes]] = None,
     ) -> None:
-        self._address = address
-        self._dispatch = dispatch
-        self._clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
-        self._converter = object_marshaller or marshalling.JSONMarshaller(rest)
-        self._metadata = metadata or {}
-        self._password = password
-        self._rest = rest
-        self._ssl = ssl
-        self._started = False
+        self.__address = address
+        self.__dispatch = dispatch
+        self.__clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
+        self.__marshaller = object_marshaller or marshalling.JSONMarshaller(rest)
+        self.__metadata = metadata or {}
+        self.__password = password
+        self.__rest = rest
+        self.__ssl = ssl
+        self.__started = False
 
     async def __aenter__(self: ResourceT) -> ResourceT:
         await self.open()
@@ -207,7 +206,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         ResourceIndex
             The index of the resource this class is linked to.
         """
-        raise NotImplementedError
+        return ()
 
     @property  # As a note, this will only be set if this is actively hooked into event dispatchers
     def dispatch(self) -> typing.Optional[hikari_traits.DispatcherAware]:
@@ -223,11 +222,15 @@ class ResourceClient(traits.Resource, abc.ABC):
             The dispatcher aware client this resource is tied to if set,
             else `builtins.None`.
         """
-        return self._dispatch
+        return self.__dispatch
+
+    @property
+    def marshaller(self) -> marshalling.ObjectMarshaller[bytes]:
+        return self.__marshaller
 
     @property
     def metadata(self) -> typing.MutableMapping[str, typing.Any]:
-        return self._metadata
+        return self.__metadata
 
     @property  # unlike here where this is 100% required for building models.
     def rest(self) -> hikari_traits.RESTAware:
@@ -240,9 +243,9 @@ class ResourceClient(traits.Resource, abc.ABC):
         hikari.traits.RESTAware
             The REST aware client this resource is tied to.
         """
-        return self._rest
+        return self.__rest
 
-    async def get_connection(self, resource: ResourceIndex) -> aioredis.Redis:
+    async def get_connection(self, resource: ResourceIndex, /) -> aioredis.Redis:
         """Get the connection for a specific resource.
 
         Parameters
@@ -262,25 +265,24 @@ class ResourceClient(traits.Resource, abc.ABC):
         ValueError
             When you pass an invalid resource for the client.
         """
-        if not self._started:
+        if not self.__started:
             raise TypeError("Cannot use an inactive client")
 
         try:
-            return self._clients[resource]
+            return self.__clients[resource]
         except KeyError:
             raise ValueError(f"Resource index `{resource}` is invalid for this client") from None
 
-    def _get_indexes(self) -> typing.MutableSet[ResourceIndex]:
+    @classmethod
+    def _get_indexes(cls) -> typing.MutableSet[ResourceIndex]:
         results: typing.Set[ResourceIndex] = set()
-        for cls in type(self).mro():
-            if not issubclass(cls, ResourceClient) or cls is ResourceClient:
-                continue
-
-            results.update(cls.index())
+        for sub_class in cls.mro():
+            if issubclass(sub_class, ResourceClient):
+                results.update(sub_class.index())
 
         return results
 
-    async def get_connection_status(self, resource: ResourceIndex) -> bool:
+    async def get_connection_status(self, resource: ResourceIndex, /) -> bool:
         """Get the status of the internal connection for a specific resource.
 
         Parameters
@@ -293,7 +295,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         bool
             Whether the client has an active connection for the specified resource.
         """
-        return resource in self._clients and not self._clients[resource].closed
+        return resource in self.__clients and not self.__clients[resource].closed
 
     async def _optionally_bulk_set_users(self, users_: typing.Iterator[users.User]) -> None:
         try:
@@ -301,24 +303,26 @@ class ResourceClient(traits.Resource, abc.ABC):
         except ValueError:
             pass
         else:
-            expire_time = int(self.metadata["expire_user"]) if "expire_user" in self.metadata else DEFAULT_EXPIRE
-            user_setters = []
-            expire_setters: typing.MutableSequence[typing.Coroutine[typing.Any, typing.Any, None]] = []
+            expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
+            # user_setters = []
+            # expire_setters: typing.MutableSequence[typing.Coroutine[typing.Any, typing.Any, None]] = []
 
-            for window in chunk_values(users_):
-                processed_window = {int(user.id): self._converter.serialize_user(user) for user in window}
+            for window in redis_iterators.chunk_values(users_):
+                processed_window = {int(user.id): self.marshaller.serialize_user(user) for user in window}
                 # transaction = client.multi_exec()
                 #
                 # for user_id in processed_window.keys():
                 #     transaction.pexpire(user_id, expire_time)
                 #
                 # expire_setters.append(transaction.execute())
+                await client.mset(processed_window)
+                asyncio.gather(*(client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
                 #  TODO: benchmark bulk setting expire with transaction vs this
-                user_setters.append(client.mset(processed_window))
-                expire_setters.extend((client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
+                # user_setters.append(client.mset(processed_window))
+                # expire_setters.extend((client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
 
-            asyncio.gather(*user_setters)
-            asyncio.gather(*expire_setters)
+            # asyncio.gather(*user_setters)
+            # asyncio.gather(*expire_setters)
 
     async def _optionally_set_user(self, user: users.User) -> None:
         try:
@@ -326,41 +330,49 @@ class ResourceClient(traits.Resource, abc.ABC):
         except ValueError:
             pass
         else:
-            data = self._converter.serialize_user(user)
-            expire_time = int(self.metadata["expire_user"]) if "expire_user" in self.metadata else DEFAULT_EXPIRE
+            data = self.marshaller.serialize_user(user)
+            expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
             await client.set(int(user.id), data, pexpire=expire_time)
 
     async def _spawn_connection(self, resource: ResourceIndex) -> None:
-        self._clients[resource] = await aioredis.create_redis_pool(
-            address=self._address,
+        self.__clients[resource] = await aioredis.create_redis_pool(
+            address=self.__address,
             db=int(resource),
-            password=self._password,
-            ssl=self._ssl,
+            password=self.__password,
+            ssl=self.__ssl,
             # encoding="utf-8",
         )
 
     async def open(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        if self._started:
+        if self.__started:
             return
 
-        await asyncio.gather(*map(self._spawn_connection, self._get_indexes()))
+        try:
+            await asyncio.gather(*map(self._spawn_connection, self._get_indexes()))
+        except aioredis.RedisError:
+            # Ensure no dangling clients are left if this fails to start.
+            clients = self.__clients
+            self.__clients = {}
+            await asyncio.gather(*map(_close_client, clients.values()))
+            raise
+
         self.subscribe_listeners()
-        self._started = True
+        self.__started = True
 
     async def close(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         # We want to ensure that we both only do anything here if the client was already started when the method was
         # originally called and also that the client is marked as "closed" before this starts severing connections.
-        was_started = self._started
-        self._started = False
+        was_started = self.__started
+        self.__started = False
 
         if not was_started:
             return
 
         self.unsubscribe_listeners()
-        clients = self._clients
-        self._clients = {}
+        clients = self.__clients
+        self.__clients = {}
         await asyncio.gather(*map(_close_client, clients.values()))
 
     @abc.abstractmethod
@@ -374,53 +386,65 @@ class ResourceClient(traits.Resource, abc.ABC):
         return None
 
 
-class _GuildReference(ResourceClient):
+class _Reference(ResourceClient, abc.ABC):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return (ResourceIndex.GUILD_REFERENCE,)
+        return (ResourceIndex.REFERENCE,)
 
     @staticmethod
-    def _generate_reference_key(guild_id: snowflakes.Snowflakeish, resource: ResourceIndex) -> str:
-        return f"{guild_id}:{int(resource)}"
+    def _generate_reference_key(master: ResourceIndex, master_id: snowflakes.Snowflakeish, slave: ResourceIndex) -> str:
+        return f"{int(master)}:{master_id}:{int(slave)}"
 
     async def _add_ids(
-        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex, *identifiers: RedisValueT
+        self, master: ResourceIndex, master_id: snowflakes.Snowflakeish, slave: ResourceIndex, *identifiers: RedisValueT
     ) -> None:
-        key = self._generate_reference_key(guild_id, resource)
-        client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
+        key = self._generate_reference_key(master, master_id, slave)
+        client = await self.get_connection(ResourceIndex.REFERENCE)
         await client.sadd(key, *identifiers)
 
-    async def _clear_ids(self, resource: ResourceIndex) -> None:
-        raise NotImplementedError
-
-    async def _clear_ids_for_guild(self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex) -> None:
-        key = self._generate_reference_key(guild_id, resource)
-        client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
-        await client.delete(key)
-
     async def _delete_ids(
-        self, guild_id: snowflakes.Snowflakeish, resource: ResourceIndex, *identifiers: RedisValueT
+        self,
+        master: ResourceIndex,
+        master_id: snowflakes.Snowflakeish,
+        slave: ResourceIndex,
+        *identifiers: RedisValueT,
+        reference_key: bool = False,
     ) -> None:
-        key = self._generate_reference_key(guild_id, resource)
-        client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
+        key = self._generate_reference_key(master, master_id, slave)
+        client = await self.get_connection(ResourceIndex.REFERENCE)
         await client.srem(key, *identifiers)  # TODO: do i need to explicitly delete this if len is 0?
+
+        if reference_key and await client.scard(key) == 1:
+            await client.delete(key)
+
+    async def _dump_relationship(
+        self, master: ResourceIndex, slave: ResourceIndex
+    ) -> typing.MutableMapping[bytes, typing.MutableSequence[bytes]]:
+        client = await self.get_connection(ResourceIndex.REFERENCE)
+        keys = await client.keys(pattern=f"{master}:*:{slave}")
+        values = await asyncio.gather(*map(client.smembers, keys))
+        references = {keys[index]: value for index, value in enumerate(values)}
+        asyncio.gather(*(client.srem(key, *members) for key, members in references.items() if members))
+        return references
 
     async def _get_ids(
         self,
-        guild_id: snowflakes.Snowflakeish,
-        resource: ResourceIndex,
+        master: ResourceIndex,
+        master_id: snowflakes.Snowflakeish,
+        slave: ResourceIndex,
         *,
         cast: typing.Callable[[bytes], ValueT],
-    ) -> typing.Sequence[ValueT]:
-        key = self._generate_reference_key(guild_id, resource)
-        client = await self.get_connection(ResourceIndex.GUILD_REFERENCE)
-        return (*map(cast, await client.smembers(key)),)
+    ) -> typing.MutableSequence[ValueT]:
+        key = self._generate_reference_key(master, master_id, slave)
+        client = await self.get_connection(ResourceIndex.REFERENCE)
+        return [*map(cast, await client.smembers(key))]
 
 
-class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
+# To avoid breaking Mro conflicts this is kept as a separate class despite only being exposed through the UserCache.
+class _MeCache(ResourceClient, traits.MeCache):
     __slots__: typing.Sequence[str] = ()
 
     __ME_KEY: typing.Final[str] = "ME"
@@ -428,7 +452,8 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
     @classmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return (ResourceIndex.USER,)
+        # This isn't a full MeCache implementation in itself as it's reliant on the UserCache implementation.
+        return ()
 
     async def __on_own_user_update(self, event: user_events.OwnUserUpdateEvent) -> None:
         await self.set_me(event.user)
@@ -438,7 +463,6 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        # The users cache is a special case as it doesn't directly map to any events for most user entries.
         super().subscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.subscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
@@ -446,26 +470,15 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        # The users cache is a special case as it doesn't directly map to any events for most user entries.
         super().unsubscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.subscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
             self.dispatch.dispatcher.subscribe(shard_events.ShardReadyEvent, self.__on_shard_ready)
 
-    async def clear_users(self) -> None:
-        # <<Inherited docstring from sake.traits.UserCache>>
-        client = await self.get_connection(ResourceIndex.USER)
-        await client.flushdb()
-
     async def delete_me(self) -> None:
         # <<Inherited docstring from sake.traits.MeCache>>
         client = await self.get_connection(ResourceIndex.USER)
         await client.delete(self.__ME_KEY)
-
-    async def delete_user(self, user_id: snowflakes.Snowflakeish) -> None:
-        # <<Inherited docstring from sake.traits.UserCache>>
-        client = await self.get_connection(ResourceIndex.USER)
-        await client.delete(int(user_id))
 
     async def get_me(self) -> users.OwnUser:
         # <<Inherited docstring from sake.traits.MeCache>>
@@ -475,9 +488,45 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
         if not data:
             raise errors.EntryNotFound("Me entry not found")
 
-        return self._converter.deserialize_me(data)
+        return self.marshaller.deserialize_me(data)
 
-    async def get_user(self, user_id: snowflakes.Snowflakeish) -> users.User:
+    async def set_me(self, me: users.OwnUser, /) -> None:
+        # <<Inherited docstring from sake.traits.MeCache>>
+        data = self.marshaller.serialize_me(me)
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.set(self.__ME_KEY, data)
+        await self._optionally_set_user(me)
+
+
+class UserCache(_MeCache, traits.UserCache):
+    __slots__: typing.Sequence[str] = ()
+
+    @classmethod
+    def index(cls) -> typing.Sequence[ResourceIndex]:
+        # <<Inherited docstring from ResourceClient>>
+        return (ResourceIndex.USER,)
+
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        # The users cache is a special case as it doesn't directly map to any events for most user entries.
+        super().subscribe_listeners()
+
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        # The users cache is a special case as it doesn't directly map to any events for most user entries.
+        super().unsubscribe_listeners()
+
+    async def clear_users(self) -> None:
+        # <<Inherited docstring from sake.traits.UserCache>>
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.flushdb()
+
+    async def delete_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
+        # <<Inherited docstring from sake.traits.UserCache>>
+        client = await self.get_connection(ResourceIndex.USER)
+        await client.delete(int(user_id))
+
+    async def get_user(self, user_id: snowflakes.Snowflakeish, /) -> users.User:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
         data = await client.get(int(user_id))
@@ -485,34 +534,27 @@ class UserCache(ResourceClient, traits.UserCache, traits.MeCache):
         if not data:
             raise errors.EntryNotFound(f"User entry `{user_id}` not found")
 
-        return self._converter.deserialize_user(data)
+        return self.marshaller.deserialize_user(data)
 
     def iter_users(
         self, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[users.User]:  # TODO: handle when an entity is removed mid-iteration
         # <<Inherited docstring from sake.traits.UserCache>>
-        return redis_iterators.RedisIterator(
-            self, ResourceIndex.USER, self._converter.deserialize_user, window_size=window_size
+        return redis_iterators.Iterator(
+            self, ResourceIndex.USER, self.marshaller.deserialize_user, window_size=window_size
         )
 
-    async def set_me(self, me: users.OwnUser) -> None:
-        # <<Inherited docstring from sake.traits.MeCache>>
-        data = self._converter.serialize_me(me)
-        client = await self.get_connection(ResourceIndex.USER)
-        await client.set(self.__ME_KEY, data)
-        await self._optionally_set_user(me)
-
-    async def set_user(self, user: users.User, *, expire_time: typing.Optional[int] = None) -> None:
+    async def set_user(self, user: users.User, /, *, expire_time: typing.Optional[int] = None) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
 
         if expire_time is None:
-            expire_time = int(self.metadata["expire_user"]) or DEFAULT_EXPIRE
+            expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
 
-        await client.set(int(user.id), self._converter.serialize_user(user), pexpire=expire_time)
+        await client.set(int(user.id), self.marshaller.serialize_user(user), pexpire=expire_time)
 
 
-class EmojiCache(_GuildReference, traits.EmojiCache):
+class EmojiCache(_Reference, traits.RefEmojiCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -520,24 +562,33 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.EMOJI,)
 
-    async def __bulk_add_emojis(self, emojis: typing.Iterable[emojis_.KnownCustomEmoji]) -> None:
+    async def __bulk_add_emojis(
+        self, emojis: typing.Iterable[emojis_.KnownCustomEmoji], guild_id: snowflakes.Snowflake
+    ) -> None:
         client = await self.get_connection(ResourceIndex.EMOJI)
-        windows = chunk_values(emojis)
+        windows = redis_iterators.chunk_values(emojis)
         setters = (
-            client.mset({int(emoji.id): self._converter.serialize_emoji(emoji) for emoji in window})
+            client.mset({int(emoji.id): self.marshaller.serialize_emoji(emoji) for emoji in window})
             for window in windows
         )
         user_setter = self._optionally_bulk_set_users(emoji.user for emoji in emojis if emoji.user is not None)
-        asyncio.gather(*setters, user_setter)
+        reference_setter = self._add_ids(
+            ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, *(int(emoji.id) for emoji in emojis)
+        )
+        asyncio.gather(*setters, user_setter, reference_setter)
 
     async def __on_emojis_update(self, event: guild_events.EmojisUpdateEvent) -> None:
         await self.clear_emojis_for_guild(event.guild_id)
-        await self.__bulk_add_emojis(event.emojis)
+
+        if event.emojis:
+            await self.__bulk_add_emojis(event.emojis, event.guild_id)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
             await self.clear_emojis_for_guild(event.guild_id)
-            await self.__bulk_add_emojis(event.emojis.values())
+
+            if event.emojis:
+                await self.__bulk_add_emojis(event.emojis.values(), event.guild_id)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
             await self.clear_emojis_for_guild(event.guild_id)
@@ -560,33 +611,34 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
 
     async def clear_emojis(self) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        await self._clear_ids(ResourceIndex.EMOJI)
+        emoji_ids = await self._dump_relationship(ResourceIndex.GUILD, ResourceIndex.EMOJI)
         client = await self.get_connection(ResourceIndex.EMOJI)
-        await client.flushdb()
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(itertools.chain(emoji_ids))))
 
-    async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        emoji_ids = await self._get_ids(guild_id, ResourceIndex.EMOJI, cast=int)
+        emoji_ids = await self._get_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, cast=bytes)
         if not emoji_ids:
             return
 
-        await self._clear_ids_for_guild(guild_id, ResourceIndex.EMOJI)
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, *emoji_ids)
         client = await self.get_connection(ResourceIndex.EMOJI)
-        asyncio.gather(*(client.delete(*window) for window in chunk_values(emoji_ids)))
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(emoji_ids)))
 
-    async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish) -> None:
+    async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
+        emoji_id = int(emoji_id)
         client = await self.get_connection(ResourceIndex.EMOJI)
-        data = await client.get(int(emoji_id))
+        data = await client.get(emoji_id)
 
         if not data:
             return
 
-        emoji = self._converter.deserialize_emoji(data)  # TODO: can i avoid this?
-        await self._delete_ids(int(emoji.guild_id), ResourceIndex.EMOJI, int(emoji.id))
-        await client.delete(int(emoji_id))
+        emoji = self.marshaller.deserialize_emoji(data)  # TODO: can i avoid this?
+        await self._delete_ids(ResourceIndex.GUILD, int(emoji.guild_id), ResourceIndex.EMOJI, int(emoji.id))
+        await client.delete(emoji_id)
 
-    async def get_emoji(self, emoji_id: snowflakes.Snowflakeish) -> emojis_.KnownCustomEmoji:
+    async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis_.KnownCustomEmoji:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
         data = await client.get(int(emoji_id))
@@ -594,28 +646,28 @@ class EmojiCache(_GuildReference, traits.EmojiCache):
         if not data:
             raise errors.EntryNotFound(f"Emoji entry `{emoji_id}` not found")
 
-        return self._converter.deserialize_emoji(data)
+        return self.marshaller.deserialize_emoji(data)
 
     def iter_emojis(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        return redis_iterators.RedisIterator(
-            self, ResourceIndex.EMOJI, self._converter.deserialize_emoji, window_size=window_size
+        return redis_iterators.Iterator(
+            self, ResourceIndex.EMOJI, self.marshaller.deserialize_emoji, window_size=window_size
         )
 
     def iter_emojis_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        key = self._generate_reference_key(guild_id, ResourceIndex.EMOJI).encode()
-        return redis_iterators.SpecificRedisIterator(
-            self, key, ResourceIndex.EMOJI, self._converter.deserialize_emoji, window_size=window_size
+        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI).encode()
+        return redis_iterators.ReferenceIterator(
+            self, key, ResourceIndex.EMOJI, self.marshaller.deserialize_emoji, window_size=window_size
         )
 
-    async def set_emoji(self, emoji: emojis_.KnownCustomEmoji) -> None:
+    async def set_emoji(self, emoji: emojis_.KnownCustomEmoji, /) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         client = await self.get_connection(ResourceIndex.EMOJI)
-        data = self._converter.serialize_emoji(emoji)
-        await self._add_ids(emoji.guild_id, ResourceIndex.EMOJI, int(emoji.id))
+        data = self.marshaller.serialize_emoji(emoji)
+        await self._add_ids(ResourceIndex.GUILD, emoji.guild_id, ResourceIndex.EMOJI, int(emoji.id))
         await client.set(int(emoji.id), data)
 
         if emoji.user is not None:
@@ -633,7 +685,7 @@ class GuildCache(ResourceClient, traits.GuildCache):
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         client = await self.get_connection(ResourceIndex.GUILD)
         if isinstance(event, guild_events.GuildAvailableEvent):
-            data = self._converter.serialize_guild(event.guild)
+            data = self.marshaller.serialize_guild(event.guild)
             await client.set(int(event.guild_id), data)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
@@ -641,7 +693,6 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        #  TODO: on member chunk
         super().subscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
@@ -657,12 +708,12 @@ class GuildCache(ResourceClient, traits.GuildCache):
         client = await self.get_connection(ResourceIndex.GUILD)
         await client.flushdb()
 
-    async def delete_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def delete_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
         await client.delete(int(guild_id))
 
-    async def get_guild(self, guild_id: snowflakes.Snowflakeish) -> guilds.GatewayGuild:
+    async def get_guild(self, guild_id: snowflakes.Snowflakeish, /) -> guilds.GatewayGuild:
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
         data = await client.get(int(guild_id))
@@ -670,34 +721,36 @@ class GuildCache(ResourceClient, traits.GuildCache):
         if not data:
             raise errors.EntryNotFound(f"Guild entry `{guild_id}` not found")
 
-        return self._converter.deserialize_guild(data)
+        return self.marshaller.deserialize_guild(data)
 
     def iter_guilds(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[guilds.GatewayGuild]:
         # <<Inherited docstring from sake.traits.GuildCache>>
-        return redis_iterators.RedisIterator(
-            self, ResourceIndex.GUILD, self._converter.deserialize_guild, window_size=window_size
+        return redis_iterators.Iterator(
+            self, ResourceIndex.GUILD, self.marshaller.deserialize_guild, window_size=window_size
         )
 
-    async def set_guild(self, guild: guilds.GatewayGuild) -> None:
+    async def set_guild(self, guild: guilds.GatewayGuild, /) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>
         client = await self.get_connection(ResourceIndex.GUILD)
-        data = self._converter.serialize_guild(guild)
+        data = self.marshaller.serialize_guild(guild)
         await client.set(int(guild.id), data)
 
 
-class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
+class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.traits.Resource>>
-        return (ResourceIndex.GUILD_CHANNEL,)
+        return (ResourceIndex.CHANNEL,)
 
     async def __on_guild_channel_event(self, event: channel_events.GuildChannelEvent) -> None:
         if isinstance(event, (channel_events.GuildChannelCreateEvent, channel_events.GuildChannelUpdateEvent)):
             await self.set_guild_channel(event.channel)
+
         elif isinstance(event, channel_events.GuildChannelDeleteEvent):
             await self.delete_guild_channel(event.channel_id)
+
         elif isinstance(event, channel_events.GuildPinsUpdateEvent):
             try:
                 channel = await self.get_guild_channel(event.channel_id)
@@ -712,12 +765,14 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
 
     async def __on_guild_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, guild_events.GuildAvailableEvent):
-            client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
-            windows = chunk_values(event.channels.items())
+            client = await self.get_connection(ResourceIndex.CHANNEL)
+            windows = redis_iterators.chunk_values(event.channels.items())
             setters = (
-                client.mset(cast_map_window(window, int, self._converter.serialize_guild_channel)) for window in windows
+                client.mset(cast_map_window(window, int, self.marshaller.serialize_guild_channel)) for window in windows
             )
-            id_setter = self._add_ids(event.guild_id, ResourceIndex.GUILD_CHANNEL, *map(int, event.channels.keys()))
+            id_setter = self._add_ids(
+                ResourceIndex.GUILD, event.guild_id, ResourceIndex.CHANNEL, *map(int, event.channels.keys())
+            )
             asyncio.gather(*setters, id_setter)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
@@ -739,60 +794,69 @@ class GuildChannelCache(_GuildReference, traits.GuildChannelCache):
 
     async def clear_guild_channels(self) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
-        await client.flushdb()
-        await self._clear_ids(ResourceIndex.GUILD_CHANNEL)
+        channel_ids = await self._dump_relationship(ResourceIndex.GUILD, ResourceIndex.CHANNEL)
+        client = await self.get_connection(ResourceIndex.CHANNEL)
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(itertools.chain(channel_ids))))
 
-    async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        channel_ids = await self._get_ids(int(guild_id), ResourceIndex.GUILD_CHANNEL, cast=int)
+        guild_id = int(guild_id)
+        channel_ids = await self._get_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, cast=bytes)
         if not channel_ids:
             return
 
-        await self._clear_ids_for_guild(int(guild_id), ResourceIndex.GUILD_CHANNEL)
-        client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, *channel_ids)
+        client = await self.get_connection(ResourceIndex.CHANNEL)
         #  TODO: is there any benefit to chunking on bulk delete?
-        asyncio.gather(*(client.delete(*window) for window in chunk_values(channel_ids)))
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(channel_ids)))
 
-    async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+    async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
-        await client.delete(int(channel_id))
+        channel_id = int(channel_id)
+        client = await self.get_connection(ResourceIndex.CHANNEL)
+        data = await client.get(channel_id)
 
-    async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish) -> channels.GuildChannel:
+        if not data:
+            return
+
+        channel = self.marshaller.deserialize_guild_channel(data)
+        await self._delete_ids(ResourceIndex.GUILD, int(channel.guild_id), ResourceIndex.CHANNEL, channel_id)
+        await client.delete(channel_id)
+
+    async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> channels.GuildChannel:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
+        client = await self.get_connection(ResourceIndex.CHANNEL)
         data = await client.get(int(channel_id))
 
         if not data:
             raise errors.EntryNotFound(f"Guild channel entry `{channel_id}` not found")
 
-        return self._converter.deserialize_guild_channel(data)
+        return self.marshaller.deserialize_guild_channel(data)
 
     def iter_guild_channels(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[channels.GuildChannel]:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        return redis_iterators.RedisIterator(
-            self, ResourceIndex.GUILD_CHANNEL, self._converter.deserialize_guild_channel, window_size=window_size
+        return redis_iterators.Iterator(
+            self, ResourceIndex.CHANNEL, self.marshaller.deserialize_guild_channel, window_size=window_size
         )
 
     def iter_guild_channels_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[channels.GuildChannel]:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        key = self._generate_reference_key(guild_id, ResourceIndex.GUILD_CHANNEL).encode()
-        return redis_iterators.SpecificRedisIterator(
-            self, key, ResourceIndex.GUILD_CHANNEL, self._converter.deserialize_guild_channel, window_size=window_size
+        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL).encode()
+        return redis_iterators.ReferenceIterator(
+            self, key, ResourceIndex.CHANNEL, self.marshaller.deserialize_guild_channel, window_size=window_size
         )
 
-    async def set_guild_channel(self, channel: channels.GuildChannel) -> None:
+    async def set_guild_channel(self, channel: channels.GuildChannel, /) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        client = await self.get_connection(ResourceIndex.GUILD_CHANNEL)
-        data = self._converter.serialize_guild_channel(channel)
+        client = await self.get_connection(ResourceIndex.CHANNEL)
+        data = self.marshaller.serialize_guild_channel(channel)
         await client.set(int(channel.id), data)
-        await self._add_ids(int(channel.guild_id), ResourceIndex.GUILD_CHANNEL, int(channel.id))
+        await self._add_ids(ResourceIndex.GUILD, int(channel.guild_id), ResourceIndex.CHANNEL, int(channel.id))
 
 
-class InviteCache(_GuildReference, traits.InviteCache):
+class InviteCache(ResourceClient, traits.InviteCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -800,16 +864,10 @@ class InviteCache(_GuildReference, traits.InviteCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.INVITE,)
 
-    async def __on_guild_channel_delete_event(self, event: channel_events.GuildChannelDeleteEvent) -> None:
-        await self.clear_invites_for_channel(event.channel_id)
-
-    # TODO: can we also use member remove for the same purpose?
-    async def __on_guild_leave_event(self, event: guild_events.GuildLeaveEvent) -> None:
-        await self.clear_invites_for_guild(event.guild_id)
-
     async def __on_invite_event(self, event: channel_events.InviteEvent) -> None:
         if isinstance(event, channel_events.InviteCreateEvent):
             await self.set_invite(event.invite)
+
         elif isinstance(event, channel_events.InviteDeleteEvent):
             await self.delete_invite(event.code)
 
@@ -817,49 +875,27 @@ class InviteCache(_GuildReference, traits.InviteCache):
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(
-                channel_events.GuildChannelDeleteEvent, self.__on_guild_channel_delete_event
-            )
-            self.dispatch.dispatcher.subscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave_event)
             self.dispatch.dispatcher.subscribe(channel_events.InviteEvent, self.__on_invite_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(
-                channel_events.GuildChannelDeleteEvent, self.__on_guild_channel_delete_event
-            )
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave_event)
             self.dispatch.dispatcher.unsubscribe(channel_events.InviteEvent, self.__on_invite_event)
 
     async def clear_invites(self) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
-        await self._clear_ids(ResourceIndex.INVITE)
         client = await self.get_connection(ResourceIndex.INVITE)
         await client.flushdb()
 
-    async def clear_invites_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
-        # <<Inherited docstring from sake.traits.InviteCache>>
-        raise NotImplementedError
-
-    async def clear_invites_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
-        # <<Inherited docstring from sake.traits.InviteCache>>
-        codes = await self._get_ids(int(guild_id), ResourceIndex.INVITE, cast=lambda key: key.decode("utf-8"))
-        if not codes:
-            return
-
-        client = await self.get_connection(ResourceIndex.INVITE)
-        asyncio.gather(*(client.delete(*window) for window in chunk_values(codes)))
-
-    async def delete_invite(self, invite_code: str) -> None:
+    async def delete_invite(self, invite_code: str, /) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
         # Aioredis treats keys and values as type invariant so we want to ensure this is a str and not a class which
         # subclasses str.
         await client.delete(str(invite_code))
 
-    async def get_invite(self, invite_code: str) -> invites.InviteWithMetadata:
+    async def get_invite(self, invite_code: str, /) -> invites_.InviteWithMetadata:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
         # Aioredis treats keys and values as type invariant so we want to ensure this is a str and not a class which
@@ -868,37 +904,28 @@ class InviteCache(_GuildReference, traits.InviteCache):
         if not data:
             raise errors.EntryNotFound(f"Invite entry `{invite_code}` not found")
 
-        return self._converter.deserialize_invite(data)
+        return self.marshaller.deserialize_invite(data)
 
-    def iter_invites(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[invites.InviteWithMetadata]:
+    def iter_invites(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[invites_.InviteWithMetadata]:
         # <<Inherited docstring from sake.traits.InviteCache>>
-        return redis_iterators.RedisIterator(
-            self, ResourceIndex.INVITE, self._converter.deserialize_invite, window_size=window_size
+        return redis_iterators.Iterator(
+            self, ResourceIndex.INVITE, self.marshaller.deserialize_invite, window_size=window_size
         )
 
-    def iter_invites_for_channel(
-        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> traits.CacheIterator[invites.InviteWithMetadata]:
-        # <<Inherited docstring from sake.traits.InviteCache>>
-        raise NotImplementedError
-
-    def iter_invites_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> traits.CacheIterator[invites.InviteWithMetadata]:
-        # <<Inherited docstring from sake.traits.InviteCache>>
-        key = self._generate_reference_key(guild_id, ResourceIndex.INVITE).encode()
-        return redis_iterators.SpecificRedisIterator(
-            self, key, ResourceIndex.INVITE, self._converter.deserialize_invite, window_size=window_size
-        )
-
-    async def set_invite(self, invite: invites.InviteWithMetadata) -> None:
+    async def set_invite(
+        self, invite: invites_.InviteWithMetadata, /, *, expire_time: typing.Optional[int] = None
+    ) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
-        data = self._converter.serialize_invite(invite)
-        await client.set(str(invite.code), data)
+        data = self.marshaller.serialize_invite(invite)
 
-        if invite.guild_id is not None:
-            await self._add_ids(int(invite.guild_id), ResourceIndex.INVITE, str(invite.code))
+        if expire_time is None and invite.expires_at is not None:
+            expire_time = round((invite.expires_at - time.utc_datetime()).total_seconds() * 1000)
+
+        elif expire_time is None:
+            expire_time = int(self.metadata.get("expire_invite", DEFAULT_INVITE_EXPIRE))
+
+        await client.set(str(invite.code), data, pexpire=expire_time)
 
         if invite.target_user is not None:
             await self._optionally_set_user(invite.target_user)
@@ -919,9 +946,9 @@ class MemberCache(ResourceClient, traits.MemberCache):
         self, guild_id: snowflakes.Snowflakeish, members: typing.Mapping[snowflakes.Snowflake, guilds.Member]
     ) -> None:
         client = await self.get_connection(ResourceIndex.MEMBER)
-        windows = chunk_values(members.items())
+        windows = redis_iterators.chunk_values(members.items())
         setters = (
-            client.hmset_dict(int(guild_id), cast_map_window(window, int, self._converter.serialize_member))
+            client.hmset_dict(int(guild_id), cast_map_window(window, int, self.marshaller.serialize_member))
             for window in windows
         )
         user_setter = self._optionally_bulk_set_users(member.user for member in members.values())
@@ -933,11 +960,25 @@ class MemberCache(ResourceClient, traits.MemberCache):
     async def __on_member_event(self, event: member_events.MemberEvent) -> None:
         if isinstance(event, (member_events.MemberCreateEvent, member_events.MemberUpdateEvent)):
             await self.set_member(event.member)
+
         elif isinstance(event, member_events.MemberDeleteEvent):
-            if "own_id" not in self.metadata:
-                #  TODO: this is racey
-                user = await self.rest.rest.fetch_my_user()
-                self.metadata["own_id"] = user.id
+            back_off = rate_limits.BackOff()
+            async for _ in back_off:
+                if "own_id" in self.metadata:
+                    break
+
+                try:
+                    user = await self.rest.rest.fetch_my_user()
+
+                except hikari_errors.RateLimitedError as exc:
+                    back_off.backoff(exc.retry_after)
+
+                except hikari_errors.InternalServerError:
+                    pass
+
+                else:
+                    self.metadata["own_id"] = user.id
+                    break
 
             own_id = snowflakes.Snowflake(self.metadata["own_id"])
             if event.user_id == own_id:
@@ -969,17 +1010,17 @@ class MemberCache(ResourceClient, traits.MemberCache):
         client = await self.get_connection(ResourceIndex.MEMBER)
         await client.flushdb()
 
-    async def clear_members_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_members_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.MemberCache>>
         client = await self.get_connection(ResourceIndex.MEMBER)
         await client.delete(int(guild_id))
 
-    async def delete_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.MemberCache>>
         client = await self.get_connection(ResourceIndex.MEMBER)
         await client.hdel(int(guild_id), int(user_id))
 
-    async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> guilds.Member:
+    async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> guilds.Member:
         # <<Inherited docstring from sake.traits.MemberCache>>
         client = await self.get_connection(ResourceIndex.MEMBER)
         data = await client.hget(int(guild_id), int(user_id))
@@ -987,57 +1028,41 @@ class MemberCache(ResourceClient, traits.MemberCache):
         if not data:
             raise errors.EntryNotFound(f"Member entry `{user_id}` for guild `{guild_id}` not found")
 
-        return self._converter.deserialize_member(data)
+        return self.marshaller.deserialize_member(data)
 
     def iter_members(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[guilds.Member]:
         # <<Inherited docstring from sake.traits.MemberCache>>
         return redis_iterators.MultiMapIterator(
-            self, ResourceIndex.MEMBER, self._converter.deserialize_member, window_size=window_size
+            self, ResourceIndex.MEMBER, self.marshaller.deserialize_member, window_size=window_size
         )
 
     def iter_members_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[guilds.Member]:
         # <<Inherited docstring from sake.traits.MemberCache>>
         return redis_iterators.SpecificMapIterator(
             self,
             str(guild_id).encode(),
             ResourceIndex.MEMBER,
-            self._converter.deserialize_member,
+            self.marshaller.deserialize_member,
             window_size=window_size,
         )
 
-    def iter_members_for_user(
-        self, user_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> traits.CacheIterator[guilds.Member]:
-        # <<Inherited docstring from sake.traits.MemberCache>>
-        raise NotImplementedError
-
-    async def set_member(self, member: guilds.Member) -> None:
+    async def set_member(self, member: guilds.Member, /) -> None:
         # <<Inherited docstring from sake.traits.MemberCache>>
         client = await self.get_connection(ResourceIndex.MEMBER)
-        data = self._converter.serialize_member(member)
+        data = self.marshaller.serialize_member(member)
         await client.hset(int(member.guild_id), int(member.user.id), data)
         await self._optionally_set_user(member.user)
 
 
-class MessageCache(_GuildReference, traits.MessageCache):
+class MessageCache(ResourceClient, traits.MessageCache):
     __slots__: typing.Sequence[str] = ()  # TODO: finish marshalling
 
     @classmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.MESSAGE,)
-
-    async def __bulk_delete_messages(self, message_ids: typing.Iterable[int]) -> None:
-        client = await self.get_connection(ResourceIndex.MESSAGE)
-        asyncio.gather(*(client.delete(*window) for window in chunk_values(message_ids)))
-
-    async def __on_channel_delete(self, event: channel_events.ChannelDeleteEvent) -> None:
-        await self.clear_messages_for_channel(event.channel_id)
-
-    async def __on_guild_leave(self, event: guild_events.GuildLeaveEvent) -> None:
-        await self.clear_messages_for_guild(event.guild_id)
 
     async def __on_message_event(self, event: message_events.MessageEvent) -> None:
         if isinstance(event, message_events.MessageCreateEvent):
@@ -1047,89 +1072,124 @@ class MessageCache(_GuildReference, traits.MessageCache):
             await self.update_message(event.message)
 
         elif isinstance(event, message_events.MessageDeleteEvent):
-            await self.__bulk_delete_messages((int(message_id) for message_id in event.message_ids))
+            client = await self.get_connection(ResourceIndex.MESSAGE)
+            asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(map(int, event.message_ids))))
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(channel_events.ChannelDeleteEvent, self.__on_channel_delete)
-            self.dispatch.dispatcher.subscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave)
             self.dispatch.dispatcher.subscribe(message_events.MessageEvent, self.__on_message_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
         if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(channel_events.ChannelDeleteEvent, self.__on_channel_delete)
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave)
             self.dispatch.dispatcher.unsubscribe(message_events.MessageEvent, self.__on_message_event)
 
     async def clear_messages(self) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
-        await self._clear_ids(ResourceIndex.INVITE)
         await client.flushdb()
 
-    async def clear_messages_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
-        # <<Inherited docstring from sake.traits.MessageCache>>
-        raise NotImplementedError
-
-    async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
-        # <<Inherited docstring from sake.traits.MessageCache>>
-        message_ids = await self._get_ids(int(guild_id), ResourceIndex.MESSAGE, cast=int)
-        if not message_ids:
-            return
-
-        await self._clear_ids_for_guild(int(guild_id), ResourceIndex.MESSAGE)
-        await self.__bulk_delete_messages(message_ids)
-
-    async def delete_message(self, message_id: snowflakes.Snowflakeish) -> None:
+    async def delete_message(self, message_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
         client = await self.get_connection(ResourceIndex.MESSAGE)
         await client.delete(int(message_id))
 
-    async def get_message(self, message_id: snowflakes.Snowflakeish) -> messages.Message:
+    async def get_message(self, message_id: snowflakes.Snowflakeish, /) -> messages.Message:
         # <<Inherited docstring from sake.traits.MessageCache>>
         client = await self.get_connection(ResourceIndex.MESSAGE)
         data = await client.get(int(message_id))
         if not data:
             raise errors.EntryNotFound(f"Message entry `{message_id}` not found")
 
-        return self._converter.deserialize_message(data)
+        return self.marshaller.deserialize_message(data)
 
     def iter_messages(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[messages.Message]:
         # <<Inherited docstring from sake.traits.MessageCache>>
-        return redis_iterators.RedisIterator(
-            self, ResourceIndex.MESSAGE, self._converter.deserialize_message, window_size=window_size
+        return redis_iterators.Iterator(
+            self, ResourceIndex.MESSAGE, self.marshaller.deserialize_message, window_size=window_size
         )
 
-    def iter_message_for_channel(
-        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> traits.CacheIterator[messages.Message]:
+    async def set_message(self, message: messages.Message, /, *, expire_time: typing.Optional[int] = None) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
-        raise NotImplementedError
-
-    def iter_messages_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> traits.CacheIterator[messages.Message]:
-        # <<Inherited docstring from sake.traits.MessageCache>>
-        key = self._generate_reference_key(guild_id, ResourceIndex.MESSAGE).encode()
-        return redis_iterators.SpecificRedisIterator(
-            self, key, ResourceIndex.MESSAGE, self._converter.deserialize_message, window_size=window_size
-        )
-
-    async def set_message(self, message: messages.Message) -> None:
-        # <<Inherited docstring from sake.traits.MessageCache>>
-        data = self._converter.serialize_message(message)
+        data = await self.marshaller.serialize_message(message)
         client = await self.get_connection(ResourceIndex.MESSAGE)
-        await client.set(int(message.id), data)
+
+        if expire_time is None:
+            expire_time = int(self.metadata.get("expire_message", DEFAULT_FAST_EXPIRE))
+
+        await client.set(int(message.id), data, expire=expire_time)
         await self._optionally_set_user(message.author)
 
-    async def update_message(self, message: messages.PartialMessage) -> bool:
+    async def update_message(self, message: messages.PartialMessage, /) -> bool:
         # <<Inherited docstring from sake.traits.MessageCache>>
         # This is a special case method for handling the partial message updates we get
-        raise NotImplementedError
+        try:
+            full_message = await self.get_message(message.id)
+        except errors.EntryNotFound:
+            return False
+
+        if message.content is not undefined.UNDEFINED:
+            full_message.content = message.content
+
+        if message.timestamp is not undefined.UNDEFINED:
+            full_message.timestamp = message.timestamp
+
+        if message.edited_timestamp is not undefined.UNDEFINED:
+            full_message.edited_timestamp = message.edited_timestamp
+
+        if message.is_tts is not undefined.UNDEFINED:
+            full_message.is_tts = message.is_tts
+
+        if message.is_mentioning_everyone is not undefined.UNDEFINED:
+            full_message.is_mentioning_everyone = message.is_mentioning_everyone
+
+        if message.user_mentions is not undefined.UNDEFINED:
+            full_message.user_mentions = message.user_mentions
+
+        if message.role_mentions is not undefined.UNDEFINED:
+            full_message.role_mentions = message.role_mentions
+
+        if message.channel_mentions is not undefined.UNDEFINED:
+            full_message.channel_mentions = message.channel_mentions
+
+        if message.attachments is not undefined.UNDEFINED:
+            full_message.attachments = message.attachments
+
+        if message.embeds is not undefined.UNDEFINED:
+            full_message.embeds = message.embeds
+
+        if message.reactions is not undefined.UNDEFINED:
+            full_message.reactions = message.reactions
+
+        if message.is_pinned is not undefined.UNDEFINED:
+            full_message.is_pinned = message.is_pinned
+
+        if message.webhook_id is not undefined.UNDEFINED:
+            full_message.webhook_id = message.webhook_id
+
+        if message.type is not undefined.UNDEFINED:
+            full_message.type = message.type
+
+        if message.activity is not undefined.UNDEFINED:
+            full_message.activity = message.activity
+
+        if message.application is not undefined.UNDEFINED:
+            full_message.application = message.application
+
+        if message.message_reference is not undefined.UNDEFINED:
+            full_message.message_reference = message.message_reference
+
+        if message.flags is not undefined.UNDEFINED:
+            full_message.flags = message.flags
+
+        if message.nonce is not undefined.UNDEFINED:
+            full_message.nonce = message.nonce
+
+        await self.set_message(full_message)
+        return True
 
 
 class PresenceCache(ResourceClient, traits.PresenceCache):
@@ -1144,9 +1204,9 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         self, guild_id: snowflakes.Snowflake, presences: typing.Mapping[snowflakes.Snowflake, presences_.MemberPresence]
     ) -> None:
         client = await self.get_connection(ResourceIndex.PRESENCE)
-        windows = chunk_values(presences.items())
+        windows = redis_iterators.chunk_values(presences.items())
         setters = (
-            client.hmset_dict(int(guild_id), cast_map_window(window, int, self._converter.serialize_presence))
+            client.hmset_dict(int(guild_id), cast_map_window(window, int, self.marshaller.serialize_presence))
             for window in windows
         )
         asyncio.gather(*setters)
@@ -1190,56 +1250,50 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         client = await self.get_connection(ResourceIndex.PRESENCE)
         await client.flushdb()
 
-    async def clear_presences_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_presences_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         client = await self.get_connection(ResourceIndex.PRESENCE)
         await client.delete(int(guild_id))
 
-    async def delete_presence(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+    async def delete_presence(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         client = await self.get_connection(ResourceIndex.PRESENCE)
         await client.hdel(int(guild_id), int(user_id))
 
     async def get_presence(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish
+        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
     ) -> presences_.MemberPresence:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         client = await self.get_connection(ResourceIndex.PRESENCE)
         data = await client.hget(int(guild_id), int(user_id))
-        return self._converter.deserialize_presence(data)
+        return self.marshaller.deserialize_presence(data)
 
     def iter_presences(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[presences_.MemberPresence]:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         return redis_iterators.MultiMapIterator(
-            self, ResourceIndex.PRESENCE, self._converter.deserialize_presence, window_size=window_size
+            self, ResourceIndex.PRESENCE, self.marshaller.deserialize_presence, window_size=window_size
         )
 
-    def iter_presences_for_user(
-        self, user_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> traits.CacheIterator[presences_.MemberPresence]:
-        # <<Inherited docstring from sake.traits.PresenceCache>>
-        raise NotImplementedError
-
     def iter_presences_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[presences_.MemberPresence]:
         # <<Inherited docstring from sake.traits.PresenceCache>>
         return redis_iterators.SpecificMapIterator(
             self,
             str(guild_id).encode(),
             ResourceIndex.PRESENCE,
-            self._converter.deserialize_presence,
+            self.marshaller.deserialize_presence,
             window_size=window_size,
         )
 
-    async def set_presence(self, presence: presences_.MemberPresence) -> None:
+    async def set_presence(self, presence: presences_.MemberPresence, /) -> None:
         # <<Inherited docstring from sake.traits.PresenceCache>>
-        data = self._converter.serialize_presence(presence)
+        data = self.marshaller.serialize_presence(presence)
         client = await self.get_connection(ResourceIndex.PRESENCE)
         await client.hset(int(presence.guild_id), int(presence.user_id), data)
 
 
-class RoleCache(_GuildReference, traits.RoleCache):
+class RoleCache(_Reference, traits.RoleCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1250,9 +1304,11 @@ class RoleCache(_GuildReference, traits.RoleCache):
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
             client = await self.get_connection(ResourceIndex.ROLE)
-            windows = chunk_values(event.roles.items())
-            setters = (client.mset(cast_map_window(window, int, self._converter.serialize_role)) for window in windows)
-            id_setter = self._add_ids(event.guild_id, ResourceIndex.ROLE, *map(int, event.roles.keys()))
+            windows = redis_iterators.chunk_values(event.roles.items())
+            setters = (client.mset(cast_map_window(window, int, self.marshaller.serialize_role)) for window in windows)
+            id_setter = self._add_ids(
+                ResourceIndex.GUILD, event.guild_id, ResourceIndex.ROLE, *map(int, event.roles.keys())
+            )
             asyncio.gather(*setters, id_setter)
 
         elif isinstance(event, guild_events.GuildLeaveEvent):
@@ -1281,33 +1337,36 @@ class RoleCache(_GuildReference, traits.RoleCache):
 
     async def clear_roles(self) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        await self._clear_ids(ResourceIndex.ROLE)
+        references = await self._dump_relationship(ResourceIndex.GUILD, ResourceIndex.ROLE)
         client = await self.get_connection(ResourceIndex.ROLE)
-        await client.flushdb()
+        asyncio.gather(
+            *itertools.starmap(client.delete, redis_iterators.chunk_values(itertools.chain(references.values())))
+        )
 
-    async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        role_ids = await self._get_ids(guild_id, ResourceIndex.ROLE, cast=int)
+        role_ids = await self._get_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, cast=bytes)
         if not role_ids:
             return
 
-        await self._clear_ids_for_guild(guild_id, ResourceIndex.ROLE)
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, *role_ids)
         client = await self.get_connection(ResourceIndex.ROLE)
-        asyncio.gather(*(client.delete(*window) for window in chunk_values(role_ids)))
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(role_ids)))
 
-    async def delete_role(self, role_id: snowflakes.Snowflakeish) -> None:
+    async def delete_role(self, role_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
+        role_id = int(role_id)
         client = await self.get_connection(ResourceIndex.ROLE)
-        data = await client.get(int(role_id))
+        data = await client.get(role_id)
 
         if not data:
             return
 
-        role = self._converter.deserialize_role(data)  # TODO: can i avoid this?
-        await self._delete_ids(int(role.guild_id), ResourceIndex.ROLE, int(role.id))
-        await client.delete(int(role_id))
+        role = self.marshaller.deserialize_role(data)  # TODO: can i avoid this?
+        await self._delete_ids(ResourceIndex.GUILD, int(role.guild_id), ResourceIndex.ROLE, int(role.id))
+        await client.delete(role_id)
 
-    async def get_role(self, role_id: snowflakes.Snowflakeish) -> guilds.Role:
+    async def get_role(self, role_id: snowflakes.Snowflakeish, /) -> guilds.Role:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
         data = await client.get(int(role_id))
@@ -1315,31 +1374,31 @@ class RoleCache(_GuildReference, traits.RoleCache):
         if not data:
             raise errors.EntryNotFound(f"Role entry `{role_id}` not found")
 
-        return self._converter.deserialize_role(data)
+        return self.marshaller.deserialize_role(data)
 
     def iter_roles(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        return redis_iterators.RedisIterator(
-            self, ResourceIndex.ROLE, self._converter.deserialize_role, window_size=window_size
+        return redis_iterators.Iterator(
+            self, ResourceIndex.ROLE, self.marshaller.deserialize_role, window_size=window_size
         )
 
     def iter_roles_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        key = self._generate_reference_key(guild_id, ResourceIndex.ROLE).encode()
-        return redis_iterators.SpecificRedisIterator(
-            self, key, ResourceIndex.ROLE, self._converter.deserialize_role, window_size=window_size
+        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE).encode()
+        return redis_iterators.ReferenceIterator(
+            self, key, ResourceIndex.ROLE, self.marshaller.deserialize_role, window_size=window_size
         )
 
-    async def set_role(self, role: guilds.Role) -> None:
+    async def set_role(self, role: guilds.Role, /) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
         client = await self.get_connection(ResourceIndex.ROLE)
-        await client.set(int(role.id), self._converter.serialize_role(role))
-        await self._add_ids(role.guild_id, ResourceIndex.ROLE, int(role.id))
+        await client.set(int(role.id), self.marshaller.serialize_role(role))
+        await self._add_ids(ResourceIndex.GUILD, role.guild_id, ResourceIndex.ROLE, int(role.id))
 
 
-class VoiceStateCache(ResourceClient, traits.VoiceStateCache):
+class VoiceStateCache(_Reference, traits.VoiceStateCache):
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1350,21 +1409,47 @@ class VoiceStateCache(ResourceClient, traits.VoiceStateCache):
     async def __on_guild_channel_delete_event(self, event: channel_events.GuildChannelDeleteEvent) -> None:
         await self.clear_voice_states_for_channel(event.channel_id)
 
+    @staticmethod
+    def __generate_references(
+        voice_states: typing.Iterable[voices.VoiceState],
+        *,
+        include_reference_key: bool,
+    ) -> typing.MutableMapping[snowflakes.Snowflake, typing.MutableSet[str]]:
+        references: typing.MutableMapping[snowflakes.Snowflake, typing.MutableSet[str]] = {}
+        for state in voice_states:
+            assert state.channel_id is not None, "This channel ID shouldn't ever be None"
+            if state.channel_id not in references:
+                references[state.channel_id] = set()
+                if not include_reference_key:
+                    continue
+
+                references[state.channel_id].add(redis_iterators.HashReferenceIterator.hash_key(state.guild_id))
+
+            references[state.channel_id].add(str(state.user_id))
+
+        return references
+
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
         if isinstance(event, guild_events.GuildLeaveEvent):
             await self.clear_voice_states_for_guild(event.guild_id)
 
         elif isinstance(event, guild_events.GuildAvailableEvent):
             client = await self.get_connection(ResourceIndex.VOICE_STATE)
-            windows = chunk_values(event.voice_states.items())
+            windows = redis_iterators.chunk_values(event.voice_states.items())
             setters = (
                 client.hmset_dict(
-                    int(event.guild_id), cast_map_window(window, int, self._converter.serialize_voice_state)
+                    int(event.guild_id), cast_map_window(window, int, self.marshaller.serialize_voice_state)
                 )
                 for window in windows
             )
+
+            references = self.__generate_references(event.voice_states.values(), include_reference_key=True)
+            reference_setters = (
+                self._add_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE, *state_ids)
+                for channel_id, state_ids in references.items()
+            )
             user_setter = self._optionally_bulk_set_users(state.member.user for state in event.voice_states.values())
-            asyncio.gather(*setters, user_setter)
+            asyncio.gather(*setters, user_setter, *reference_setters)
 
     async def __on_voice_state_update(self, event: voice_events.VoiceStateUpdateEvent) -> None:
         if event.state.channel_id is None:
@@ -1392,22 +1477,74 @@ class VoiceStateCache(ResourceClient, traits.VoiceStateCache):
             self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
             self.dispatch.dispatcher.unsubscribe(voice_events.VoiceStateUpdateEvent, self.__on_voice_state_update)
 
-    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish) -> None:
+    @staticmethod
+    def _pop_reference(keys: typing.MutableSequence[bytes]) -> typing.Tuple[bytes, typing.Sequence[bytes]]:
+        for key in keys:
+            if key.startswith(b"KEY."):
+                keys.remove(key)
+                return key[4:], keys
+
+        raise ValueError("Couldn't find reference key")
+
+    async def clear_voice_states(self) -> None:
+        # <<Inherited docstring from sake.traits.VoiceStateCache>>
+        references = await self._dump_relationship(ResourceIndex.CHANNEL, ResourceIndex.VOICE_STATE)
+        client = await self.get_connection(ResourceIndex.VOICE_STATE)
+        asyncio.gather(
+            *(client.hdel(key, *values) for key, values in map(self._pop_reference, references.values()) if values)
+        )
+
+    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
-        await client.delete(int(guild_id))
+        states = await self.iter_voice_states_for_guild(guild_id)
+        references = self.__generate_references(states, include_reference_key=False)
+        asyncio.gather(
+            self._delete_ids(ResourceIndex.CHANNEL, key, ResourceIndex.VOICE_STATE, *values, reference_key=True)
+            for key, values in references.items()
+        )
+        asyncio.gather(
+            *(
+                client.hdel(int(guild_id), *values)
+                for values in redis_iterators.chunk_values(state.user_id for state in states)
+            )
+        )
 
-    async def clear_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish) -> None:
+    async def clear_voice_states_for_channel(
+        self, channel_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+    ) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
-        raise NotImplementedError
+        ids = await self._get_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE, cast=bytes)
 
-    async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish) -> None:
+        if not ids:
+            return
+
+        await self._delete_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE, *ids)
+        client = await self.get_connection(ResourceIndex.VOICE_STATE)
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(ids, window_size=window_size)))
+        await self._delete_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.INVITE, *ids, reference_key=True)
+
+    async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
-        await client.hdel(int(guild_id), int(user_id))
+
+        try:
+            voice_state = await self.get_voice_state(guild_id, user_id)
+        except errors.EntryNotFound:
+            pass
+        else:
+            assert voice_state.channel_id is not None, "Cached voice states should always have a bound channel"
+            await client.hdel(int(guild_id), int(user_id))
+            await self._delete_ids(
+                ResourceIndex.CHANNEL,
+                voice_state.channel_id,
+                ResourceIndex.VOICE_STATE,
+                int(voice_state.user_id),
+                reference_key=True,
+            )
 
     async def get_voice_state(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish
+        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
     ) -> voices.VoiceState:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
@@ -1416,44 +1553,57 @@ class VoiceStateCache(ResourceClient, traits.VoiceStateCache):
         if not data:
             raise errors.EntryNotFound(f"voice state entry `{user_id}` not found for guild `{guild_id}`")
 
-        return self._converter.deserialize_voice_state(data)
+        return self.marshaller.deserialize_voice_state(data)
 
     def iter_voice_states(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[voices.VoiceState]:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         return redis_iterators.MultiMapIterator(
-            self, ResourceIndex.VOICE_STATE, self._converter.deserialize_voice_state, window_size=window_size
+            self, ResourceIndex.VOICE_STATE, self.marshaller.deserialize_voice_state, window_size=window_size
         )
 
     def iter_voice_states_for_channel(
-        self, channel_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, channel_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[voices.VoiceState]:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
-        raise NotImplementedError
+        key = self._generate_reference_key(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE).encode()
+        return redis_iterators.HashReferenceIterator(
+            self,
+            key,
+            index=ResourceIndex.VOICE_STATE,
+            builder=self.marshaller.deserialize_voice_state,
+            window_size=window_size,
+        )
 
     def iter_voice_states_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[voices.VoiceState]:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         return redis_iterators.SpecificMapIterator(
             self,
             str(guild_id).encode(),
             ResourceIndex.VOICE_STATE,
-            self._converter.deserialize_voice_state,
+            self.marshaller.deserialize_voice_state,
             window_size=window_size,
         )
 
-    def iter_voice_states_for_user(
-        self, user_id: snowflakes.Snowflakeish, *, window_size: int = WINDOW_SIZE
-    ) -> traits.CacheIterator[voices.VoiceState]:
+    async def set_voice_state(self, voice_state: voices.VoiceState, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
-        raise NotImplementedError
+        if voice_state.channel_id is None:
+            raise ValueError("Cannot set a voice state which isn't bound to a channel")
 
-    async def set_voice_state(self, voice_state: voices.VoiceState) -> None:
-        # <<Inherited docstring from sake.traits.VoiceStateCache>>
-        data = self._converter.serialize_voice_state(voice_state)
+        data = self.marshaller.serialize_voice_state(voice_state)
+        # We have to ensure this is deleted first to make sure previous references are removed.
+        await self.delete_voice_state(voice_state.guild_id, voice_state.user_id)
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
         await client.hset(int(voice_state.guild_id), int(voice_state.user_id), data)
         await self._optionally_set_user(voice_state.member.user)
+        await self._add_ids(
+            ResourceIndex.CHANNEL,
+            voice_state.channel_id,
+            ResourceIndex.VOICE_STATE,
+            int(voice_state.user_id),
+            redis_iterators.HashReferenceIterator.hash_key(voice_state.guild_id),
+        )
 
 
 class RedisCache(
@@ -1462,11 +1612,13 @@ class RedisCache(
     GuildChannelCache,
     InviteCache,
     MemberCache,
+    MessageCache,
     PresenceCache,
     RoleCache,
     UserCache,
     VoiceStateCache,
-):  # MessageCache
+    traits.Cache,
+):
     """A Redis implementation of all the defined cache resources."""
 
     __slots__: typing.Sequence[str] = ()

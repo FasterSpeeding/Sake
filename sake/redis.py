@@ -23,6 +23,7 @@ import typing
 
 import aioredis
 from hikari import channels
+from hikari import errors as hikari_errors
 from hikari import guilds
 from hikari import invites as invites_
 from hikari import presences as presences_
@@ -961,14 +962,20 @@ class MemberCache(ResourceClient, traits.MemberCache):
             await self.set_member(event.member)
 
         elif isinstance(event, member_events.MemberDeleteEvent):
-            async for _ in rate_limits.BackOff():
+            back_off = rate_limits.BackOff()
+            async for _ in back_off:
                 if "own_id" in self.metadata:
                     break
 
                 try:
                     user = await self.rest.rest.fetch_my_user()
-                except rate_limits.BACKOFF_ERRORS:
+
+                except hikari_errors.RateLimitedError as exc:
+                    back_off.backoff(exc.retry_after)
+
+                except hikari_errors.InternalServerError:
                     pass
+
                 else:
                     self.metadata["own_id"] = user.id
                     break
@@ -1523,7 +1530,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
 
         try:
             voice_state = await self.get_voice_state(guild_id, user_id)
-        except errors.SakeException:
+        except errors.EntryNotFound:
             pass
         else:
             assert voice_state.channel_id is not None, "Cached voice states should always have a bound channel"

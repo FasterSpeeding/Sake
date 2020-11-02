@@ -277,7 +277,7 @@ def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
 
 
 class JSONMarshaller(ObjectMarshaller[bytes]):
-    __slots__: typing.Sequence[str] = ("_app", "_decoder", "_serialize_message", "_encoder")
+    __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder", "_serialize_message")
 
     _deserializers: typing.MutableMapping[
         typing.Any, typing.Callable[[typing.Mapping[str, typing.Any]], typing.Any]
@@ -1004,7 +1004,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             ("owner", _optional_cast(self._get_user_deserializer())),
             "rpc_origins",
             "summary",
-            ("verify_key", base64.b64decode),
+            ("verify_key", _optional_cast(base64.b64decode)),
             "icon_hash",
             ("team", _optional_cast(deserialize_team)),
             ("guild_id", _optional_cast(snowflakes.Snowflake)),
@@ -1187,10 +1187,10 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             "description",
             "is_bot_public",
             "is_bot_code_grant_required",
-            ("owner", self._get_user_serializer()),
+            ("owner", _optional_cast(self._get_user_serializer())),
             "rpc_origins",
             "summary",
-            ("verify_key", base64.b64encode),
+            ("verify_key", _optional_cast(base64.b64encode)),
             "icon_hash",
             ("team", _optional_cast(serialize_team)),
             "guild_id",

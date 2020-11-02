@@ -463,10 +463,10 @@ class VoiceStateCache(Resource, typing.Protocol):
 class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()  # TODO: for user?
 
-    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def clear_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
     def iter_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> CacheIterator[voices.VoiceState]:

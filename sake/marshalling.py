@@ -963,7 +963,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
                 fields=list(map(deserialize_field, data["fields"])),
             )
 
-        def deserialize_emoji(data: typing.Mapping[str, typing.Any]) -> emojis.Emoji:
+        def deserialize_reaction_emoji(data: typing.Mapping[str, typing.Any]) -> emojis.Emoji:
             if "id" in data:
                 return emojis.CustomEmoji(
                     id=snowflakes.Snowflake(data["id"]), name=data["name"], is_animated=data["is_animated"]
@@ -972,7 +972,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             return emojis.UnicodeEmoji(data["name"])
 
         deserialize_reaction = _generate_json_deserializer(
-            messages.Reaction, "count", ("emoji", deserialize_emoji), "is_me"
+            messages.Reaction, "count", ("emoji", deserialize_reaction_emoji), "is_me"
         )
         deserialize_activity = _generate_json_deserializer(
             messages.MessageActivity, ("type", messages.MessageActivityType), "party_id"

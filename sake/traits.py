@@ -213,6 +213,38 @@ class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
 
 
 @typing.runtime_checkable
+class IntegrationCache(Resource, typing.Protocol):
+    async def clear_integrations(self) -> None:
+        raise NotImplementedError
+
+    async def delete_integration(self, integration_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    def iter_integrations(self) -> CacheIterator[guilds.Integration]:
+        raise NotImplementedError
+
+    async def get_integration(self, integration_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
+        raise NotImplementedError
+
+    async def set_integration(self, integration: guilds.Integration, /) -> None:
+        raise NotImplementedError
+
+
+class RefIntegrationCache(IntegrationCache, typing.Protocol):
+    async def clear_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    async def delete_integration_by_application(self, application_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    async def get_integration_by_application(self, application_id: snowflakes.Snowflakeish, /):
+        raise NotImplementedError
+
+    def iter_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Integration]:
+        raise NotImplementedError
+
+
+@typing.runtime_checkable
 class InviteCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 

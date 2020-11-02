@@ -48,96 +48,104 @@ class ObjectMarshaller(abc.ABC, typing.Generic[ValueT]):
     __slots__: typing.Sequence[str] = ()
 
     @abc.abstractmethod
-    def deserialize_emoji(self, value: ValueT) -> emojis.KnownCustomEmoji:
+    def deserialize_emoji(self, value: ValueT, /) -> emojis.KnownCustomEmoji:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_emoji(self, emoji: emojis.KnownCustomEmoji) -> ValueT:
+    def serialize_emoji(self, emoji: emojis.KnownCustomEmoji, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_guild(self, value: ValueT) -> guilds.GatewayGuild:
+    def deserialize_guild(self, value: ValueT, /) -> guilds.GatewayGuild:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_guild(self, guild: guilds.GatewayGuild) -> ValueT:
+    def serialize_guild(self, guild: guilds.GatewayGuild, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_guild_channel(self, value: ValueT) -> channels.GuildChannel:
+    def deserialize_guild_channel(self, value: ValueT, /) -> channels.GuildChannel:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_guild_channel(self, channel: channels.GuildChannel) -> ValueT:
+    def serialize_guild_channel(self, channel: channels.GuildChannel, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_invite(self, value: ValueT) -> invites.InviteWithMetadata:
+    def deserialize_integration(self, value: ValueT, /) -> guilds.Integration:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_invite(self, invite: invites.InviteWithMetadata) -> ValueT:
+    def serialize_integration(self, integration: guilds.Integration, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_member(self, value: ValueT) -> guilds.Member:
+    def deserialize_invite(self, value: ValueT, /) -> invites.InviteWithMetadata:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_member(self, member: guilds.Member) -> ValueT:
+    def serialize_invite(self, invite: invites.InviteWithMetadata, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_message(self, value: ValueT) -> messages.Message:
+    def deserialize_member(self, value: ValueT, /) -> guilds.Member:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def serialize_member(self, member: guilds.Member, /) -> ValueT:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def deserialize_message(self, value: ValueT, /) -> messages.Message:
         raise NotImplementedError
 
     # This is a special case serializer as it may have to asynchronously read "file" content.
     @abc.abstractmethod
-    async def serialize_message(self, message: messages.Message) -> ValueT:
+    async def serialize_message(self, message: messages.Message, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_own_user(self, value: ValueT) -> users.OwnUser:
+    def deserialize_own_user(self, value: ValueT, /) -> users.OwnUser:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_own_user(self, me: users.OwnUser) -> ValueT:
+    def serialize_own_user(self, me: users.OwnUser, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_presence(self, value: ValueT) -> presences.MemberPresence:
+    def deserialize_presence(self, value: ValueT, /) -> presences.MemberPresence:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_presence(self, presence: presences.MemberPresence) -> ValueT:
+    def serialize_presence(self, presence: presences.MemberPresence, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_role(self, value: ValueT) -> guilds.Role:
+    def deserialize_role(self, value: ValueT, /) -> guilds.Role:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_role(self, role: guilds.Role) -> ValueT:
+    def serialize_role(self, role: guilds.Role, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_user(self, value: ValueT) -> users.User:
+    def deserialize_user(self, value: ValueT, /) -> users.User:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_user(self, user: users.User) -> ValueT:
+    def serialize_user(self, user: users.User, /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_voice_state(self, value: ValueT) -> voices.VoiceState:
+    def deserialize_voice_state(self, value: ValueT, /) -> voices.VoiceState:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def serialize_voice_state(self, voice_state: voices.VoiceState) -> ValueT:
+    def serialize_voice_state(self, voice_state: voices.VoiceState, /) -> ValueT:
         raise NotImplementedError
 
 
-def _get_init_name(field: str) -> str:
+def _get_init_name(field: str, /) -> str:
     return field[1:] if field.startswith("_") else field
 
 
@@ -152,6 +160,7 @@ _DeserializeCastRuleT = typing.Union[typing.Callable[[typing.Any], typing.Any], 
 
 def _generate_map_deserializer(
     cls: typing.Type[ValueT],
+    /,
     *rules: typing.Union[
         str,
         typing.Tuple[str, _DeserializeCastRuleT],
@@ -205,7 +214,7 @@ def _generate_map_deserializer(
 
     globals_: typing.Dict[str, typing.Any] = {"cls": cls, "UNDEFINED": undefined.UNDEFINED}
     globals_.update((value, key) for key, value in named_casts.items())
-    code = f"def deserialize(data, **kwargs): return cls({','.join(getters)})"
+    code = f"def deserialize(data, /, **kwargs): return cls({','.join(getters)})"
     _LOGGER.debug("generating mapping deserialize method for %r\n  %r", cls, code)
     exec(code, globals_)
     return typing.cast("typing.Callable[..., ValueT]", globals_["deserialize"])
@@ -262,51 +271,51 @@ def _generate_map_serializer(
 
     globals_: typing.Dict[str, typing.Any] = {"UNDEFINED": undefined.UNDEFINED}
     globals_.update((value, key) for key, value in named_casts.items())
-    code = "def serialize(m):\n  data = {};\n  " + "\n  ".join(setters) + "\n  return data"
+    code = "def serialize(m, /):\n  data = {};\n  " + "\n  ".join(setters) + "\n  return data"
     _LOGGER.debug("generating mapping serialize method:\n  %r", code)
     exec(code, globals_)
     return typing.cast("typing.Callable[[typing.Any], typing.MutableMapping[str, typing.Any]]", globals_["serialize"])
 
 
-def _optional_cast(cast: typing.Callable[..., OtherValueT]) -> typing.Callable[..., typing.Optional[OtherValueT]]:
-    return lambda value, **kwargs: cast(value, **kwargs) if value is not None else None
+def _optional_cast(cast: typing.Callable[..., OtherValueT], /) -> typing.Callable[..., typing.Optional[OtherValueT]]:
+    return lambda value, /, **kwargs: cast(value, **kwargs) if value is not None else None
 
 
-def _cast_sequence(cast: typing.Callable[..., OtherValueT]) -> typing.Callable[..., typing.Sequence[OtherValueT]]:
-    def converter(array: typing.Sequence[ValueT], **kwargs: typing.Any) -> typing.Sequence[OtherValueT]:
+def _cast_sequence(cast: typing.Callable[..., OtherValueT], /) -> typing.Callable[..., typing.Sequence[OtherValueT]]:
+    def converter(array: typing.Sequence[ValueT], /, **kwargs: typing.Any) -> typing.Sequence[OtherValueT]:
         return [cast(value, **kwargs) for value in array]
 
     return converter
 
 
 def _cast_mapping(
-    key_cast: typing.Callable[[KeyT], OtherKeyT], value_cast: typing.Callable[..., OtherValueT]
+    key_cast: typing.Callable[[KeyT], OtherKeyT], value_cast: typing.Callable[..., OtherValueT], /
 ) -> typing.Callable[..., typing.MutableMapping[OtherKeyT, OtherValueT]]:
     def converter(
-        mapping: typing.Mapping[KeyT, ValueT], **kwargs: typing.Any
+        mapping: typing.Mapping[KeyT, ValueT], /, **kwargs: typing.Any
     ) -> typing.MutableMapping[OtherKeyT, OtherValueT]:
         return {key_cast(key): value_cast(value, **kwargs) for key, value in mapping.items()}
 
     return converter
 
 
-def _no_cast(value: ValueT) -> ValueT:
+def _no_cast(value: ValueT, /) -> ValueT:
     return value
 
 
-def _deserialize_timedelta(delta: typing.Union[bytes, float]) -> datetime.timedelta:
+def _deserialize_timedelta(delta: typing.Union[bytes, float], /) -> datetime.timedelta:
     return datetime.timedelta(seconds=float(delta))
 
 
-def _serialize_timedelta(delta: datetime.timedelta) -> float:
+def _serialize_timedelta(delta: datetime.timedelta, /) -> float:
     return delta.total_seconds()
 
 
-def _deserialize_datetime(date: str) -> datetime.datetime:
+def _deserialize_datetime(date: str, /) -> datetime.datetime:
     return time.iso8601_datetime_string_to_datetime(date)
 
 
-def _serialize_datetime(date: datetime.datetime) -> str:
+def _serialize_datetime(date: datetime.datetime, /) -> str:
     return date.isoformat()
 
 
@@ -347,11 +356,11 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         ] = None
 
     @abc.abstractmethod
-    def dumps(self, data: typing.Mapping[str, typing.Any]) -> ValueT:
+    def dumps(self, data: typing.Mapping[str, typing.Any], /) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def loads(self, data: ValueT) -> typing.MutableMapping[str, typing.Any]:
+    def loads(self, data: ValueT, /) -> typing.MutableMapping[str, typing.Any]:
         raise NotImplementedError
 
     def _get_emoji_deserializer(self) -> typing.Callable[..., emojis.KnownCustomEmoji]:
@@ -376,7 +385,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._deserializers[emojis.KnownCustomEmoji] = deserialize
         return deserialize
 
-    def deserialize_emoji(self, value: ValueT) -> emojis.KnownCustomEmoji:
+    def deserialize_emoji(self, value: ValueT, /) -> emojis.KnownCustomEmoji:
         return self._get_emoji_deserializer()(self.loads(value), app=self._app)
 
     def _get_emoji_serializer(self) -> typing.Callable[[emojis.KnownCustomEmoji], typing.Mapping[str, typing.Any]]:
@@ -400,7 +409,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[emojis.KnownCustomEmoji] = serialize
         return serialize
 
-    def serialize_emoji(self, emoji: emojis.KnownCustomEmoji) -> ValueT:
+    def serialize_emoji(self, emoji: emojis.KnownCustomEmoji, /) -> ValueT:
         return self.dumps(self._get_emoji_serializer()(emoji))
 
     def _get_guild_deserializer(self) -> typing.Callable[..., guilds.GatewayGuild]:
@@ -447,7 +456,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._deserializers[guilds.GatewayGuild] = deserialize
         return deserialize
 
-    def deserialize_guild(self, value: ValueT) -> guilds.GatewayGuild:
+    def deserialize_guild(self, value: ValueT, /) -> guilds.GatewayGuild:
         return self._get_guild_deserializer()(self.loads(value), app=self._app)
 
     def _get_guild_serializer(self) -> typing.Callable[[guilds.GatewayGuild], typing.Mapping[str, typing.Any]]:
@@ -492,7 +501,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[guilds.GatewayGuild] = serialize
         return serialize
 
-    def serialize_guild(self, guild: guilds.GatewayGuild) -> ValueT:
+    def serialize_guild(self, guild: guilds.GatewayGuild, /) -> ValueT:
         return self.dumps(self._get_guild_serializer()(guild))
 
     def _guild_channel_deserialize_rules(
@@ -582,7 +591,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             self._deserializers[channels.GuildVoiceChannel] = deserialize
             return deserialize
 
-    def deserialize_guild_channel(self, value: ValueT) -> channels.GuildChannel:
+    def deserialize_guild_channel(self, value: ValueT, /) -> channels.GuildChannel:
         data = self.loads(value)
         channel_type = channels.ChannelType(data.get("type", -1))
 
@@ -679,7 +688,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             self._serializers[channels.GuildVoiceChannel] = serialize
             return serialize
 
-    def serialize_guild_channel(self, channel: channels.GuildChannel) -> ValueT:
+    def serialize_guild_channel(self, channel: channels.GuildChannel, /) -> ValueT:
         if isinstance(channel, channels.GuildCategory):
             data = self._get_category_serializer()(channel)
 
@@ -699,6 +708,89 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             raise NotImplementedError(f"Serializer not implemented for {type(channel).__name__} channel type")
 
         return self.dumps(data)
+
+    def _get_integration_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], guilds.Integration]:
+        try:
+            return self._deserializers[guilds.Integration]
+        except KeyError:
+            pass
+
+        deserialize_application = _generate_map_deserializer(
+            guilds.IntegrationApplication,
+            ("id", snowflakes.Snowflake),
+            "name",
+            "icon_hash",
+            "summary",
+            "description",
+            ("bot", _optional_cast(self._get_user_deserializer())),
+        )
+        deserialize = _generate_map_deserializer(
+            guilds.Integration,
+            ("account", _generate_map_deserializer(guilds.IntegrationAccount, "id", "name")),
+            ("id", snowflakes.Snowflake),
+            "name",
+            ("type", guilds.IntegrationType),
+            ("expire_behavior", _optional_cast(guilds.IntegrationExpireBehaviour)),
+            ("expire_grace_period", _optional_cast(_deserialize_timedelta)),
+            "is_enabled",
+            "is_syncing",
+            "is_emojis_enabled",
+            "is_revoked",
+            ("last_synced_at", _optional_cast(_deserialize_datetime)),
+            ("role_id", _optional_cast(snowflakes.Snowflake)),
+            ("user", _optional_cast(self._get_user_deserializer())),
+            "subscriber_count",
+            ("application", _optional_cast(deserialize_application)),
+            ("guild_id", snowflakes.Snowflake),
+        )
+        self._deserializers[guilds.Integration] = deserialize
+        return deserialize
+
+    def deserialize_integration(self, value: bytes, /) -> guilds.Integration:
+        integration = self._get_integration_deserializer()(self._loads(value))
+
+        if integration.user is not None:
+            integration.user.app = self._app
+
+        if integration.application is not None and integration.application.bot is not None:
+            integration.application.bot.app = self._app
+
+        return integration
+
+    def _get_integration_serializer(
+        self,
+    ) -> typing.Callable[[guilds.Integration], typing.MutableMapping[str, typing.Any]]:
+        try:
+            return self._serializers[guilds.Integration]
+        except KeyError:
+            pass
+
+        serialize_application = _generate_map_serializer(
+            "id", "name", "icon_hash", "summary", "description", ("bot", _optional_cast(self._get_user_serializer()))
+        )
+        serialize = _generate_map_serializer(
+            ("account", _generate_map_serializer("id", "name")),
+            "id",
+            "name",
+            "type",
+            "expire_behavior",
+            ("expire_grace_period", _optional_cast(_serialize_timedelta)),
+            "is_enabled",
+            "is_syncing",
+            "is_emojis_enabled",
+            "is_revoked",
+            ("last_synced_at", _optional_cast(_serialize_datetime)),
+            "role_id",
+            ("user", _optional_cast(self._get_user_serializer())),
+            "subscriber_count",
+            ("application", _optional_cast(serialize_application)),
+            "guild_id",
+        )
+        self._serializers[guilds.Integration] = serialize
+        return serialize
+
+    def serialize_integration(self, integration: guilds.Integration, /) -> bytes:
+        return self._dumps(self._get_integration_serializer()(integration))
 
     def _get_invite_deserializer(
         self,
@@ -751,7 +843,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._deserializers[invites.InviteWithMetadata] = deserialize
         return deserialize
 
-    def deserialize_invite(self, value: ValueT) -> invites.InviteWithMetadata:
+    def deserialize_invite(self, value: ValueT, /) -> invites.InviteWithMetadata:
         return self._get_invite_deserializer()(self.loads(value), app=self._app)
 
     def _get_invite_serializer(self) -> typing.Callable[[invites.InviteWithMetadata], typing.Mapping[str, typing.Any]]:
@@ -792,7 +884,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[invites.InviteWithMetadata] = serialize
         return serialize
 
-    def serialize_invite(self, invite: invites.InviteWithMetadata) -> ValueT:
+    def serialize_invite(self, invite: invites.InviteWithMetadata, /) -> ValueT:
         return self.dumps(self._get_invite_serializer()(invite))
 
     def _get_member_deserializer(self) -> typing.Callable[..., guilds.Member]:
@@ -818,7 +910,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._deserializers[guilds.Member] = deserialize
         return deserialize
 
-    def deserialize_member(self, value: ValueT) -> guilds.Member:
+    def deserialize_member(self, value: ValueT, /) -> guilds.Member:
         return self._get_member_deserializer()(self.loads(value), app=self._app)
 
     def _get_member_serializer(self) -> typing.Callable[[guilds.Member], typing.Mapping[str, typing.Any]]:
@@ -840,11 +932,11 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[guilds.Member] = serialize
         return serialize
 
-    def serialize_member(self, member: guilds.Member) -> ValueT:
+    def serialize_member(self, member: guilds.Member, /) -> ValueT:
         return self.dumps(self._get_member_serializer()(member))
 
     @staticmethod
-    def deserialize_resource(data: typing.Mapping[str, typing.Any]) -> files.Resource[files.AsyncReader]:
+    def deserialize_resource(data: typing.Mapping[str, typing.Any], /) -> files.Resource[files.AsyncReader]:
         resource_type = data.get("type")
         if resource_type == "url":
             return typing.cast("files.Resource[files.AsyncReader]", files.URL(url=data["url"]))
@@ -899,10 +991,10 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             embeds.EmbedFooter, "text", ("icon", _optional_cast(deserialize_resource_with_proxy))
         )
 
-        def deserialize_field(data: typing.Mapping[str, typing.Any]) -> embeds.EmbedField:
+        def deserialize_field(data: typing.Mapping[str, typing.Any], /) -> embeds.EmbedField:
             return embeds.EmbedField(name=data["name"], value=data["value"], inline=data["is_inline"])
 
-        def deserialize_embed(data: typing.Mapping[str, typing.Any]) -> embeds.Embed:
+        def deserialize_embed(data: typing.Mapping[str, typing.Any], /) -> embeds.Embed:
             color: typing.Optional[colors.Color] = None
             if (raw_color := data["color"]) is not None:
                 color = colors.Color(raw_color)
@@ -950,16 +1042,8 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
                 fields=list(map(deserialize_field, data["fields"])),
             )
 
-        def deserialize_reaction_emoji(data: typing.Mapping[str, typing.Any]) -> emojis.Emoji:
-            if "id" in data:
-                return emojis.CustomEmoji(
-                    id=snowflakes.Snowflake(data["id"]), name=data["name"], is_animated=data["is_animated"]
-                )
-
-            return emojis.UnicodeEmoji(data["name"])
-
         deserialize_reaction = _generate_map_deserializer(
-            messages.Reaction, "count", ("emoji", deserialize_reaction_emoji), "is_me"
+            messages.Reaction, "count", ("emoji", self.deserialize_unknown_emoji), "is_me"
         )
         deserialize_activity = _generate_map_deserializer(
             messages.MessageActivity, ("type", messages.MessageActivityType), "party_id"
@@ -1037,7 +1121,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._deserializers[messages.Message] = deserialize
         return deserialize
 
-    def deserialize_message(self, value: ValueT) -> messages.Message:
+    def deserialize_message(self, value: ValueT, /) -> messages.Message:
         return self._get_message_deserializer()(self.loads(value), app=self._app)
 
     async def _serialize_resource(
@@ -1079,6 +1163,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
 
         async def serialize_resource_with_proxy(
             resource: embeds.EmbedResourceWithProxy[files.AsyncReader],
+            /,
         ) -> typing.MutableMapping[str, typing.Any]:
             proxy_resource: typing.Optional[typing.MutableMapping[str, typing.Any]] = None
             if resource.proxy_resource is not None:
@@ -1088,6 +1173,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
 
         async def serialize_image(
             image: embeds.EmbedImage[files.AsyncReader],
+            /,
         ) -> typing.MutableMapping[str, typing.Any]:
             data = await serialize_resource_with_proxy(image)
             data["height"] = image.height
@@ -1096,6 +1182,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
 
         async def serialize_video(
             video: embeds.EmbedVideo[files.AsyncReader],
+            /,
         ) -> typing.MutableMapping[str, typing.Any]:
             return {
                 "resource": await self._serialize_resource(video.resource),
@@ -1103,20 +1190,20 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
                 "width": video.width,
             }
 
-        async def serialize_footer(footer: embeds.EmbedFooter) -> typing.MutableMapping[str, typing.Any]:
+        async def serialize_footer(footer: embeds.EmbedFooter, /) -> typing.MutableMapping[str, typing.Any]:
             return {
                 "text": footer.text,
                 "icon": await serialize_resource_with_proxy(footer.icon) if footer.icon is not None else None,
             }
 
-        async def serialize_author(author: embeds.EmbedAuthor) -> typing.MutableMapping[str, typing.Any]:
+        async def serialize_author(author: embeds.EmbedAuthor, /) -> typing.MutableMapping[str, typing.Any]:
             return {
                 "name": author.name,
                 "url": author.url,
                 "icon": await serialize_resource_with_proxy(author.icon) if author.icon is not None else None,
             }
 
-        async def serialize_embed(embed: embeds.Embed) -> typing.MutableMapping[str, typing.Any]:
+        async def serialize_embed(embed: embeds.Embed, /) -> typing.MutableMapping[str, typing.Any]:
             return {
                 "title": embed.title,
                 "description": embed.description,
@@ -1132,13 +1219,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
                 "fields": list(map(serialize_filed, embed.fields)),
             }
 
-        def serialize_emoji(emoji: emojis.Emoji) -> typing.MutableMapping[str, typing.Any]:
-            if isinstance(emoji, emojis.CustomEmoji):
-                return {"id": emoji.id, "name": emoji.name, "is_animated": emoji.is_animated}
-
-            return {"name": emoji.name}
-
-        serialize_reaction = _generate_map_serializer("count", ("emoji", serialize_emoji), "is_me")
+        serialize_reaction = _generate_map_serializer("count", ("emoji", self.serialize_unknown_emoji), "is_me")
         serialize_message_activity = _generate_map_serializer("type", "party_id")
         serialize_team_member = _generate_map_serializer(
             "membership_state", "permissions", "team_id", ("user", self._get_user_serializer())
@@ -1167,7 +1248,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         serialize_user = self._get_user_serializer()
         serialize_member = self._get_member_serializer()
 
-        async def serialize_message(message: messages.Message) -> typing.MutableMapping[str, typing.Any]:
+        async def serialize(message: messages.Message, /) -> typing.MutableMapping[str, typing.Any]:
             message_reference: typing.Optional[typing.MutableMapping[str, typing.Any]] = None
             if message.message_reference is not None:
                 message_reference = serialize_reference(message.message_reference)
@@ -1203,11 +1284,11 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
                 "nonce": message.nonce,
             }
 
-        self._serialize_message = serialize_message
-        return self._serialize_message
+        self._serialize_message = serialize
+        return serialize
 
     # This is a special case serializer as it may have to asynchronously read "file" content.
-    async def serialize_message(self, message: messages.Message) -> ValueT:
+    async def serialize_message(self, message: messages.Message, /) -> ValueT:
         return self.dumps(await self._get_message_serializer()(message))
 
     def _get_own_user_deserializer(self) -> typing.Callable[..., users.OwnUser]:
@@ -1228,7 +1309,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._deserializers[users.OwnUser] = deserialize
         return deserialize
 
-    def deserialize_own_user(self, value: ValueT) -> users.OwnUser:
+    def deserialize_own_user(self, value: ValueT, /) -> users.OwnUser:
         return self._get_own_user_deserializer()(self.loads(value), app=self._app)
 
     def _get_own_user_serializer(self) -> typing.Callable[[users.OwnUser], typing.Mapping[str, typing.Any]]:
@@ -1243,7 +1324,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[users.OwnUser] = serialize
         return serialize
 
-    def serialize_own_user(self, me: users.OwnUser) -> ValueT:
+    def serialize_own_user(self, me: users.OwnUser, /) -> ValueT:
         return self.dumps(self._get_own_user_serializer()(me))
 
     def _get_presence_deserializer(
@@ -1254,61 +1335,52 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         except KeyError:
             pass
 
-        def serialize_emoji(data: typing.Mapping[str, typing.Any]) -> emojis.Emoji:
-            if "id" in data:
-                return emojis.CustomEmoji(
-                    name=data["name"],
-                    id=snowflakes.Snowflake(data["id"]),
-                    is_animated=data["is_animated"],
-                )
-            return emojis.UnicodeEmoji(data["name"])
-
-        serialize_timestamps = _generate_map_deserializer(
+        deserialize_timestamps = _generate_map_deserializer(
             presences.ActivityTimestamps,
             ("start", _optional_cast(_deserialize_datetime)),
             ("end", _optional_cast(_deserialize_datetime)),
         )
-        serialize_client_status = _generate_map_deserializer(
+        deserialize_client_status = _generate_map_deserializer(
             presences.ClientStatus,
             ("desktop", presences.Status),
             ("mobile", presences.Status),
             ("web", presences.Status),
         )
-        serialize_party = _generate_map_deserializer(presences.ActivityParty, "id", "current_size", "max_size")
-        serialize_assets = _generate_map_deserializer(
+        deserialize_party = _generate_map_deserializer(presences.ActivityParty, "id", "current_size", "max_size")
+        deserialize_assets = _generate_map_deserializer(
             presences.ActivityAssets, "large_image", "large_text", "small_image", "small_text"
         )
-        serialize_secrets = _generate_map_deserializer(presences.ActivitySecret, "join", "spectate", "match")
-        serialize_activity = _generate_map_deserializer(
+        deserialize_secrets = _generate_map_deserializer(presences.ActivitySecret, "join", "spectate", "match")
+        deserialize_activity = _generate_map_deserializer(
             presences.RichActivity,
             "name",
             "url",
             ("type", presences.ActivityType),
             ("created_at", _deserialize_datetime),
-            ("timestamps", _optional_cast(serialize_timestamps)),
+            ("timestamps", _optional_cast(deserialize_timestamps)),
             ("application_id", _optional_cast(snowflakes.Snowflake)),
             "details",
             "state",
-            ("emoji", _optional_cast(serialize_emoji)),
-            ("party", _optional_cast(serialize_party)),
-            ("assets", _optional_cast(serialize_assets)),
-            ("secrets", _optional_cast(serialize_secrets)),
+            ("emoji", _optional_cast(self.deserialize_unknown_emoji)),
+            ("party", _optional_cast(deserialize_party)),
+            ("assets", _optional_cast(deserialize_assets)),
+            ("secrets", _optional_cast(deserialize_secrets)),
             "is_instance",
             ("flags", _optional_cast(presences.ActivityFlag)),
         )
-        serialize = _generate_map_deserializer(
+        deserialize = _generate_map_deserializer(
             presences.MemberPresence,
             ("app", _SET_KWARG),
             ("user_id", snowflakes.Snowflake),
             ("guild_id", snowflakes.Snowflake),
             ("visible_status", presences.Status),
-            ("activities", _cast_sequence(serialize_activity)),
-            ("client_status", serialize_client_status),
+            ("activities", _cast_sequence(deserialize_activity)),
+            ("client_status", deserialize_client_status),
         )
-        self._deserializers[presences.MemberPresence] = serialize
-        return serialize
+        self._deserializers[presences.MemberPresence] = deserialize
+        return deserialize
 
-    def deserialize_presence(self, value: ValueT) -> presences.MemberPresence:
+    def deserialize_presence(self, value: ValueT, /) -> presences.MemberPresence:
         return self._get_presence_deserializer()(self.loads(value), app=self._app)
 
     def _get_presence_serializer(self) -> typing.Callable[[presences.MemberPresence], typing.Mapping[str, typing.Any]]:
@@ -1316,11 +1388,6 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             return self._serializers[presences.MemberPresence]
         except KeyError:
             pass
-
-        def emoji_serializer(emoji: emojis.Emoji) -> typing.MutableMapping[str, typing.Any]:
-            if isinstance(emoji, emojis.CustomEmoji):
-                return {"id": emoji.id, "name": emoji.name, "is_animated": emoji.is_animated}
-            return {"name": emoji.name}
 
         serialize_assets = _generate_map_serializer("large_image", "large_text", "small_image", "small_text")
         serialize_timestamps = _generate_map_serializer(
@@ -1336,7 +1403,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             "application_id",
             "details",
             "state",
-            ("emoji", _optional_cast(emoji_serializer)),
+            ("emoji", _optional_cast(self.serialize_unknown_emoji)),
             ("party", _optional_cast(_generate_map_serializer("id", "current_size", "max_size"))),
             ("assets", _optional_cast(serialize_assets)),
             ("secrets", _optional_cast(_generate_map_serializer("join", "spectate", "match"))),
@@ -1354,7 +1421,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[presences.MemberPresence] = serialize
         return serialize
 
-    def serialize_presence(self, presence: presences.MemberPresence) -> ValueT:
+    def serialize_presence(self, presence: presences.MemberPresence, /) -> ValueT:
         return self.dumps(self._get_presence_serializer()(presence))
 
     def _get_role_deserializer(self) -> typing.Callable[..., guilds.Role]:
@@ -1379,7 +1446,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._deserializers[guilds.Role] = deserialize
         return deserialize
 
-    def deserialize_role(self, value: ValueT) -> guilds.Role:
+    def deserialize_role(self, value: ValueT, /) -> guilds.Role:
         return self._get_role_deserializer()(self.loads(value), app=self._app)
 
     def _get_role_serializer(self) -> typing.Callable[[guilds.Role], typing.Mapping[str, typing.Any]]:
@@ -1402,8 +1469,24 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[guilds.Role] = serialize
         return serialize
 
-    def serialize_role(self, role: guilds.Role) -> ValueT:
+    def serialize_role(self, role: guilds.Role, /) -> ValueT:
         return self.dumps(self._get_role_serializer()(role))
+
+    @staticmethod
+    def deserialize_unknown_emoji(data: typing.Mapping[str, typing.Any], /) -> emojis.Emoji:
+        if "id" in data:
+            return emojis.CustomEmoji(
+                id=snowflakes.Snowflake(data["id"]), name=data["name"], is_animated=data["is_animated"]
+            )
+
+        return emojis.UnicodeEmoji(data["name"])
+
+    @staticmethod
+    def serialize_unknown_emoji(emoji: emojis.Emoji, /) -> typing.MutableMapping[str, typing.Any]:
+        if isinstance(emoji, emojis.CustomEmoji):
+            return {"id": emoji.id, "name": emoji.name, "is_animated": emoji.is_animated}
+
+        return {"name": emoji.name}
 
     def _get_user_deserializer(self) -> typing.Callable[..., users.User]:
         try:
@@ -1415,7 +1498,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._deserializers[users.UserImpl] = deserialize
         return deserialize
 
-    def deserialize_user(self, value: ValueT) -> users.User:
+    def deserialize_user(self, value: ValueT, /) -> users.User:
         return self._get_user_deserializer()(self.loads(value), app=self._app)
 
     def _get_user_serializer(self) -> typing.Callable[[users.User], typing.Mapping[str, typing.Any]]:
@@ -1428,7 +1511,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[users.UserImpl] = serialize
         return serialize
 
-    def serialize_user(self, user: users.User) -> ValueT:
+    def serialize_user(self, user: users.User, /) -> ValueT:
         return self.dumps(self._get_user_serializer()(user))
 
     def _get_voice_state_deserializer(self) -> typing.Callable[..., voices.VoiceState]:
@@ -1456,7 +1539,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._deserializers[voices.VoiceState] = deserialize
         return deserialize
 
-    def deserialize_voice_state(self, value: ValueT) -> voices.VoiceState:
+    def deserialize_voice_state(self, value: ValueT, /) -> voices.VoiceState:
         return self._get_voice_state_deserializer()(self.loads(value), app=self._app)
 
     def _get_voice_state_serializer(self) -> typing.Callable[[voices.VoiceState], typing.Mapping[str, typing.Any]]:
@@ -1482,15 +1565,15 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[voices.VoiceState] = serialize
         return serialize
 
-    def serialize_voice_state(self, voice_state: voices.VoiceState) -> ValueT:
+    def serialize_voice_state(self, voice_state: voices.VoiceState, /) -> ValueT:
         return self.dumps(self._get_voice_state_serializer()(voice_state))
 
 
 class JSONMarshaller(MappingMarshaller[bytes]):
-    def dumps(self, data: typing.Mapping[str, typing.Any]) -> bytes:
+    def dumps(self, data: typing.Mapping[str, typing.Any], /) -> bytes:
         return self._encoder.encode(data).encode()
 
-    def loads(self, data: bytes) -> typing.MutableMapping[str, typing.Any]:
+    def loads(self, data: bytes, /) -> typing.MutableMapping[str, typing.Any]:
         result = self._decoder.decode(data.decode("utf-8"))
         if not isinstance(result, dict):
             raise ValueError("Invalid json content received")

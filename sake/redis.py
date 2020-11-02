@@ -101,6 +101,7 @@ class ResourceIndex(enum.IntEnum):
     REFERENCE = 9
     #  REFERENCE is a special case database solely used for linking other entries to other master entities.
     MESSAGE = 10
+    INTEGRATION = 11
 
 
 def cast_map_window(
@@ -906,6 +907,84 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         data = self.marshaller.serialize_guild_channel(channel)
         await client.set(int(channel.id), data)
         await self._add_ids(ResourceIndex.GUILD, int(channel.guild_id), ResourceIndex.CHANNEL, int(channel.id))
+
+
+class IntegrationCache(_Reference, traits.IntegrationCache):
+    __slots__: typing.Sequence[str] = ()
+
+    @classmethod
+    def index(cls) -> typing.Sequence[ResourceIndex]:
+        # <<Inherited docstring from sake.traits.Resource>>
+        return (ResourceIndex.INTEGRATION,)
+
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        # The implementation for these events hasn't been added yet so Soon:tm:
+        super().subscribe_listeners()
+
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        # The implementation for these events hasn't been added yet so Soon:tm:
+        super().unsubscribe_listeners()
+
+    async def clear_integrations(self) -> None:
+        # <<Inherited docstring from sake.traits.IntegrationCache>>
+        ids = await self._dump_relationship(ResourceIndex.GUILD, ResourceIndex.INTEGRATION)
+        client = await self.get_connection(ResourceIndex.INTEGRATION)
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(ids)))
+
+    async def clear_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        guild_id = int(guild_id)
+        ids = await self._get_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.INTEGRATION, cast=bytes)
+
+        if not ids:
+            return
+
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.INTEGRATION, *ids)
+        client = await self.get_connection(ResourceIndex.INTEGRATION)
+        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(ids)))
+
+    async def delete_integration(self, integration_id: snowflakes.Snowflakeish, /) -> None:
+        # <<Inherited docstring from sake.traits.IntegrationCache>>
+        try:
+            integration = await self.get_integration(integration_id)
+        except errors.EntryNotFound:
+            pass
+        else:
+            await self._delete_ids(ResourceIndex.GUILD, integration.guild_id, ResourceIndex.INTEGRATION)
+            client = await self.get_connection(ResourceIndex.INTEGRATION)
+            await client.delete(int(integration_id))
+
+    async def get_integration(self, integration_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
+        # <<Inherited docstring from sake.traits.IntegrationCache>>
+        client = await self.get_connection(ResourceIndex.INTEGRATION)
+        data = await client.get(int(integration_id))
+
+        if not data:
+            raise errors.EntryNotFound(f"Integration entry `{integration_id}` not found")
+
+        return self.marshaller.deserialize_integration(data)
+
+    def iter_integrations(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[guilds.Integration]:
+        # <<Inherited docstring from sake.traits.IntegrationCache>>
+        return redis_iterators.Iterator(
+            self, ResourceIndex.INTEGRATION, builder=self.marshaller.deserialize_integration, window_size=window_size
+        )
+
+    def iter_integrations_for_guild(
+        self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+    ) -> traits.CacheIterator[guilds.Integration]:
+        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.INTEGRATION).encode()
+        return redis_iterators.ReferenceIterator(
+            self, key, ResourceIndex.INTEGRATION, self.marshaller.deserialize_integration, window_size=window_size
+        )
+
+    async def set_integration(self, integration: guilds.Integration, /) -> None:
+        # <<Inherited docstring from sake.traits.IntegrationCache>>
+        data = self.marshaller.serialize_integration(integration)
+        client = await self.get_connection(ResourceIndex.INTEGRATION)
+        await client.set(int(integration.id), data)
+        await self._add_ids(ResourceIndex.GUILD, int(integration.guild_id), ResourceIndex.INTEGRATION)
 
 
 class InviteCache(ResourceClient, traits.InviteCache):

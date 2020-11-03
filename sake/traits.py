@@ -237,7 +237,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
     async def delete_integration_by_application(self, application_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def get_integration_by_application(self, application_id: snowflakes.Snowflakeish, /):
+    async def get_integration_by_application(self, application_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
         raise NotImplementedError
 
     def iter_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Integration]:

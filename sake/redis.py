@@ -675,17 +675,18 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
         client = await self.get_connection(ResourceIndex.EMOJI)
         asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(emoji_ids)))
 
-    async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_emoji(
+        self, emoji_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
+    ) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        emoji_id = int(emoji_id)
+        if guild_id is None:
+            try:
+                guild_id = (await self.get_emoji(emoji_id)).guild_id
+            except errors.EntryNotFound:
+                return
+
         client = await self.get_connection(ResourceIndex.EMOJI)
-        data = await client.get(emoji_id)
-
-        if not data:
-            return
-
-        emoji = self.marshaller.deserialize_emoji(data)  # TODO: can i avoid this?
-        await self._delete_ids(ResourceIndex.GUILD, int(emoji.guild_id), ResourceIndex.EMOJI, int(emoji.id))
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, int(emoji_id))
         await client.delete(emoji_id)
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis_.KnownCustomEmoji:
@@ -801,7 +802,7 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
             await self.set_guild_channel(event.channel)
 
         elif isinstance(event, channel_events.GuildChannelDeleteEvent):
-            await self.delete_guild_channel(event.channel_id)
+            await self.delete_guild_channel(event.channel_id, guild_id=event.guild_id)
 
         elif isinstance(event, channel_events.GuildPinsUpdateEvent):
             try:
@@ -862,17 +863,18 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         #  TODO: is there any benefit to chunking on bulk delete?
         asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(channel_ids)))
 
-    async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_guild_channel(
+        self, channel_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
+    ) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        channel_id = int(channel_id)
+        if guild_id is None:
+            try:
+                guild_id = (await self.get_guild_channel(channel_id)).guild_id
+            except errors.EntryNotFound:
+                return
+
         client = await self.get_connection(ResourceIndex.CHANNEL)
-        data = await client.get(channel_id)
-
-        if not data:
-            return
-
-        channel = self.marshaller.deserialize_guild_channel(data)
-        await self._delete_ids(ResourceIndex.GUILD, int(channel.guild_id), ResourceIndex.CHANNEL, channel_id)
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, int(channel_id))
         await client.delete(channel_id)
 
     async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> channels.GuildChannel:
@@ -917,15 +919,29 @@ class IntegrationCache(_Reference, traits.IntegrationCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.INTEGRATION,)
 
+    async def __on_guild_leave_event(self, event: guild_events.GuildLeaveEvent) -> None:
+        await self.clear_integrations_for_guild(event.guild_id)
+
+    async def __on_integration_event(self, event: guild_events.IntegrationEvent) -> None:
+        if isinstance(event, (guild_events.IntegrationCreateEvent, guild_events.IntegrationUpdateEvent)):
+            await self.set_integration(event.integration)
+
+        elif isinstance(event, guild_events.IntegrationDeleteEvent):
+            await self.delete_integration(event.id, guild_id=event.guild_id)
+
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        # The implementation for these events hasn't been added yet so Soon:tm:
         super().subscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.subscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave_event)
+            self.dispatch.dispatcher.subscribe(guild_events.IntegrationEvent, self.__on_integration_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
-        # The implementation for these events hasn't been added yet so Soon:tm:
         super().unsubscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave_event)
+            self.dispatch.dispatcher.unsubscribe(guild_events.IntegrationEvent, self.__on_integration_event)
 
     async def clear_integrations(self) -> None:
         # <<Inherited docstring from sake.traits.IntegrationCache>>
@@ -944,16 +960,19 @@ class IntegrationCache(_Reference, traits.IntegrationCache):
         client = await self.get_connection(ResourceIndex.INTEGRATION)
         asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(ids)))
 
-    async def delete_integration(self, integration_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_integration(
+        self, integration_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
+    ) -> None:
         # <<Inherited docstring from sake.traits.IntegrationCache>>
-        try:
-            integration = await self.get_integration(integration_id)
-        except errors.EntryNotFound:
-            pass
-        else:
-            await self._delete_ids(ResourceIndex.GUILD, integration.guild_id, ResourceIndex.INTEGRATION)
-            client = await self.get_connection(ResourceIndex.INTEGRATION)
-            await client.delete(int(integration_id))
+        if guild_id is None:
+            try:
+                guild_id = (await self.get_integration(integration_id)).guild_id
+            except errors.EntryNotFound:
+                return
+
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.INTEGRATION, int(integration_id))
+        client = await self.get_connection(ResourceIndex.INTEGRATION)
+        await client.delete(int(integration_id))
 
     async def get_integration(self, integration_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
         # <<Inherited docstring from sake.traits.IntegrationCache>>
@@ -1515,7 +1534,7 @@ class RoleCache(_Reference, traits.RoleCache):
             await self.set_role(event.role)
 
         elif isinstance(event, role_events.RoleDeleteEvent):
-            await self.delete_role(event.role_id)
+            await self.delete_role(event.role_id, guild_id=event.guild_id)
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -1549,17 +1568,18 @@ class RoleCache(_Reference, traits.RoleCache):
         client = await self.get_connection(ResourceIndex.ROLE)
         asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(role_ids)))
 
-    async def delete_role(self, role_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_role(
+        self, role_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
+    ) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        role_id = int(role_id)
+        if guild_id is None:
+            try:
+                guild_id = (await self.get_role(role_id)).guild_id
+            except errors.EntryNotFound:
+                return
+
         client = await self.get_connection(ResourceIndex.ROLE)
-        data = await client.get(role_id)
-
-        if not data:
-            return
-
-        role = self.marshaller.deserialize_role(data)  # TODO: can i avoid this?
-        await self._delete_ids(ResourceIndex.GUILD, int(role.guild_id), ResourceIndex.ROLE, int(role.id))
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, int(role_id))
         await client.delete(role_id)
 
     async def get_role(self, role_id: snowflakes.Snowflakeish, /) -> guilds.Role:
@@ -1716,11 +1736,12 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         if not ids:
             return
 
-        await self._delete_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE, *ids)
+        await self._delete_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE, *ids, reference_key=True)
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
         asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(ids, window_size=window_size)))
-        await self._delete_ids(ResourceIndex.CHANNEL, channel_id, ResourceIndex.INVITE, *ids, reference_key=True)
 
+    # We don't accept channel_id here to avoid the relationship lookup as channel_id isn't a static value and what we
+    # want is the value stored rather than the current or "last" value.
     async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
@@ -1795,7 +1816,6 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         await self.delete_voice_state(voice_state.guild_id, voice_state.user_id)
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
         await client.hset(int(voice_state.guild_id), int(voice_state.user_id), data)
-        await self._optionally_set_user(voice_state.member.user)
         await self._add_ids(
             ResourceIndex.CHANNEL,
             voice_state.channel_id,
@@ -1803,6 +1823,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             int(voice_state.user_id),
             redis_iterators.HashReferenceIterator.hash_key(voice_state.guild_id),
         )
+        await self._optionally_set_user(voice_state.member.user)
 
 
 class RedisCache(

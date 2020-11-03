@@ -1048,40 +1048,15 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         deserialize_activity = _generate_map_deserializer(
             messages.MessageActivity, ("type", messages.MessageActivityType), "party_id"
         )
-        deserialize_member = _generate_map_deserializer(
-            applications.TeamMember,
-            ("app", _SET_KWARG),
-            ("membership_state", applications.TeamMembershipState),
-            "permissions",
-            ("team_id", snowflakes.Snowflake),
-            ("user", self._get_user_deserializer(), {_PASS_KWARGS}),
-        )
-        deserialize_team = _generate_map_deserializer(
-            applications.Team,
-            ("app", _SET_KWARG),
-            ("id", snowflakes.Snowflake),
-            "icon_hash",
-            ("members", _cast_mapping(snowflakes.Snowflake, deserialize_member), {_PASS_KWARGS}),
-            ("ownder_id", snowflakes.Snowflake),
-        )
         deserialize_application = _generate_map_deserializer(
-            applications.Application,
-            ("app", _SET_KWARG),
+            messages.MessageApplication,
             ("id", snowflakes.Snowflake),
             "name",
             "description",
-            "is_bot_public",
-            "is_bot_code_grant_required",
-            ("owner", _optional_cast(self._get_user_deserializer()), {_PASS_KWARGS}),
-            "rpc_origins",
-            "summary",
-            ("verify_key", _optional_cast(base64.b64decode)),
             "icon_hash",
-            ("team", _optional_cast(deserialize_team), {_PASS_KWARGS}),
-            ("guild_id", _optional_cast(snowflakes.Snowflake)),
-            ("primary_sku_id", _optional_cast(snowflakes.Snowflake)),
-            "slug",
+            "summary",
             "cover_image_hash",
+            ("primary_sku_id", _optional_cast(snowflakes.Snowflake)),
         )
         deserialize_crosspost = _generate_map_deserializer(
             messages.MessageCrosspost,
@@ -1113,7 +1088,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             ("webhook_id", _optional_cast(snowflakes.Snowflake)),
             ("type", messages.MessageType),
             ("activity", _optional_cast(deserialize_activity)),
-            ("application", _optional_cast(deserialize_application), {_PASS_KWARGS}),
+            ("application", _optional_cast(deserialize_application)),
             ("message_reference", _optional_cast(deserialize_crosspost)),
             ("flags", _optional_cast(messages.MessageFlag)),
             "nonce",
@@ -1228,21 +1203,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             "id", "icon_hash", ("members", _cast_mapping(_no_cast, serialize_team_member)), "owner_id"
         )
         serialize_application = _generate_map_serializer(
-            "id",
-            "name",
-            "description",
-            "is_bot_public",
-            "is_bot_code_grant_required",
-            ("owner", _optional_cast(self._get_user_serializer())),
-            "rpc_origins",
-            "summary",
-            ("verify_key", _optional_cast(base64.b64encode)),
-            "icon_hash",
-            ("team", _optional_cast(serialize_team)),
-            "guild_id",
-            "primary_sku_id",
-            "slug",
-            "cover_image_hash",
+            "id", "name", "description", "icon_hash", "summary", "cover_image_hash", "primary_sku_id"
         )
         serialize_reference = _generate_map_serializer("id", "channel_id", "guild_id")
         serialize_user = self._get_user_serializer()

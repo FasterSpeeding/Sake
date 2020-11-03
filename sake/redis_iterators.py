@@ -162,7 +162,8 @@ class Iterator(traits.CacheIterator[ValueT]):
 
         while not self._buffer:
             async for window in self._windows:
-                self._buffer.extend(window)
+                # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
+                self._buffer.extend(filter(bool, window))
                 break
 
             else:
@@ -211,7 +212,8 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
 
         while not self._buffer:
             async for window in self._windows:
-                self._buffer.extend(window)
+                # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
+                self._buffer.extend(filter(bool, window))
                 break
 
             else:
@@ -280,7 +282,8 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
 
         while not self._buffer:
             async for window in self._windows:
-                self._buffer.extend(window)
+                # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
+                self._buffer.extend(filter(bool, window))
                 break
 
             else:
@@ -345,21 +348,17 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
 
         while not self._buffer:
             async for window in self._windows:
-                if not window:
-                    continue
-
-                self._buffer.extend(window)
-                break
-
-            if self._buffer:
-                break
-
-            async for key in self._top_level_keys:
-                self._windows = iter_hash_values(client, key, window_size=self._window_size)
+                # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
+                self._buffer.extend(filter(bool, window))
                 break
 
             else:
-                raise StopAsyncIteration from None
+                async for key in self._top_level_keys:
+                    self._windows = iter_hash_values(client, key, window_size=self._window_size)
+                    break
+
+                else:
+                    raise StopAsyncIteration from None
 
         return self._builder(self._buffer.pop(0))
 
@@ -367,7 +366,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         if self._len is None:
             client = await self._client.get_connection(self._index)
             keys = await client.keys("*")
-            # For some reason mypy thinks this is optional without the int cast
+            # For some reason mypy thinks this is still optional without the int cast
             self._len = int(sum([int(await client.hlen(key)) for key in keys]))
 
         return self._len
@@ -407,7 +406,8 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
 
         while not self._buffer:
             async for window in self._windows:
-                self._buffer.extend(window)
+                # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
+                self._buffer.extend(filter(bool, window))
                 break
 
             else:

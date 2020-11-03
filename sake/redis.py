@@ -132,6 +132,7 @@ def _convert_expire_time(expire: ExpireT) -> int:
     raise ValueError(f"Invalid expire time passed; expected a float, int or timedelta but got a {type(expire)!r}")
 
 
+# TODO: document that it isn't guaranteed that deletion will be finished before clear command coroutines finish.
 # TODO: may go back to approach where client logic and interface are separate classes
 class ResourceClient(traits.Resource, abc.ABC):
     """A base client which all resources in this implementation will implement.
@@ -216,7 +217,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         return None
 
     @classmethod
-    @abc.abstractmethod  # TODO: should this return a sequence?
+    @abc.abstractmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
         """The index for the resource which this class is linked to.
 
@@ -681,7 +682,7 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
 
         await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, *emoji_ids)
         client = await self.get_connection(ResourceIndex.EMOJI)
-        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(emoji_ids)))
+        await asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(emoji_ids)))
 
     async def delete_emoji(
         self, emoji_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
@@ -874,7 +875,7 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, *channel_ids)
         client = await self.get_connection(ResourceIndex.CHANNEL)
         #  TODO: is there any benefit to chunking on bulk delete?
-        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(channel_ids)))
+        await asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(channel_ids)))
 
     async def delete_guild_channel(
         self, channel_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
@@ -1260,7 +1261,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
 
 
 class MessageCache(ResourceClient, traits.MessageCache):
-    __slots__: typing.Sequence[str] = ()  # TODO: finish marshalling
+    __slots__: typing.Sequence[str] = ()
 
     @classmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
@@ -1588,7 +1589,7 @@ class RoleCache(_Reference, traits.RoleCache):
 
         await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, *role_ids)
         client = await self.get_connection(ResourceIndex.ROLE)
-        asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(role_ids)))
+        await asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(role_ids)))
 
     async def delete_role(
         self, role_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
@@ -1753,7 +1754,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             client.hdel(int(guild_id), *values)
             for values in redis_iterators.chunk_values(int(state.user_id) for state in states)
         )
-        asyncio.gather(*id_deleters, *entry_deleters)
+        await asyncio.gather(*id_deleters, *entry_deleters)
 
     async def clear_voice_states_for_channel(
         self, channel_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE

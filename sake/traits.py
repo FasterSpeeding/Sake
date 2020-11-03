@@ -232,6 +232,7 @@ class IntegrationCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RefIntegrationCache(IntegrationCache, typing.Protocol):
     async def clear_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError

@@ -303,8 +303,8 @@ def _no_cast(value: ValueT, /) -> ValueT:
     return value
 
 
-def _deserialize_timedelta(delta: typing.Union[bytes, float], /) -> datetime.timedelta:
-    return datetime.timedelta(seconds=float(delta))
+def _deserialize_timedelta(delta: float, /) -> datetime.timedelta:
+    return datetime.timedelta(seconds=delta)
 
 
 def _serialize_timedelta(delta: datetime.timedelta, /) -> float:
@@ -337,8 +337,13 @@ def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
 
 
 class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
-    __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder", "_serialize_message")
+    __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder")
 
+    # These special case serializers require an asynchronous environment to read referenced data.
+    _async_serializers: typing.MutableMapping[
+        typing.Any,
+        typing.Callable[[typing.Any], typing.Coroutine[typing.Any, typing.Any, typing.MutableMapping[str, typing.Any]]],
+    ] = {}
     _deserializers: typing.MutableMapping[typing.Any, typing.Callable[..., typing.Any]] = {}
     _serializers: typing.MutableMapping[
         typing.Any, typing.Callable[[typing.Any], typing.MutableMapping[str, typing.Any]]
@@ -348,12 +353,6 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._app = app
         self._decoder = json.JSONDecoder()
         self._encoder = json.JSONEncoder()
-        # This is a special case serializer as it's asynchronous.
-        self._serialize_message: typing.Optional[
-            typing.Callable[
-                [messages.Message], typing.Coroutine[typing.Any, typing.Any, typing.Mapping[str, typing.Any]]
-            ]
-        ] = None
 
     @abc.abstractmethod
     def dumps(self, data: typing.Mapping[str, typing.Any], /) -> ValueT:
@@ -709,7 +708,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
 
         return self.dumps(data)
 
-    def _get_integration_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], guilds.Integration]:
+    def _get_integration_deserializer(self) -> typing.Callable[..., guilds.Integration]:
         try:
             return self._deserializers[guilds.Integration]
         except KeyError:
@@ -722,7 +721,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             "icon_hash",
             "summary",
             "description",
-            ("bot", _optional_cast(self._get_user_deserializer())),
+            ("bot", _optional_cast(self._get_user_deserializer()), {_PASS_KWARGS}),
         )
         deserialize = _generate_map_deserializer(
             guilds.Integration,
@@ -738,24 +737,16 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             "is_revoked",
             ("last_synced_at", _optional_cast(_deserialize_datetime)),
             ("role_id", _optional_cast(snowflakes.Snowflake)),
-            ("user", _optional_cast(self._get_user_deserializer())),
+            ("user", _optional_cast(self._get_user_deserializer()), {_PASS_KWARGS}),
             "subscriber_count",
-            ("application", _optional_cast(deserialize_application)),
+            ("application", _optional_cast(deserialize_application), {_PASS_KWARGS}),
             ("guild_id", snowflakes.Snowflake),
         )
         self._deserializers[guilds.Integration] = deserialize
         return deserialize
 
-    def deserialize_integration(self, value: bytes, /) -> guilds.Integration:
-        integration = self._get_integration_deserializer()(self._loads(value))
-
-        if integration.user is not None:
-            integration.user.app = self._app
-
-        if integration.application is not None and integration.application.bot is not None:
-            integration.application.bot.app = self._app
-
-        return integration
+    def deserialize_integration(self, value: ValueT, /) -> guilds.Integration:
+        return self._get_integration_deserializer()(self.loads(value), app=self._app)
 
     def _get_integration_serializer(
         self,
@@ -789,8 +780,8 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serializers[guilds.Integration] = serialize
         return serialize
 
-    def serialize_integration(self, integration: guilds.Integration, /) -> bytes:
-        return self._dumps(self._get_integration_serializer()(integration))
+    def serialize_integration(self, integration: guilds.Integration, /) -> ValueT:
+        return self.dumps(self._get_integration_serializer()(integration))
 
     def _get_invite_deserializer(
         self,
@@ -1089,7 +1080,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
             ("type", messages.MessageType),
             ("activity", _optional_cast(deserialize_activity)),
             ("application", _optional_cast(deserialize_application)),
-            ("message_reference", _optional_cast(deserialize_crosspost)),
+            ("message_reference", _optional_cast(deserialize_crosspost), {_PASS_KWARGS}),
             ("flags", _optional_cast(messages.MessageFlag)),
             "nonce",
         )
@@ -1129,8 +1120,10 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
     def _get_message_serializer(
         self,
     ) -> typing.Callable[[messages.Message], typing.Coroutine[typing.Any, typing.Any, typing.Mapping[str, typing.Any]]]:
-        if self._serialize_message is not None:
-            return self._serialize_message
+        try:
+            return self._async_serializers[messages.Message]
+        except KeyError:
+            pass
 
         serialize_attachment = _generate_map_serializer("id", "url", "filename", "size", "proxy_url", "height", "width")
         serialize_provider = _generate_map_serializer("name", "url")
@@ -1196,18 +1189,12 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
 
         serialize_reaction = _generate_map_serializer("count", ("emoji", self.serialize_unknown_emoji), "is_me")
         serialize_message_activity = _generate_map_serializer("type", "party_id")
-        serialize_team_member = _generate_map_serializer(
-            "membership_state", "permissions", "team_id", ("user", self._get_user_serializer())
-        )
-        serialize_team = _generate_map_serializer(
-            "id", "icon_hash", ("members", _cast_mapping(_no_cast, serialize_team_member)), "owner_id"
-        )
         serialize_application = _generate_map_serializer(
             "id", "name", "description", "icon_hash", "summary", "cover_image_hash", "primary_sku_id"
         )
         serialize_reference = _generate_map_serializer("id", "channel_id", "guild_id")
         serialize_user = self._get_user_serializer()
-        serialize_member = self._get_member_serializer()
+        serialize_member_ = self._get_member_serializer()
 
         async def serialize(message: messages.Message, /) -> typing.MutableMapping[str, typing.Any]:
             message_reference: typing.Optional[typing.MutableMapping[str, typing.Any]] = None
@@ -1223,7 +1210,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
                 "channel_id": message.channel_id,
                 "guild_id": message.guild_id,
                 "author": serialize_user(message.author),
-                "member": serialize_member(message.member) if message.member is not None else None,
+                "member": serialize_member_(message.member) if message.member is not None else None,
                 "content": message.content,
                 "timestamp": _serialize_datetime(message.timestamp),
                 "edited_timestamp": edited_timestamp,
@@ -1245,7 +1232,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
                 "nonce": message.nonce,
             }
 
-        self._serialize_message = serialize
+        self._async_serializers[messages.Message] = serialize
         return serialize
 
     # This is a special case serializer as it may have to asynchronously read "file" content.

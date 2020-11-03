@@ -687,6 +687,7 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
         self, emoji_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
     ) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
+        emoji_id = int(emoji_id)
         if guild_id is None:
             try:
                 guild_id = (await self.get_emoji(emoji_id)).guild_id
@@ -694,7 +695,7 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
                 return
 
         client = await self.get_connection(ResourceIndex.EMOJI)
-        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, int(emoji_id))
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, emoji_id)
         await client.delete(emoji_id)
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis_.KnownCustomEmoji:
@@ -879,6 +880,7 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         self, channel_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
     ) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
+        channel_id = int(channel_id)
         if guild_id is None:
             try:
                 guild_id = (await self.get_guild_channel(channel_id)).guild_id
@@ -886,7 +888,7 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
                 return
 
         client = await self.get_connection(ResourceIndex.CHANNEL)
-        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, int(channel_id))
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, channel_id)
         await client.delete(channel_id)
 
     async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> channels.GuildChannel:
@@ -975,15 +977,16 @@ class IntegrationCache(_Reference, traits.IntegrationCache):
         self, integration_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
     ) -> None:
         # <<Inherited docstring from sake.traits.IntegrationCache>>
+        integration_id = int(integration_id)
         if guild_id is None:
             try:
                 guild_id = (await self.get_integration(integration_id)).guild_id
             except errors.EntryNotFound:
                 return
 
-        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.INTEGRATION, int(integration_id))
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.INTEGRATION, integration_id)
         client = await self.get_connection(ResourceIndex.INTEGRATION)
-        await client.delete(int(integration_id))
+        await client.delete(integration_id)
 
     async def get_integration(self, integration_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
         # <<Inherited docstring from sake.traits.IntegrationCache>>
@@ -1014,9 +1017,7 @@ class IntegrationCache(_Reference, traits.IntegrationCache):
         data = self.marshaller.serialize_integration(integration)
         client = await self.get_connection(ResourceIndex.INTEGRATION)
         await client.set(int(integration.id), data)
-        await self._add_ids(
-            ResourceIndex.GUILD, int(integration.guild_id), ResourceIndex.INTEGRATION, int(integration.id)
-        )
+        await self._add_ids(ResourceIndex.GUILD, integration.guild_id, ResourceIndex.INTEGRATION, int(integration.id))
 
 
 class InviteCache(ResourceClient, traits.InviteCache):
@@ -1593,6 +1594,7 @@ class RoleCache(_Reference, traits.RoleCache):
         self, role_id: snowflakes.Snowflakeish, /, *, guild_id: typing.Optional[snowflakes.Snowflakeish] = None
     ) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
+        role_id = int(role_id)
         if guild_id is None:
             try:
                 guild_id = (await self.get_role(role_id)).guild_id
@@ -1600,7 +1602,7 @@ class RoleCache(_Reference, traits.RoleCache):
                 return
 
         client = await self.get_connection(ResourceIndex.ROLE)
-        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, int(role_id))
+        await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, role_id)
         await client.delete(role_id)
 
     async def get_role(self, role_id: snowflakes.Snowflakeish, /) -> guilds.Role:
@@ -1769,6 +1771,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
     # want is the value stored rather than the current or "last" value.
     async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
+        user_id = int(user_id)
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
 
         try:
@@ -1777,12 +1780,12 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             pass
         else:
             assert voice_state.channel_id is not None, "Cached voice states should always have a bound channel"
-            await client.hdel(int(guild_id), int(user_id))
+            await client.hdel(int(guild_id), user_id)
             await self._delete_ids(
                 ResourceIndex.CHANNEL,
                 voice_state.channel_id,
                 ResourceIndex.VOICE_STATE,
-                int(voice_state.user_id),
+                user_id,
                 reference_key=True,
             )
 

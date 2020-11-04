@@ -29,7 +29,7 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-"""Utilities for handling automatic back-off within sake
+"""Utilities for handling automatic back-off within Sake
 
 This is used to cover cases such as hitting rate-limits and failed requests.
 """
@@ -48,7 +48,6 @@ BACKOFF_ERRORS: typing.Final[typing.Sequence[typing.Type[BaseException]]] = (
     hikari_errors.RateLimitedError,
     hikari_errors.InternalServerError,
 )
-"""Errors which sake will backoff then retry by default when making requests to Discord."""
 
 
 class Backoff:

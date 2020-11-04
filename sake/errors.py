@@ -29,7 +29,7 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-"""The standard error bases which sake implementations will be raising.
+"""The standard error bases which Sake implementations will be raising.
 
 !!! note
     These supplement python's builtin exceptions but do not replace them.
@@ -88,7 +88,7 @@ class CannotDelete(SakeException, ValueError):
 class InvalidDataFound(SakeException, LookupError):
     """An error raised when the retrieved data is in an unexpected format.
 
-    This may indicate that you are running different versions of a sake
+    This may indicate that you are running different versions of a Sake
     implementation with the same database.
     """
 

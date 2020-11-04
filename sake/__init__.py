@@ -39,12 +39,15 @@ For standard implementation(s) see:
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
+    # errors.py
+    "errors",
     "CannotDelete",
     "EntryNotFound",
-    "errors",
     "InvalidDataFound",
     "SakeException",
+    # traits.py
     "traits",
+    # redis.py
     "redis",
     "RedisCache",
 ]

@@ -90,8 +90,8 @@ if typing.TYPE_CHECKING:
     from hikari import traits as hikari_traits
 
 
-_LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake")
-"""Type-Hint The logger instance used by this sake implementation."""
+_LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.redis")
+"""Type-Hint The logger instance used by this Sake implementation."""
 RedisValueT = typing.Union[bytearray, bytes, float, int, str]
 """A type variable of the value types accepted by aioredis."""
 RedisMapT = typing.MutableMapping[str, RedisValueT]

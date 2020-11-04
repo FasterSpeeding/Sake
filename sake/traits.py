@@ -177,9 +177,22 @@ class EmojiCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
     async def clear_emojis(self) -> None:
+        """Empty the emoji cache store.
+
+        !!! note
+            There is no guarantee that this operation will be complete before
+            the returned coroutine finishes.
+        """
         raise NotImplementedError
 
     async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> None:
+        """Remove an emoji from the cache.
+
+        Parameters
+        ----------
+        emoji_id : hikari.snowflakes.Snowflakeish
+            The ID of the emoji to remove from the cache.
+        """
         raise NotImplementedError
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis.KnownCustomEmoji:

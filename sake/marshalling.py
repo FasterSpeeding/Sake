@@ -72,10 +72,12 @@ ValueT = typing.TypeVar("ValueT")
 OtherValueT = typing.TypeVar("OtherValueT")
 JSONValue = typing.Union[str, int, float, bool, None]
 
-_LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.conversion")
+_LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.marshalling")
 
 
 class ObjectMarshaller(abc.ABC, typing.Generic[ValueT]):
+    """Generic interface for object marshalling logic used within Sake."""
+
     __slots__: typing.Sequence[str] = ()
 
     @abc.abstractmethod
@@ -313,21 +315,13 @@ def _optional_cast(cast: typing.Callable[..., OtherValueT], /) -> typing.Callabl
 
 
 def _cast_sequence(cast: typing.Callable[..., OtherValueT], /) -> typing.Callable[..., typing.Sequence[OtherValueT]]:
-    def converter(array: typing.Sequence[ValueT], /, **kwargs: typing.Any) -> typing.Sequence[OtherValueT]:
-        return [cast(value, **kwargs) for value in array]
-
-    return converter
+    return lambda array, /, **kwargs: [cast(value, **kwargs) for value in array]
 
 
 def _cast_mapping(
     key_cast: typing.Callable[[KeyT], OtherKeyT], value_cast: typing.Callable[..., OtherValueT], /
 ) -> typing.Callable[..., typing.MutableMapping[OtherKeyT, OtherValueT]]:
-    def converter(
-        mapping: typing.Mapping[KeyT, ValueT], /, **kwargs: typing.Any
-    ) -> typing.MutableMapping[OtherKeyT, OtherValueT]:
-        return {key_cast(key): value_cast(value, **kwargs) for key, value in mapping.items()}
-
-    return converter
+    return lambda mapping, /, **kwargs: {key_cast(key): value_cast(value, **kwargs) for key, value in mapping.items()}
 
 
 def _no_cast(value: ValueT, /) -> ValueT:

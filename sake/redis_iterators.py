@@ -29,6 +29,8 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""Utilities used for iteration in the redis implementation."""
+
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
@@ -60,6 +62,27 @@ WINDOW_SIZE: typing.Final[int] = 1_000
 def chunk_values(
     values: typing.Iterable[ValueT], window_size: int = WINDOW_SIZE
 ) -> typing.Iterator[typing.Sequence[ValueT]]:
+    """Iterate over slices of the values in an iterator.
+
+    Parameters
+    ----------
+    values : typing.Iterable[ValueT]
+        The iterator to iterate over slices of.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+
+    Yields
+    ------
+    typing.Sequence[ValueT]
+        Slices of the values within the provided `values` iterable.
+
+    Raises
+    ------
+    ValueError
+        If an invalid `window_size` is passed (e.g. negative) or if
+        `values` isn't iterable.
+    """
     iterator = iter(values)
 
     while result := list(itertools.islice(iterator, window_size)):
@@ -69,6 +92,30 @@ def chunk_values(
 async def iter_keys(
     client: aioredis.Redis, *, window_size: int = WINDOW_SIZE, match: typing.Optional[str] = None
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the top level keys in a redis resource.
+
+    Parameters
+    ----------
+    client : aioredis.Redis
+        The underlying redis client for the relevant resource to iterate over.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the top level keys in a redis resource.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     cursor = 0
 
     while True:
@@ -84,6 +131,30 @@ async def iter_keys(
 async def iter_values(
     client: aioredis.Redis, *, window_size: int = WINDOW_SIZE, match: typing.Optional[str] = None
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the values in a key to string datastore.
+
+    Parameters
+    ----------
+    client : aioredis.Redis
+        The underlying redis client for the relevant resource to iterate over.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the byte values in a redis resource.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     async for window in iter_keys(client, window_size=window_size, match=match):
         yield await client.mget(*window)
 
@@ -95,6 +166,33 @@ async def iter_hash_keys(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the keys in a redis hash.
+
+    Parameters
+    ----------
+    client : aioredis.Redis
+        The underlying redis client for the relevant resource to iterate over a
+        specific hash map in.
+    key : sake.redis.RedisValueT
+        The top level key of the hash map to iterate over it's keys.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the keys in a hash map.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     cursor = 0
 
     while True:
@@ -114,6 +212,33 @@ async def iter_hash_values(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the keys in a redis hash.
+
+    Parameters
+    ----------
+    client : aioredis.Redis
+        The underlying redis client for the relevant resource to iterate over a
+        specific hash map in.
+    key : sake.redis.RedisValueT
+        The top level key of the hash map to iterate over it's keys.
+    window_size : int
+        Defaults to `WINDOW_SIZE`.
+        The maximum amount of values that should be yielded per chunk.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the byte values in a hash map.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     cursor = 0
 
     while True:
@@ -133,6 +258,33 @@ async def iter_reference_keys(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the keys in a REFERENCE set.
+
+    Parameters
+    ----------
+    resource_client : sake.redis.ResourceClient
+        The redis implementation resource client to use.
+    key : sake.redis.RedisValue
+        The reference resource key to get the relevant keys from.
+        This defaults to `WINDOW_SIZE`.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the keys in a redis resource.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     reference_client = await resource_client.get_connection(redis.ResourceIndex.REFERENCE)
     cursor = 0
 
@@ -154,6 +306,34 @@ async def iter_reference_values(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the values referenced by a REFERENCE set.
+
+    Parameters
+    ----------
+    resource_client : sake.redis.ResourceClient
+        The redis implementation resource client to use.
+    index : sake.redis.ResourceIndex
+        The resource to get referenced values from.
+    key : sake.redis.RedisValue
+        The reference resource key to get the relevant keys from.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the referenced bytes in the `index` reference store.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     client = await resource_client.get_connection(index)
 
     async for window in iter_reference_keys(resource_client, key, window_size=window_size, match=match):
@@ -202,6 +382,7 @@ class Iterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
             client = await self._client.get_connection(self._index)
             self._len = int(await client.dbsize())
@@ -252,6 +433,7 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
             client = await self._client.get_connection(redis.ResourceIndex.REFERENCE)
             self._len = int(await client.scard(self._key))
@@ -322,6 +504,7 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
             client = await self._client.get_connection(redis.ResourceIndex.REFERENCE)
             self._len = int(await client.scard(self._key)) - 1
@@ -393,6 +576,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
             client = await self._client.get_connection(self._index)
             keys = await client.keys("*")
@@ -446,6 +630,7 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         # TODO: override "count" method?
         if self._len is None:
             client = await self._client.get_connection(self._index)

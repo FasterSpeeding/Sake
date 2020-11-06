@@ -34,6 +34,7 @@ if typing.TYPE_CHECKING:
     from hikari import traits
 
 
+AsyncReaderT = typing.TypeVar("AsyncReaderT", bound=files.AsyncReader)
 KeyT = typing.TypeVar("KeyT")
 OtherKeyT = typing.TypeVar("OtherKeyT")
 ValueT = typing.TypeVar("ValueT")
@@ -139,18 +140,33 @@ def _get_init_name(field: str) -> str:
     return field[1:] if field.startswith("_") else field
 
 
+_PASS_KWARGS: typing.Final[str] = __name__ + "PASS_KWARG"
+"""Pass through the kwargs provided to this attribute's cast."""
+_SET_KWARG: typing.Final[str] = __name__ + "SET_KWARG"
+"""Used to mark a field as being passed through the **kwargs argument."""
 _PASSED_THROUGH_SINGLETONS: typing.Final[typing.Mapping[typing.Any, str]] = {
     undefined.UNDEFINED: "UNDEFINED",
     None: "None",
 }
 
+_DeserializeCastRuleT = typing.Union[typing.Callable[[typing.Any], typing.Any], None, undefined.UndefinedType, str]
 
-def _generate_json_deserializer(
+
+def _generate_map_deserializer(
     cls: typing.Type[ValueT],
     *rules: typing.Union[
-        str, typing.Tuple[str, typing.Union[typing.Callable[[typing.Any], typing.Any], None, undefined.UndefinedType]]
+        str,
+        typing.Tuple[
+            str,
+            _DeserializeCastRuleT,
+        ],
+        typing.Tuple[
+            str,
+            _DeserializeCastRuleT,
+            typing.AbstractSet[str],
+        ],
     ],
-) -> typing.Callable[[typing.Mapping[str, typing.Any]], ValueT]:
+) -> typing.Callable[..., ValueT]:
     # For the case of no supplied rules, return an empty lambda to avoid syntax errors later on.
     if not rules:
         return lambda _: cls()
@@ -164,23 +180,31 @@ def _generate_json_deserializer(
             getters.append(f"{_get_init_name(rule)}=data.get({rule!r}, UNDEFINED)")
             continue
 
-        name, current_cast = rule
+        name = rule[0]
+        current_cast = rule[1]
+        # Mypy doesn't support scope narrowing tuple unions using length checks and thus assumes a 2 length tuple.
+        flags = rule[2] if len(rule) > 2 else set()  # type: ignore[misc]
         init_name = _get_init_name(name)
         if current_cast in _PASSED_THROUGH_SINGLETONS:
             getters.append(f"{init_name}=data.get({name!r}, {_PASSED_THROUGH_SINGLETONS[current_cast]})")
+
+        elif current_cast == _SET_KWARG:
+            getters.append(f"{init_name}=kwargs[{name!r}]")
+
         else:
             cast_name = named_casts[current_cast]
-            getters.append(f"{init_name}={cast_name}(data[{name!r}]) if {name!r} in data else UNDEFINED")
+            call = f"(data[{name!r}])" if _PASS_KWARGS not in flags else f"(data[{name!r}], **kwargs)"
+            getters.append(f"{init_name}={cast_name}{call} if {name!r} in data else UNDEFINED")
 
     globals_: typing.Dict[str, typing.Any] = {"cls": cls, "UNDEFINED": undefined.UNDEFINED}
     globals_.update((value, key) for key, value in named_casts.items())
-    code = f"def serialize(data): return cls({','.join(getters)})"
-    _LOGGER.debug("generating json serialize method for %r\n  %r", cls, code)
+    code = f"def deserialize(data, **kwargs): return cls({','.join(getters)})"
+    _LOGGER.debug("generating mapping deserialize method for %r\n  %r", cls, code)
     exec(code, globals_)
-    return typing.cast("typing.Callable[[typing.Mapping[str, typing.Any]], ValueT]", globals_["serialize"])
+    return typing.cast("typing.Callable[..., ValueT]", globals_["deserialize"])
 
 
-def _generate_json_serializer(
+def _generate_map_serializer(
     *rules: typing.Union[str, typing.Tuple[str, typing.Callable[[typing.Any], typing.Any]]],
 ) -> typing.Callable[[typing.Any], typing.MutableMapping[str, typing.Any]]:
     # For the case of no supplied rules, return an empty lambda to avoid syntax errors later on.
@@ -203,36 +227,29 @@ def _generate_json_serializer(
     globals_: typing.Dict[str, typing.Any] = {"UNDEFINED": undefined.UNDEFINED}
     globals_.update((value, key) for key, value in named_casts.items())
     code = "def serialize(m):\n  data = {};\n  " + "\n  ".join(setters) + "\n  return data"
-    _LOGGER.debug("generating json serialize method:\n  %r", code)
+    _LOGGER.debug("generating mapping serialize method:\n  %r", code)
     exec(code, globals_)
     return typing.cast("typing.Callable[[typing.Any], typing.MutableMapping[str, typing.Any]]", globals_["serialize"])
 
 
-def _optional_cast(
-    cast: typing.Callable[[ValueT], OtherValueT]
-) -> typing.Callable[[typing.Optional[ValueT]], typing.Optional[OtherValueT]]:
-    def converter(value: typing.Optional[ValueT]) -> typing.Optional[OtherValueT]:
-        if value is None:
-            return None
-        return cast(value)
-
-    return converter
+def _optional_cast(cast: typing.Callable[..., OtherValueT]) -> typing.Callable[..., typing.Optional[OtherValueT]]:
+    return lambda value, **kwargs: cast(value, **kwargs) if value is not None else None
 
 
-def _cast_sequence(
-    cast: typing.Callable[[ValueT], OtherValueT]
-) -> typing.Callable[[typing.Sequence[ValueT]], typing.Sequence[OtherValueT]]:
-    def converter(array: typing.Sequence[ValueT]) -> typing.Sequence[OtherValueT]:
-        return [*map(cast, array)]
+def _cast_sequence(cast: typing.Callable[..., OtherValueT]) -> typing.Callable[..., typing.Sequence[OtherValueT]]:
+    def converter(array: typing.Sequence[ValueT], **kwargs: typing.Any) -> typing.Sequence[OtherValueT]:
+        return [cast(value, **kwargs) for value in array]
 
     return converter
 
 
 def _cast_mapping(
-    key_cast: typing.Callable[[KeyT], OtherKeyT], value_cast: typing.Callable[[ValueT], OtherValueT]
-) -> typing.Callable[[typing.Mapping[KeyT, ValueT]], typing.MutableMapping[OtherKeyT, OtherValueT]]:
-    def converter(mapping: typing.Mapping[KeyT, ValueT]) -> typing.MutableMapping[OtherKeyT, OtherValueT]:
-        return {key_cast(key): value_cast(value) for key, value in mapping.items()}
+    key_cast: typing.Callable[[KeyT], OtherKeyT], value_cast: typing.Callable[..., OtherValueT]
+) -> typing.Callable[..., typing.MutableMapping[OtherKeyT, OtherValueT]]:
+    def converter(
+        mapping: typing.Mapping[KeyT, ValueT], **kwargs: typing.Any
+    ) -> typing.MutableMapping[OtherKeyT, OtherValueT]:
+        return {key_cast(key): value_cast(value, **kwargs) for key, value in mapping.items()}
 
     return converter
 
@@ -257,12 +274,10 @@ def _serialize_datetime(date: datetime.datetime) -> str:
     return date.isoformat()
 
 
-def _user_deserialize_rules() -> typing.Sequence[
-    typing.Union[str, typing.Tuple[str, typing.Optional[typing.Callable[[typing.Any], typing.Any]]]]
-]:
+def _user_deserialize_rules() -> typing.Sequence[typing.Union[str, typing.Tuple[str, _DeserializeCastRuleT]]]:
     return (
         ("id", snowflakes.Snowflake),
-        ("app", None),
+        ("app", _SET_KWARG),
         "discriminator",
         "username",
         "avatar_hash",
@@ -276,12 +291,10 @@ def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
     return ("id", "discriminator", "username", "avatar_hash", "is_bot", "is_system", "flags")
 
 
-class JSONMarshaller(ObjectMarshaller[bytes]):
+class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
     __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder", "_serialize_message")
 
-    _deserializers: typing.MutableMapping[
-        typing.Any, typing.Callable[[typing.Mapping[str, typing.Any]], typing.Any]
-    ] = {}
+    _deserializers: typing.MutableMapping[typing.Any, typing.Callable[..., typing.Any]] = {}
     _serializers: typing.MutableMapping[
         typing.Any, typing.Callable[[typing.Any], typing.MutableMapping[str, typing.Any]]
     ] = {}
@@ -297,31 +310,29 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             ]
         ] = None
 
-    def _dumps(self, data: typing.Mapping[str, typing.Any]) -> bytes:
-        return self._encoder.encode(data).encode()
+    @abc.abstractmethod
+    def dumps(self, data: typing.Mapping[str, typing.Any]) -> ValueT:
+        raise NotImplementedError
 
-    def _loads(self, data: bytes) -> typing.MutableMapping[str, typing.Any]:
-        result = self._decoder.decode(data.decode("utf-8"))
-        if not isinstance(result, dict):
-            raise ValueError("Invalud json content received")
+    @abc.abstractmethod
+    def loads(self, data: ValueT) -> typing.MutableMapping[str, typing.Any]:
+        raise NotImplementedError
 
-        return result
-
-    def _get_emoji_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], emojis.KnownCustomEmoji]:
+    def _get_emoji_deserializer(self) -> typing.Callable[..., emojis.KnownCustomEmoji]:
         try:
             return self._deserializers[emojis.KnownCustomEmoji]
         except KeyError:
             pass
 
-        deserialize = _generate_json_deserializer(
+        deserialize = _generate_map_deserializer(
             emojis.KnownCustomEmoji,
             ("id", snowflakes.Snowflake),
             "name",
             "is_animated",
-            ("app", None),
+            ("app", _SET_KWARG),
             ("guild_id", snowflakes.Snowflake),
             ("role_ids", _cast_sequence(snowflakes.Snowflake)),
-            ("user", _optional_cast(self._get_user_deserializer())),
+            ("user", _optional_cast(self._get_user_deserializer()), {_PASS_KWARGS}),
             "is_colons_required",
             "is_managed",
             "is_available",
@@ -329,14 +340,8 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._deserializers[emojis.KnownCustomEmoji] = deserialize
         return deserialize
 
-    def deserialize_emoji(self, value: bytes) -> emojis.KnownCustomEmoji:
-        emoji = self._get_emoji_deserializer()(self._loads(value))
-        emoji.app = self._app
-
-        if emoji.user is not None:
-            emoji.user.app = self._app
-
-        return emoji
+    def deserialize_emoji(self, value: ValueT) -> emojis.KnownCustomEmoji:
+        return self._get_emoji_deserializer()(self.loads(value), app=self._app)
 
     def _get_emoji_serializer(self) -> typing.Callable[[emojis.KnownCustomEmoji], typing.Mapping[str, typing.Any]]:
         try:
@@ -344,7 +349,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         except KeyError:
             pass
 
-        serialize = _generate_json_serializer(
+        serialize = _generate_map_serializer(
             "id",
             "name",
             "is_animated",
@@ -359,18 +364,18 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._serializers[emojis.KnownCustomEmoji] = serialize
         return serialize
 
-    def serialize_emoji(self, emoji: emojis.KnownCustomEmoji) -> bytes:
-        return self._dumps(self._get_emoji_serializer()(emoji))
+    def serialize_emoji(self, emoji: emojis.KnownCustomEmoji) -> ValueT:
+        return self.dumps(self._get_emoji_serializer()(emoji))
 
-    def _get_guild_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], guilds.GatewayGuild]:
+    def _get_guild_deserializer(self) -> typing.Callable[..., guilds.GatewayGuild]:
         try:
             return self._deserializers[guilds.GatewayGuild]
         except KeyError:
             pass
 
-        deserialize = _generate_json_deserializer(
+        deserialize = _generate_map_deserializer(
             guilds.GatewayGuild,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("features", _cast_sequence(guilds.GuildFeature)),
             ("id", snowflakes.Snowflake),
             "icon_hash",
@@ -406,10 +411,8 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._deserializers[guilds.GatewayGuild] = deserialize
         return deserialize
 
-    def deserialize_guild(self, value: bytes) -> guilds.GatewayGuild:
-        guild = self._get_guild_deserializer()(self._loads(value))
-        guild.app = self._app
-        return guild
+    def deserialize_guild(self, value: ValueT) -> guilds.GatewayGuild:
+        return self._get_guild_deserializer()(self.loads(value), app=self._app)
 
     def _get_guild_serializer(self) -> typing.Callable[[guilds.GatewayGuild], typing.Mapping[str, typing.Any]]:
         try:
@@ -417,7 +420,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         except KeyError:
             pass
 
-        serialize = _generate_json_serializer(
+        serialize = _generate_map_serializer(
             "features",
             "id",
             "icon_hash",
@@ -453,15 +456,13 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._serializers[guilds.GatewayGuild] = serialize
         return serialize
 
-    def serialize_guild(self, guild: guilds.GatewayGuild) -> bytes:
-        return self._dumps(self._get_guild_serializer()(guild))
+    def serialize_guild(self, guild: guilds.GatewayGuild) -> ValueT:
+        return self.dumps(self._get_guild_serializer()(guild))
 
     def _guild_channel_deserialize_rules(
         self,
-    ) -> typing.Sequence[
-        typing.Union[str, typing.Tuple[str, typing.Optional[typing.Callable[[typing.Any], typing.Any]]]]
-    ]:
-        deserialize_overwrite = _generate_json_deserializer(
+    ) -> typing.Sequence[typing.Union[str, typing.Tuple[str, _DeserializeCastRuleT]]]:
+        deserialize_overwrite = _generate_map_deserializer(
             channels.PermissionOverwrite,
             ("id", snowflakes.Snowflake),
             ("type", channels.PermissionOverwriteType),
@@ -469,7 +470,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             ("deny", permissions.Permissions),
         )
         return (
-            ("app", None),
+            ("app", _SET_KWARG),
             ("id", snowflakes.Snowflake),
             "name",
             ("type", channels.ChannelType),
@@ -480,21 +481,21 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             ("parent_id", _optional_cast(snowflakes.Snowflake)),
         )
 
-    def _get_category_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildCategory]:
+    def _get_category_deserializer(self) -> typing.Callable[..., channels.GuildCategory]:
         try:
             return self._deserializers[channels.GuildCategory]
         except KeyError:
-            deserialize = _generate_json_deserializer(channels.GuildCategory, *self._guild_channel_deserialize_rules())
+            deserialize = _generate_map_deserializer(channels.GuildCategory, *self._guild_channel_deserialize_rules())
             self._deserializers[channels.GuildCategory] = deserialize
             return deserialize
 
     def _get_text_channel_deserializer(
         self,
-    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildTextChannel]:
+    ) -> typing.Callable[..., channels.GuildTextChannel]:
         try:
             return self._deserializers[channels.GuildTextChannel]
         except KeyError:
-            deserialize = _generate_json_deserializer(
+            deserialize = _generate_map_deserializer(
                 channels.GuildTextChannel,
                 *self._guild_channel_deserialize_rules(),
                 "topic",
@@ -507,11 +508,11 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
 
     def _get_news_channel_deserializer(
         self,
-    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildNewsChannel]:
+    ) -> typing.Callable[..., channels.GuildNewsChannel]:
         try:
             return self._deserializers[channels.GuildNewsChannel]
         except KeyError:
-            deserialize = _generate_json_deserializer(
+            deserialize = _generate_map_deserializer(
                 channels.GuildNewsChannel,
                 *self._guild_channel_deserialize_rules(),
                 "topic",
@@ -523,11 +524,11 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
 
     def _get_store_channel_deserializer(
         self,
-    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildStoreChannel]:
+    ) -> typing.Callable[..., channels.GuildStoreChannel]:
         try:
             return self._deserializers[channels.GuildStoreChannel]
         except KeyError:
-            deserialize = _generate_json_deserializer(
+            deserialize = _generate_map_deserializer(
                 channels.GuildStoreChannel, *self._guild_channel_deserialize_rules()
             )
             self._deserializers[channels.GuildStoreChannel] = deserialize
@@ -535,41 +536,41 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
 
     def _get_voice_channel_deserializer(
         self,
-    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], channels.GuildVoiceChannel]:
+    ) -> typing.Callable[..., channels.GuildVoiceChannel]:
         try:
             return self._deserializers[channels.GuildVoiceChannel]
         except KeyError:
-            deserialize = _generate_json_deserializer(
+            deserialize = _generate_map_deserializer(
                 channels.GuildVoiceChannel, *self._guild_channel_deserialize_rules(), "bitrate", "user_limit"
             )
             self._deserializers[channels.GuildVoiceChannel] = deserialize
             return deserialize
 
-    def deserialize_guild_channel(self, value: bytes) -> channels.GuildChannel:
-        data = self._loads(value)
+    def deserialize_guild_channel(self, value: ValueT) -> channels.GuildChannel:
+        data = self.loads(value)
         channel_type = channels.ChannelType(data.get("type", -1))
 
-        channel: channels.GuildChannel
         if channel_type is channels.ChannelType.GUILD_CATEGORY:
-            channel = self._get_category_deserializer()(data)
-        elif channel_type is channels.ChannelType.GUILD_TEXT:
-            channel = self._get_text_channel_deserializer()(data)
-        elif channel_type is channels.ChannelType.GUILD_NEWS:
-            channel = self._get_news_channel_deserializer()(data)
-        elif channel_type is channels.ChannelType.GUILD_STORE:
-            channel = self._get_store_channel_deserializer()(data)
-        elif channel_type is channels.ChannelType.GUILD_VOICE:
-            channel = self._get_voice_channel_deserializer()(data)
-        else:
-            raise NotImplementedError(f"Deserialization not implemented for {channel_type} channel type")
+            return self._get_category_deserializer()(data, app=self._app)
 
-        channel.app = self._app
-        return channel
+        if channel_type is channels.ChannelType.GUILD_TEXT:
+            return self._get_text_channel_deserializer()(data, app=self._app)
+
+        if channel_type is channels.ChannelType.GUILD_NEWS:
+            return self._get_news_channel_deserializer()(data, app=self._app)
+
+        if channel_type is channels.ChannelType.GUILD_STORE:
+            return self._get_store_channel_deserializer()(data, app=self._app)
+
+        if channel_type is channels.ChannelType.GUILD_VOICE:
+            return self._get_voice_channel_deserializer()(data, app=self._app)
+
+        raise NotImplementedError(f"Deserialization not implemented for {channel_type} channel type")
 
     def _guild_channel_serialize_rules(
         self,
     ) -> typing.Sequence[typing.Union[str, typing.Tuple[str, typing.Callable[[typing.Any], typing.Any]]]]:
-        serialize_overwrite = _generate_json_serializer("id", "type", "allow", "deny")
+        serialize_overwrite = _generate_map_serializer("id", "type", "allow", "deny")
         return (
             "id",
             "name",
@@ -587,7 +588,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         try:
             return self._serializers[channels.GuildCategory]
         except KeyError:
-            serialize = _generate_json_serializer(*self._guild_channel_serialize_rules())
+            serialize = _generate_map_serializer(*self._guild_channel_serialize_rules())
             self._serializers[channels.GuildCategory] = serialize
             return serialize
 
@@ -597,7 +598,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         try:
             return self._serializers[channels.GuildTextChannel]
         except KeyError:
-            serialize = _generate_json_serializer(
+            serialize = _generate_map_serializer(
                 *self._guild_channel_serialize_rules(),
                 "topic",
                 "last_message_id",
@@ -613,7 +614,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         try:
             return self._serializers[channels.GuildNewsChannel]
         except KeyError:
-            serialize = _generate_json_serializer(
+            serialize = _generate_map_serializer(
                 *self._guild_channel_serialize_rules(),
                 "topic",
                 "last_message_id",
@@ -628,7 +629,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         try:
             return self._serializers[channels.GuildStoreChannel]
         except KeyError:
-            serialize = _generate_json_serializer(*self._guild_channel_serialize_rules())
+            serialize = _generate_map_serializer(*self._guild_channel_serialize_rules())
             self._serializers[channels.GuildStoreChannel] = serialize
             return serialize
 
@@ -638,37 +639,42 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         try:
             return self._serializers[channels.GuildVoiceChannel]
         except KeyError:
-            serialize = _generate_json_serializer(*self._guild_channel_serialize_rules(), "bitrate", "user_limit")
+            serialize = _generate_map_serializer(*self._guild_channel_serialize_rules(), "bitrate", "user_limit")
             self._serializers[channels.GuildVoiceChannel] = serialize
             return serialize
 
-    def serialize_guild_channel(self, channel: channels.GuildChannel) -> bytes:
+    def serialize_guild_channel(self, channel: channels.GuildChannel) -> ValueT:
         if isinstance(channel, channels.GuildCategory):
             data = self._get_category_serializer()(channel)
+
         elif isinstance(channel, channels.GuildTextChannel):
             data = self._get_text_channel_serializer()(channel)
+
         elif isinstance(channel, channels.GuildNewsChannel):
             data = self._get_news_channel_serializer()(channel)
+
         elif isinstance(channel, channels.GuildStoreChannel):
             data = self._get_store_channel_serializer()(channel)
+
         elif isinstance(channel, channels.GuildVoiceChannel):
             data = self._get_voice_channel_serializer()(channel)
+
         else:
             raise NotImplementedError(f"Serializer not implemented for {type(channel).__name__} channel type")
 
-        return self._dumps(data)
+        return self.dumps(data)
 
     def _get_invite_deserializer(
         self,
-    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], invites.InviteWithMetadata]:
+    ) -> typing.Callable[..., invites.InviteWithMetadata]:
         try:
             return self._deserializers[invites.InviteWithMetadata]
         except KeyError:
             pass
 
-        deserialize_invite_guild = _generate_json_deserializer(
+        deserialize_invite_guild = _generate_map_deserializer(
             invites.InviteGuild,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("features", _cast_sequence(guilds.GuildFeature)),
             ("id", snowflakes.Snowflake),
             "icon_hash",
@@ -679,24 +685,24 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             ("verification_level", guilds.GuildVerificationLevel),
             "vanity_url_code",
         )
-        deserialize_partial_channel = _generate_json_deserializer(
+        deserialize_partial_channel = _generate_map_deserializer(
             channels.PartialChannel,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("id", snowflakes.Snowflake),
             "name",
             ("type", channels.ChannelType),
         )
 
-        deserialize = _generate_json_deserializer(
+        deserialize = _generate_map_deserializer(
             invites.InviteWithMetadata,
-            ("app", None),
+            ("app", _SET_KWARG),
             "code",
-            ("guild", _optional_cast(deserialize_invite_guild)),
+            ("guild", _optional_cast(deserialize_invite_guild), {_PASS_KWARGS}),
             ("guild_id", _optional_cast(snowflakes.Snowflake)),
-            ("channel", _optional_cast(deserialize_partial_channel)),
+            ("channel", _optional_cast(deserialize_partial_channel), {_PASS_KWARGS}),
             ("channel_id", snowflakes.Snowflake),
-            ("inviter", _optional_cast(self._get_user_deserializer())),
-            ("target_user", _optional_cast(self._get_user_deserializer())),
+            ("inviter", _optional_cast(self._get_user_deserializer()), {_PASS_KWARGS}),
+            ("target_user", _optional_cast(self._get_user_deserializer()), {_PASS_KWARGS}),
             ("target_user_type", _optional_cast(invites.TargetUserType)),
             "approximate_active_member_count",
             "approximate_member_count",
@@ -709,23 +715,8 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._deserializers[invites.InviteWithMetadata] = deserialize
         return deserialize
 
-    def deserialize_invite(self, value: bytes) -> invites.InviteWithMetadata:
-        invite = self._get_invite_deserializer()(self._loads(value))
-        invite.app = self._app
-
-        if invite.guild is not None:
-            invite.guild.app = self._app
-
-        if invite.channel is not None:
-            invite.channel.app = self._app
-
-        if invite.inviter is not None:
-            invite.inviter.app = self._app
-
-        if invite.target_user is not None:
-            invite.target_user.app = self._app
-
-        return invite
+    def deserialize_invite(self, value: ValueT) -> invites.InviteWithMetadata:
+        return self._get_invite_deserializer()(self.loads(value), app=self._app)
 
     def _get_invite_serializer(self) -> typing.Callable[[invites.InviteWithMetadata], typing.Mapping[str, typing.Any]]:
         try:
@@ -733,7 +724,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         except KeyError:
             pass
 
-        serialize_guild_invite = _generate_json_serializer(
+        serialize_guild_invite = _generate_map_serializer(
             "features",
             "id",
             "icon_hash",
@@ -744,8 +735,8 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             "verification_level",
             "vanity_url_code",
         )
-        serialize_partial_channel = _generate_json_serializer("id", "name", "type")
-        serialize = _generate_json_serializer(
+        serialize_partial_channel = _generate_map_serializer("id", "name", "type")
+        serialize = _generate_map_serializer(
             "code",
             ("guild", _optional_cast(serialize_guild_invite)),
             "guild_id",
@@ -765,16 +756,16 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._serializers[invites.InviteWithMetadata] = serialize
         return serialize
 
-    def serialize_invite(self, invite: invites.InviteWithMetadata) -> bytes:
-        return self._dumps(self._get_invite_serializer()(invite))
+    def serialize_invite(self, invite: invites.InviteWithMetadata) -> ValueT:
+        return self.dumps(self._get_invite_serializer()(invite))
 
-    def _get_me_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], users.OwnUser]:
+    def _get_me_deserializer(self) -> typing.Callable[..., users.OwnUser]:
         try:
             return self._deserializers[users.OwnUser]
         except KeyError:
             pass
 
-        deserialize = _generate_json_deserializer(
+        deserialize = _generate_map_deserializer(
             users.OwnUser,
             *_user_deserialize_rules(),
             "is_mfa_enabled",
@@ -786,10 +777,8 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._deserializers[users.OwnUser] = deserialize
         return deserialize
 
-    def deserialize_me(self, value: bytes) -> users.OwnUser:
-        me = self._get_me_deserializer()(self._loads(value))
-        me.app = self._app
-        return me
+    def deserialize_me(self, value: ValueT) -> users.OwnUser:
+        return self._get_me_deserializer()(self.loads(value), app=self._app)
 
     def _get_me_serializer(self) -> typing.Callable[[users.OwnUser], typing.Mapping[str, typing.Any]]:
         try:
@@ -797,22 +786,22 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         except KeyError:
             pass
 
-        serialize = _generate_json_serializer(
+        serialize = _generate_map_serializer(
             *_user_serialize_rules(), "is_mfa_enabled", "locale", "is_verified", "email", "premium_type"
         )
         self._serializers[users.OwnUser] = serialize
         return serialize
 
-    def serialize_me(self, me: users.OwnUser) -> bytes:
-        return self._dumps(self._get_me_serializer()(me))
+    def serialize_me(self, me: users.OwnUser) -> ValueT:
+        return self.dumps(self._get_me_serializer()(me))
 
-    def _get_member_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], guilds.Member]:
+    def _get_member_deserializer(self) -> typing.Callable[..., guilds.Member]:
         try:
             return self._deserializers[guilds.Member]
         except KeyError:
             pass
 
-        deserialize = _generate_json_deserializer(
+        deserialize = _generate_map_deserializer(
             guilds.Member,
             ("guild_id", snowflakes.Snowflake),
             "is_deaf",
@@ -824,15 +813,13 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
                 _optional_cast(_deserialize_datetime),
             ),
             ("role_ids", _cast_sequence(snowflakes.Snowflake)),
-            ("user", self._get_user_deserializer()),
+            ("user", self._get_user_deserializer(), {_PASS_KWARGS}),
         )
         self._deserializers[guilds.Member] = deserialize
         return deserialize
 
-    def deserialize_member(self, value: bytes) -> guilds.Member:
-        member = self._get_member_deserializer()(self._loads(value))
-        member.user = self._app
-        return member
+    def deserialize_member(self, value: ValueT) -> guilds.Member:
+        return self._get_member_deserializer()(self.loads(value), app=self._app)
 
     def _get_member_serializer(self) -> typing.Callable[[guilds.Member], typing.Mapping[str, typing.Any]]:
         try:
@@ -840,7 +827,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         except KeyError:
             pass
 
-        serialize = _generate_json_serializer(
+        serialize = _generate_map_serializer(
             "guild_id",
             "is_deaf",
             "is_mute",
@@ -853,8 +840,8 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._serializers[guilds.Member] = serialize
         return serialize
 
-    def serialize_member(self, member: guilds.Member) -> bytes:
-        return self._dumps(self._get_member_serializer()(member))
+    def serialize_member(self, member: guilds.Member) -> ValueT:
+        return self.dumps(self._get_member_serializer()(member))
 
     @staticmethod
     def deserialize_resource(data: typing.Mapping[str, typing.Any]) -> files.Resource[files.AsyncReader]:
@@ -868,7 +855,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
                 files.File(files.ensure_path(data["path"]), filename=data["filename"], spoiler=data["is_spoiler"]),
             )
 
-        if resource_type == "bytes":
+        if resource_type == "ValueT":
             return typing.cast(
                 "files.Resource[files.AsyncReader]",
                 files.Bytes(
@@ -881,13 +868,13 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
 
         raise RuntimeError(f"Missing marshalling implementation for file type {resource_type!r}")
 
-    def _get_message_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], messages.Message]:
+    def _get_message_deserializer(self) -> typing.Callable[..., messages.Message]:
         try:
             return self._deserializers[messages.Message]
         except KeyError:
             pass
 
-        deserialize_attachment = _generate_json_deserializer(
+        deserialize_attachment = _generate_map_deserializer(
             messages.Attachment, ("id", snowflakes.Snowflake), "url", "filename", "size", "proxy_url", "height", "width"
         )
         deserialize_resource_rules = (("resource", self.deserialize_resource),)
@@ -895,20 +882,20 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             *deserialize_resource_rules,
             ("proxy_resource", _optional_cast(self.deserialize_resource)),
         )
-        deserialize_image = _generate_json_deserializer(
+        deserialize_image = _generate_map_deserializer(
             embeds.EmbedImage, *deserialize_resource_with_proxy_rules, "height", "width"
         )
-        deserialize_video = _generate_json_deserializer(
+        deserialize_video = _generate_map_deserializer(
             embeds.EmbedVideo, *deserialize_resource_rules, "height", "width"
         )
-        deserialize_resource_with_proxy = _generate_json_deserializer(
+        deserialize_resource_with_proxy = _generate_map_deserializer(
             embeds.EmbedResourceWithProxy, *deserialize_resource_with_proxy_rules
         )
-        deserialize_author = _generate_json_deserializer(
+        deserialize_author = _generate_map_deserializer(
             embeds.EmbedAuthor, "name", "url", ("icon", _optional_cast(deserialize_resource_with_proxy))
         )
-        deserialize_provider = _generate_json_deserializer(embeds.EmbedProvider, "name", "url")
-        deserialize_footer = _generate_json_deserializer(
+        deserialize_provider = _generate_map_deserializer(embeds.EmbedProvider, "name", "url")
+        deserialize_footer = _generate_map_deserializer(
             embeds.EmbedFooter, "text", ("icon", _optional_cast(deserialize_resource_with_proxy))
         )
 
@@ -971,62 +958,62 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
 
             return emojis.UnicodeEmoji(data["name"])
 
-        deserialize_reaction = _generate_json_deserializer(
+        deserialize_reaction = _generate_map_deserializer(
             messages.Reaction, "count", ("emoji", deserialize_reaction_emoji), "is_me"
         )
-        deserialize_activity = _generate_json_deserializer(
+        deserialize_activity = _generate_map_deserializer(
             messages.MessageActivity, ("type", messages.MessageActivityType), "party_id"
         )
-        deserialize_member = _generate_json_deserializer(
+        deserialize_member = _generate_map_deserializer(
             applications.TeamMember,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("membership_state", applications.TeamMembershipState),
             "permissions",
             ("team_id", snowflakes.Snowflake),
-            ("user", self._get_user_deserializer()),
+            ("user", self._get_user_deserializer(), {_PASS_KWARGS}),
         )
-        deserialize_team = _generate_json_deserializer(
+        deserialize_team = _generate_map_deserializer(
             applications.Team,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("id", snowflakes.Snowflake),
             "icon_hash",
-            ("members", _cast_mapping(snowflakes.Snowflake, deserialize_member)),
+            ("members", _cast_mapping(snowflakes.Snowflake, deserialize_member), {_PASS_KWARGS}),
             ("ownder_id", snowflakes.Snowflake),
         )
-        deserialize_application = _generate_json_deserializer(
+        deserialize_application = _generate_map_deserializer(
             applications.Application,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("id", snowflakes.Snowflake),
             "name",
             "description",
             "is_bot_public",
             "is_bot_code_grant_required",
-            ("owner", _optional_cast(self._get_user_deserializer())),
+            ("owner", _optional_cast(self._get_user_deserializer()), {_PASS_KWARGS}),
             "rpc_origins",
             "summary",
             ("verify_key", _optional_cast(base64.b64decode)),
             "icon_hash",
-            ("team", _optional_cast(deserialize_team)),
+            ("team", _optional_cast(deserialize_team), {_PASS_KWARGS}),
             ("guild_id", _optional_cast(snowflakes.Snowflake)),
             ("primary_sku_id", _optional_cast(snowflakes.Snowflake)),
             "slug",
             "cover_image_hash",
         )
-        deserialize_crosspost = _generate_json_deserializer(
+        deserialize_crosspost = _generate_map_deserializer(
             messages.MessageCrosspost,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("id", snowflakes.Snowflake),
             ("channel_id", snowflakes.Snowflake),
             ("guild_id", _optional_cast(snowflakes.Snowflake)),
         )
-        deserialize = _generate_json_deserializer(
+        deserialize = _generate_map_deserializer(
             messages.Message,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("id", snowflakes.Snowflake),
             ("channel_id", snowflakes.Snowflake),
             ("guild_id", _optional_cast(snowflakes.Snowflake)),
-            ("author", self._get_user_deserializer()),
-            ("member", _optional_cast(self._get_member_deserializer())),
+            ("author", self._get_user_deserializer(), {_PASS_KWARGS}),
+            ("member", _optional_cast(self._get_member_deserializer()), {_PASS_KWARGS}),
             "content",
             ("timestamp", _deserialize_datetime),
             ("edited_timestamp", _optional_cast(_deserialize_datetime)),
@@ -1042,7 +1029,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             ("webhook_id", _optional_cast(snowflakes.Snowflake)),
             ("type", messages.MessageType),
             ("activity", _optional_cast(deserialize_activity)),
-            ("application", _optional_cast(deserialize_application)),
+            ("application", _optional_cast(deserialize_application), {_PASS_KWARGS}),
             ("message_reference", _optional_cast(deserialize_crosspost)),
             ("flags", _optional_cast(messages.MessageFlag)),
             "nonce",
@@ -1050,31 +1037,11 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._deserializers[messages.Message] = deserialize
         return deserialize
 
-    def deserialize_message(self, value: bytes) -> messages.Message:
-        message = self._get_message_deserializer()(self._loads(value))
-        message.app = self._app
-        message.author.app = self._app
-
-        if message.member is not None:
-            message.member.user.app = self._app
-
-        if message.application is not None:
-            message.application.app = self._app
-
-            if message.application.owner is not None:
-                message.application.owner.app = self._app
-
-            if message.application.team is not None:
-                message.application.team.app = self._app
-
-                for member in message.application.team.members.values():
-                    member.app = self._app
-                    member.user.app = self._app
-
-        return message
+    def deserialize_message(self, value: ValueT) -> messages.Message:
+        return self._get_message_deserializer()(self.loads(value), app=self._app)
 
     async def _serialize_resource(
-        self, resource: files.Resource[files.ReaderImplT]
+        self, resource: files.Resource[AsyncReaderT]
     ) -> typing.MutableMapping[str, typing.Any]:
         data: typing.Mapping[str, typing.Any]
         if isinstance(resource, files.URL):
@@ -1106,11 +1073,9 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         if self._serialize_message is not None:
             return self._serialize_message
 
-        serialize_attachment = _generate_json_serializer(
-            "id", "url", "filename", "size", "proxy_url", "height", "width"
-        )
-        serialize_provider = _generate_json_serializer("name", "url")
-        serialize_filed = _generate_json_serializer("name", "value", "is_inline")
+        serialize_attachment = _generate_map_serializer("id", "url", "filename", "size", "proxy_url", "height", "width")
+        serialize_provider = _generate_map_serializer("name", "url")
+        serialize_filed = _generate_map_serializer("name", "value", "is_inline")
 
         async def serialize_resource_with_proxy(
             resource: embeds.EmbedResourceWithProxy[files.AsyncReader],
@@ -1173,15 +1138,15 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
 
             return {"name": emoji.name}
 
-        serialize_reaction = _generate_json_serializer("count", ("emoji", serialize_emoji), "is_me")
-        serialize_message_activity = _generate_json_serializer("type", "party_id")
-        serialize_team_member = _generate_json_serializer(
+        serialize_reaction = _generate_map_serializer("count", ("emoji", serialize_emoji), "is_me")
+        serialize_message_activity = _generate_map_serializer("type", "party_id")
+        serialize_team_member = _generate_map_serializer(
             "membership_state", "permissions", "team_id", ("user", self._get_user_serializer())
         )
-        serialize_team = _generate_json_serializer(
+        serialize_team = _generate_map_serializer(
             "id", "icon_hash", ("members", _cast_mapping(_no_cast, serialize_team_member)), "owner_id"
         )
-        serialize_application = _generate_json_serializer(
+        serialize_application = _generate_map_serializer(
             "id",
             "name",
             "description",
@@ -1198,7 +1163,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             "slug",
             "cover_image_hash",
         )
-        serialize_reference = _generate_json_serializer("id", "channel_id", "guild_id")
+        serialize_reference = _generate_map_serializer("id", "channel_id", "guild_id")
         serialize_user = self._get_user_serializer()
         serialize_member = self._get_member_serializer()
 
@@ -1241,12 +1206,12 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._serialize_message = serialize_message
         return self._serialize_message
 
-    async def serialize_message(self, message: messages.Message) -> bytes:
-        return self._dumps(await self._get_message_serializer()(message))
+    async def serialize_message(self, message: messages.Message) -> ValueT:
+        return self.dumps(await self._get_message_serializer()(message))
 
     def _get_presence_deserializer(
         self,
-    ) -> typing.Callable[[typing.Mapping[str, typing.Any]], presences.MemberPresence]:
+    ) -> typing.Callable[..., presences.MemberPresence]:
         try:
             return self._deserializers[presences.MemberPresence]
         except KeyError:
@@ -1261,23 +1226,23 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
                 )
             return emojis.UnicodeEmoji(data["name"])
 
-        serialize_timestamps = _generate_json_deserializer(
+        serialize_timestamps = _generate_map_deserializer(
             presences.ActivityTimestamps,
             ("start", _optional_cast(_deserialize_datetime)),
             ("end", _optional_cast(_deserialize_datetime)),
         )
-        serialize_client_status = _generate_json_deserializer(
+        serialize_client_status = _generate_map_deserializer(
             presences.ClientStatus,
             ("desktop", presences.Status),
             ("mobile", presences.Status),
             ("web", presences.Status),
         )
-        serialize_party = _generate_json_deserializer(presences.ActivityParty, "id", "current_size", "max_size")
-        serialize_assets = _generate_json_deserializer(
+        serialize_party = _generate_map_deserializer(presences.ActivityParty, "id", "current_size", "max_size")
+        serialize_assets = _generate_map_deserializer(
             presences.ActivityAssets, "large_image", "large_text", "small_image", "small_text"
         )
-        serialize_secrets = _generate_json_deserializer(presences.ActivitySecret, "join", "spectate", "match")
-        serialize_activity = _generate_json_deserializer(
+        serialize_secrets = _generate_map_deserializer(presences.ActivitySecret, "join", "spectate", "match")
+        serialize_activity = _generate_map_deserializer(
             presences.RichActivity,
             "name",
             "url",
@@ -1294,9 +1259,9 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             "is_instance",
             ("flags", _optional_cast(presences.ActivityFlag)),
         )
-        serialize = _generate_json_deserializer(
+        serialize = _generate_map_deserializer(
             presences.MemberPresence,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("user_id", snowflakes.Snowflake),
             ("guild_id", snowflakes.Snowflake),
             ("visible_status", presences.Status),
@@ -1306,15 +1271,8 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._deserializers[presences.MemberPresence] = serialize
         return serialize
 
-    def deserialize_presence(self, value: bytes) -> presences.MemberPresence:
-        presence = self._get_presence_deserializer()(self._loads(value))
-        presence.app = self._app
-
-        for activity in presence.activities:
-            if isinstance(activity.emoji, emojis.KnownCustomEmoji):
-                activity.emoji.app = self._app
-
-        return presence
+    def deserialize_presence(self, value: ValueT) -> presences.MemberPresence:
+        return self._get_presence_deserializer()(self.loads(value), app=self._app)
 
     def _get_presence_serializer(self) -> typing.Callable[[presences.MemberPresence], typing.Mapping[str, typing.Any]]:
         try:
@@ -1327,12 +1285,12 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
                 return {"id": emoji.id, "name": emoji.name, "is_animated": emoji.is_animated}
             return {"name": emoji.name}
 
-        serialize_assets = _generate_json_serializer("large_image", "large_text", "small_image", "small_text")
-        serialize_timestamps = _generate_json_serializer(
+        serialize_assets = _generate_map_serializer("large_image", "large_text", "small_image", "small_text")
+        serialize_timestamps = _generate_map_serializer(
             ("start", _optional_cast(_serialize_datetime)),
             ("end", _optional_cast(_serialize_datetime)),
         )
-        serialize_activity = _generate_json_serializer(
+        serialize_activity = _generate_map_serializer(
             "name",
             "url",
             "type",
@@ -1342,14 +1300,14 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             "details",
             "state",
             ("emoji", _optional_cast(emoji_serializer)),
-            ("party", _optional_cast(_generate_json_serializer("id", "current_size", "max_size"))),
+            ("party", _optional_cast(_generate_map_serializer("id", "current_size", "max_size"))),
             ("assets", _optional_cast(serialize_assets)),
-            ("secrets", _optional_cast(_generate_json_serializer("join", "spectate", "match"))),
+            ("secrets", _optional_cast(_generate_map_serializer("join", "spectate", "match"))),
             "is_instance",
             "flags",
         )
-        serialize_client_status = _generate_json_serializer("desktop", "mobile", "web")
-        serialize = _generate_json_serializer(
+        serialize_client_status = _generate_map_serializer("desktop", "mobile", "web")
+        serialize = _generate_map_serializer(
             "user_id",
             "guild_id",
             "visible_status",
@@ -1359,18 +1317,18 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._serializers[presences.MemberPresence] = serialize
         return serialize
 
-    def serialize_presence(self, presence: presences.MemberPresence) -> bytes:
-        return self._dumps(self._get_presence_serializer()(presence))
+    def serialize_presence(self, presence: presences.MemberPresence) -> ValueT:
+        return self.dumps(self._get_presence_serializer()(presence))
 
-    def _get_role_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], guilds.Role]:
+    def _get_role_deserializer(self) -> typing.Callable[..., guilds.Role]:
         try:
             return self._deserializers[guilds.Role]
         except KeyError:
             pass
 
-        deserialize = _generate_json_deserializer(
+        deserialize = _generate_map_deserializer(
             guilds.Role,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("id", snowflakes.Snowflake),
             "name",
             ("color", colors.Color),
@@ -1384,10 +1342,8 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._deserializers[guilds.Role] = deserialize
         return deserialize
 
-    def deserialize_role(self, value: bytes) -> guilds.Role:
-        role = self._get_role_deserializer()(self._loads(value))
-        role.app = self._app
-        return role
+    def deserialize_role(self, value: ValueT) -> guilds.Role:
+        return self._get_role_deserializer()(self.loads(value), app=self._app)
 
     def _get_role_serializer(self) -> typing.Callable[[guilds.Role], typing.Mapping[str, typing.Any]]:
         try:
@@ -1395,7 +1351,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         except KeyError:
             pass
 
-        serialize = _generate_json_serializer(
+        serialize = _generate_map_serializer(
             "id",
             "name",
             "color",
@@ -1409,23 +1365,21 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._serializers[guilds.Role] = serialize
         return serialize
 
-    def serialize_role(self, role: guilds.Role) -> bytes:
-        return self._dumps(self._get_role_serializer()(role))
+    def serialize_role(self, role: guilds.Role) -> ValueT:
+        return self.dumps(self._get_role_serializer()(role))
 
-    def _get_user_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], users.User]:
+    def _get_user_deserializer(self) -> typing.Callable[..., users.User]:
         try:
             return self._deserializers[users.UserImpl]
         except KeyError:
             pass
 
-        deserialize = _generate_json_deserializer(users.UserImpl, *_user_deserialize_rules())
+        deserialize = _generate_map_deserializer(users.UserImpl, *_user_deserialize_rules())
         self._deserializers[users.UserImpl] = deserialize
         return deserialize
 
-    def deserialize_user(self, value: bytes) -> users.User:
-        user = self._get_user_deserializer()(self._loads(value))
-        user.app = self._app
-        return user
+    def deserialize_user(self, value: ValueT) -> users.User:
+        return self._get_user_deserializer()(self.loads(value), app=self._app)
 
     def _get_user_serializer(self) -> typing.Callable[[users.User], typing.Mapping[str, typing.Any]]:
         try:
@@ -1433,22 +1387,22 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         except KeyError:
             pass
 
-        serialize = _generate_json_serializer(*_user_serialize_rules())
+        serialize = _generate_map_serializer(*_user_serialize_rules())
         self._serializers[users.UserImpl] = serialize
         return serialize
 
-    def serialize_user(self, user: users.User) -> bytes:
-        return self._dumps(self._get_user_serializer()(user))
+    def serialize_user(self, user: users.User) -> ValueT:
+        return self.dumps(self._get_user_serializer()(user))
 
-    def _get_voice_state_deserializer(self) -> typing.Callable[[typing.Mapping[str, typing.Any]], voices.VoiceState]:
+    def _get_voice_state_deserializer(self) -> typing.Callable[..., voices.VoiceState]:
         try:
             return self._deserializers[voices.VoiceState]
         except KeyError:
             pass
 
-        deserialize = _generate_json_deserializer(
+        deserialize = _generate_map_deserializer(
             voices.VoiceState,
-            ("app", None),
+            ("app", _SET_KWARG),
             ("channel_id", _optional_cast(snowflakes.Snowflake)),
             ("guild_id", snowflakes.Snowflake),
             "is_guild_deafened",
@@ -1459,17 +1413,14 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
             "is_suppressed",
             "is_video_enabled",
             ("user_id", snowflakes.Snowflake),
-            ("member", self._get_member_deserializer()),
+            ("member", self._get_member_deserializer(), {_PASS_KWARGS}),
             "session_id",
         )
         self._deserializers[voices.VoiceState] = deserialize
         return deserialize
 
-    def deserialize_voice_state(self, value: bytes) -> voices.VoiceState:
-        voice_state = self._get_voice_state_deserializer()(self._loads(value))
-        voice_state.app = self._app
-        voice_state.member.user.app = self._app
-        return voice_state
+    def deserialize_voice_state(self, value: ValueT) -> voices.VoiceState:
+        return self._get_voice_state_deserializer()(self.loads(value), app=self._app)
 
     def _get_voice_state_serializer(self) -> typing.Callable[[voices.VoiceState], typing.Mapping[str, typing.Any]]:
         try:
@@ -1477,7 +1428,7 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         except KeyError:
             pass
 
-        serialize = _generate_json_serializer(
+        serialize = _generate_map_serializer(
             "channel_id",
             "guild_id",
             "is_guild_deafened",
@@ -1494,5 +1445,17 @@ class JSONMarshaller(ObjectMarshaller[bytes]):
         self._serializers[voices.VoiceState] = serialize
         return serialize
 
-    def serialize_voice_state(self, voice_state: voices.VoiceState) -> bytes:
-        return self._dumps(self._get_voice_state_serializer()(voice_state))
+    def serialize_voice_state(self, voice_state: voices.VoiceState) -> ValueT:
+        return self.dumps(self._get_voice_state_serializer()(voice_state))
+
+
+class JSONMarshaller(MappingMarshaller[bytes]):
+    def dumps(self, data: typing.Mapping[str, typing.Any]) -> bytes:
+        return self._encoder.encode(data).encode()
+
+    def loads(self, data: bytes) -> typing.MutableMapping[str, typing.Any]:
+        result = self._decoder.decode(data.decode("utf-8"))
+        if not isinstance(result, dict):
+            raise ValueError("Invalid json content received")
+
+        return result

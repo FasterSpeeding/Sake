@@ -66,6 +66,7 @@ class CacheIterator(iterators.LazyIterator[ValueT], abc.ABC):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class Resource(typing.Protocol):
     """The basic interface which all cache resources should implement."""
 
@@ -124,6 +125,7 @@ class Resource(typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class EmojiCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -143,6 +145,7 @@ class EmojiCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RefEmojiCache(EmojiCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -153,6 +156,7 @@ class RefEmojiCache(EmojiCache, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class GuildCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -175,6 +179,7 @@ class GuildCache(Resource, typing.Protocol):
 RefGuildCache = GuildCache
 
 
+@typing.runtime_checkable
 class GuildChannelCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -194,6 +199,7 @@ class GuildChannelCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -206,6 +212,7 @@ class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class InviteCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -225,6 +232,7 @@ class InviteCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RefInviteCache(InviteCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -243,6 +251,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class MeCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -259,6 +268,7 @@ class MeCache(Resource, typing.Protocol):
 RefMeCache = MeCache
 
 
+@typing.runtime_checkable
 class MemberCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -280,6 +290,7 @@ class MemberCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RefMemberCache(MemberCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -296,6 +307,7 @@ class RefMemberCache(MemberCache, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class MessageCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -319,6 +331,7 @@ class MessageCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RefMessageCache(MessageCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -341,6 +354,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class PresenceCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -364,6 +378,7 @@ class PresenceCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RefPresenceCache(PresenceCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -380,6 +395,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RoleCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -399,6 +415,7 @@ class RoleCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RefRoleCache(RoleCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -409,6 +426,7 @@ class RefRoleCache(RoleCache, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class UserCache(Resource, typing.Protocol):
     """The traits for a cache implementation which supports a user cache.
 
@@ -439,6 +457,7 @@ class UserCache(Resource, typing.Protocol):
 RefUserCache = UserCache
 
 
+@typing.runtime_checkable
 class VoiceStateCache(Resource, typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
@@ -460,6 +479,7 @@ class VoiceStateCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
     __slots__: typing.Sequence[str] = ()  # TODO: for user?
 
@@ -476,6 +496,7 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
 class Cache(
     GuildCache,
     EmojiCache,
@@ -495,6 +516,7 @@ class Cache(
     __slots__: typing.Sequence[str] = ()
 
 
+@typing.runtime_checkable
 class RefCache(
     Cache,
     RefGuildCache,

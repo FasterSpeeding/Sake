@@ -16,6 +16,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
 
 import abc
 import asyncio
+import datetime
 import enum
 import itertools
 import logging
@@ -77,6 +78,12 @@ DEFAULT_FAST_EXPIRE: typing.Final[int] = 300_000
 """The default expire time (in milliseconds) used for expiring resources quickly of 5 minutes."""
 DEFAULT_INVITE_EXPIRE: typing.Final[int] = 2_592_000_000
 """A special case month long default expire time for invite entries without a set "expire_at"."""
+ExpireT = typing.Union[datetime.timedelta, int, float]
+"""A type hint used to represent expire times.
+
+These may either be the number of seconds as an int or float (where
+millisecond precision is supported) or a timedelta.
+"""
 
 
 class ResourceIndex(enum.IntEnum):
@@ -107,6 +114,20 @@ def cast_map_window(
 async def _close_client(client: aioredis.Redis) -> None:
     # TODO: will we need to catch errors here?
     await client.close()
+
+
+def _convert_expire_time(expire: ExpireT) -> int:
+    """Convert a timedelta, int or float expire time representation to an integer."""
+    if isinstance(expire, datetime.timedelta):
+        return round(expire.total_seconds() * 1000)
+
+    if isinstance(expire, int):
+        return expire * 1000
+
+    if isinstance(expire, float):
+        return round(expire * 1000)
+
+    raise ValueError(f"Invalid expire time passed; expected a float, int or timedelta but got a {type(expire)!r}")
 
 
 # TODO: may go back to approach where client logic and interface are separate classes
@@ -516,6 +537,30 @@ class UserCache(_MeCache, traits.UserCache):
         # The users cache is a special case as it doesn't directly map to any events for most user entries.
         super().unsubscribe_listeners()
 
+    def with_user_expire(self: ResourceT, expire: typing.Optional[ExpireT], /) -> ResourceT:
+        """Set the default expire time for user entries added with this client.
+
+        Parameters
+        ----------
+        expire : typing.Union[datetime.timedelta, builtins.int, builtins.float]
+            The default expire time to add for users in this cache or `builtins.None`
+            to set back to the default behaviour.
+            This may either be the number of seconds as an int or float (where
+            millisecond precision is supported) or a timedelta.
+
+        Returns
+        -------
+        ResourceT
+            The client this is being called on to enable chained calls.
+        """
+        if expire is not None:
+            self.metadata["expire_user"] = _convert_expire_time(expire)
+
+        elif "expire_user" in self.metadata:
+            del self.metadata["expire_user"]
+
+        return self
+
     async def clear_users(self) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
@@ -545,12 +590,15 @@ class UserCache(_MeCache, traits.UserCache):
             self, ResourceIndex.USER, self.marshaller.deserialize_user, window_size=window_size
         )
 
-    async def set_user(self, user: users.User, /, *, expire_time: typing.Optional[int] = None) -> None:
+    async def set_user(self, user: users.User, /, *, expire_time: typing.Optional[ExpireT] = None) -> None:
         # <<Inherited docstring from sake.traits.UserCache>>
         client = await self.get_connection(ResourceIndex.USER)
 
         if expire_time is None:
             expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
+
+        else:
+            expire_time = _convert_expire_time(expire_time)
 
         await client.set(int(user.id), self.marshaller.serialize_user(user), pexpire=expire_time)
 
@@ -887,6 +935,30 @@ class InviteCache(ResourceClient, traits.InviteCache):
         if self.dispatch is not None:
             self.dispatch.dispatcher.unsubscribe(channel_events.InviteEvent, self.__on_invite_event)
 
+    def with_invite_expire(self: ResourceT, expire: typing.Optional[ExpireT], /) -> ResourceT:
+        """Set the default expire time for invite entries added with this client.
+
+        Parameters
+        ----------
+        expire : typing.Union[datetime.timedelta, builtins.int, builtins.float]
+            The default expire time to add for invites in this cache or `builtins.None`
+            to set back to the default behaviour.
+            This may either be the number of seconds as an int or float (where
+            millisecond precision is supported) or a timedelta.
+
+        Returns
+        -------
+        ResourceT
+            The client this is being called on to enable chained calls.
+        """
+        if expire is not None:
+            self.metadata["expire_invite"] = _convert_expire_time(expire)
+
+        elif "expire_invite" in self.metadata:
+            del self.metadata["expire_invite"]
+
+        return self
+
     async def clear_invites(self) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
@@ -918,7 +990,7 @@ class InviteCache(ResourceClient, traits.InviteCache):
         )
 
     async def set_invite(
-        self, invite: invites_.InviteWithMetadata, /, *, expire_time: typing.Optional[int] = None
+        self, invite: invites_.InviteWithMetadata, /, *, expire_time: typing.Optional[ExpireT] = None
     ) -> None:
         # <<Inherited docstring from sake.traits.InviteCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
@@ -927,8 +999,16 @@ class InviteCache(ResourceClient, traits.InviteCache):
         if expire_time is None and invite.expires_at is not None:
             expire_time = round((invite.expires_at - time.utc_datetime()).total_seconds() * 1000)
 
-        elif expire_time is None:
+            # If this invite has already expired or the system clock is direly out of sync then we cannot
+            # use the expire time we just calculated.
+            if expire_time <= 0:
+                expire_time = None
+
+        if expire_time is None:
             expire_time = int(self.metadata.get("expire_invite", DEFAULT_INVITE_EXPIRE))
+
+        else:
+            expire_time = _convert_expire_time(expire_time)
 
         # Aioredis treats keys and values as type invariant so we want to ensure this is a str and not a class which
         # subclasses str.
@@ -1096,6 +1176,30 @@ class MessageCache(ResourceClient, traits.MessageCache):
         if self.dispatch is not None:
             self.dispatch.dispatcher.unsubscribe(message_events.MessageEvent, self.__on_message_event)
 
+    def with_message_expire(self: ResourceT, expire: typing.Optional[ExpireT], /) -> ResourceT:
+        """Set the default expire time for message entries added with this client.
+
+        Parameters
+        ----------
+        expire : typing.Union[datetime.timedelta, builtins.int, builtins.float]
+            The default expire time to add for messages in this cache or `builtins.None`
+            to set back to the default behaviour.
+            This may either be the number of seconds as an int or float (where
+            millisecond precision is supported) or a timedelta.
+
+        Returns
+        -------
+        ResourceT
+            The client this is being called on to enable chained calls.
+        """
+        if expire is not None:
+            self.metadata["expire_message"] = _convert_expire_time(expire)
+
+        elif "expire_message" in self.metadata:
+            del self.metadata["expire_message"]
+
+        return self
+
     async def clear_messages(self) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
         client = await self.get_connection(ResourceIndex.INVITE)
@@ -1122,13 +1226,16 @@ class MessageCache(ResourceClient, traits.MessageCache):
             self, ResourceIndex.MESSAGE, self.marshaller.deserialize_message, window_size=window_size
         )
 
-    async def set_message(self, message: messages.Message, /, *, expire_time: typing.Optional[int] = None) -> None:
+    async def set_message(self, message: messages.Message, /, *, expire_time: typing.Optional[ExpireT] = None) -> None:
         # <<Inherited docstring from sake.traits.MessageCache>>
         data = await self.marshaller.serialize_message(message)
         client = await self.get_connection(ResourceIndex.MESSAGE)
 
         if expire_time is None:
             expire_time = int(self.metadata.get("expire_message", DEFAULT_FAST_EXPIRE))
+
+        else:
+            expire_time = _convert_expire_time(expire_time)
 
         await client.set(int(message.id), data, expire=expire_time)
         await self._optionally_set_user(message.author)

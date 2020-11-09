@@ -91,6 +91,7 @@ class ObjectMarshaller(abc.ABC, typing.Generic[ValueT]):
     def deserialize_message(self, value: ValueT) -> messages.Message:
         raise NotImplementedError
 
+    # This is a special case serializer as it may have to asynchronously read "file" content.
     @abc.abstractmethod
     async def serialize_message(self, message: messages.Message) -> ValueT:
         raise NotImplementedError
@@ -1205,6 +1206,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serialize_message = serialize_message
         return self._serialize_message
 
+        # This is a special case serializer as it may have to asynchronously read "file" content.
     async def serialize_message(self, message: messages.Message) -> ValueT:
         return self.dumps(await self._get_message_serializer()(message))
 

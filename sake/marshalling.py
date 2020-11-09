@@ -140,31 +140,22 @@ def _get_init_name(field: str) -> str:
     return field[1:] if field.startswith("_") else field
 
 
+_UNDEFINABLE: typing.Final[str] = __name__ + "_UNDEFINABLE"
 _PASS_KWARGS: typing.Final[str] = __name__ + "PASS_KWARG"
 """Pass through the kwargs provided to this attribute's cast."""
 _SET_KWARG: typing.Final[str] = __name__ + "SET_KWARG"
 """Used to mark a field as being passed through the **kwargs argument."""
-_PASSED_THROUGH_SINGLETONS: typing.Final[typing.Mapping[typing.Any, str]] = {
-    undefined.UNDEFINED: "UNDEFINED",
-    None: "None",
-}
 
-_DeserializeCastRuleT = typing.Union[typing.Callable[[typing.Any], typing.Any], None, undefined.UndefinedType, str]
+_DeserializeCastRuleT = typing.Union[typing.Callable[[typing.Any], typing.Any], str]
 
 
 def _generate_map_deserializer(
     cls: typing.Type[ValueT],
     *rules: typing.Union[
         str,
-        typing.Tuple[
-            str,
-            _DeserializeCastRuleT,
-        ],
-        typing.Tuple[
-            str,
-            _DeserializeCastRuleT,
-            typing.AbstractSet[str],
-        ],
+        typing.Tuple[str, _DeserializeCastRuleT],
+        typing.Tuple[str, typing.AbstractSet[str]],
+        typing.Tuple[str, _DeserializeCastRuleT, typing.AbstractSet[str]],
     ],
 ) -> typing.Callable[..., ValueT]:
     # For the case of no supplied rules, return an empty lambda to avoid syntax errors later on.
@@ -172,29 +163,44 @@ def _generate_map_deserializer(
         return lambda _: cls()
 
     getters = []
-    casts = {rule[1] for rule in rules if isinstance(rule, tuple)}
+    # Mypy false-positive complains about typing.Callable 'ha[ving] incompatible type "_SpecialForm"'
+    # so we use AbstractSet in this check instead.
+    casts = {rule[1] for rule in rules if isinstance(rule, tuple) and not isinstance(rule[1], typing.AbstractSet)}
     named_casts = {cast: f"c{i}" for i, cast in enumerate(casts)}
 
     for rule in rules:
-        if isinstance(rule, str):  # TODO: specified whether a field can be undefined or not?
-            getters.append(f"{_get_init_name(rule)}=data.get({rule!r}, UNDEFINED)")
-            continue
+        # Handles `str`
+        if isinstance(rule, str):
+            getters.append(f"{_get_init_name(rule)}=data[{rule!r}]")
 
-        name = rule[0]
-        current_cast = rule[1]
-        # Mypy doesn't support scope narrowing tuple unions using length checks and thus assumes a 2 length tuple.
-        flags = rule[2] if len(rule) > 2 else set()  # type: ignore[misc]
-        init_name = _get_init_name(name)
-        if current_cast in _PASSED_THROUGH_SINGLETONS:
-            getters.append(f"{init_name}=data.get({name!r}, {_PASSED_THROUGH_SINGLETONS[current_cast]})")
+        # Handles `typing.Tuple[str, typing.AbstractSet[str]]`
+        elif isinstance(rule[1], typing.AbstractSet):
+            name = rule[0]
+            flags = rule[1]
+            assert isinstance(flags, typing.AbstractSet), "This is already indirectly asserted above."
 
-        elif current_cast == _SET_KWARG:
-            getters.append(f"{init_name}=kwargs[{name!r}]")
+            if _UNDEFINABLE in flags:
+                getters.append(f"{_get_init_name(name)}=data.get({name!r}, UNDEFINED)")
+            else:
+                getters.append(f"{_get_init_name(name)}=data[{name!r}]")
 
+        # Handles
+        # - `typing.Tuple[str, _DeserializeCastRuleT]`
+        # - `typing.Tuple[str, _DeserializeCastRuleT, typing.AbstractSet[str]]`
         else:
-            cast_name = named_casts[current_cast]
-            call = f"(data[{name!r}])" if _PASS_KWARGS not in flags else f"(data[{name!r}], **kwargs)"
-            getters.append(f"{init_name}={cast_name}{call} if {name!r} in data else UNDEFINED")
+            name = rule[0]
+            current_cast = rule[1]
+            # Mypy doesn't support scope narrowing tuple unions using length checks and thus assumes a 2 length tuple.
+            flags = rule[2] if len(rule) > 2 else set()  # type: ignore[misc]
+            init_name = _get_init_name(name)
+
+            if current_cast == _SET_KWARG:
+                getters.append(f"{init_name}=kwargs[{name!r}]")
+
+            else:
+                cast_name = named_casts[current_cast]
+                call = f"(data[{name!r}])" if _PASS_KWARGS not in flags else f"(data[{name!r}], **kwargs)"
+                getters.append(f"{init_name}={cast_name}{call} if {name!r} in data else UNDEFINED")
 
     globals_: typing.Dict[str, typing.Any] = {"cls": cls, "UNDEFINED": undefined.UNDEFINED}
     globals_.update((value, key) for key, value in named_casts.items())
@@ -205,24 +211,53 @@ def _generate_map_deserializer(
 
 
 def _generate_map_serializer(
-    *rules: typing.Union[str, typing.Tuple[str, typing.Callable[[typing.Any], typing.Any]]],
+    *rules: typing.Union[
+        str,
+        typing.Tuple[str, typing.Callable[[typing.Any], typing.Any]],
+        typing.Tuple[str, typing.AbstractSet[str]],
+        typing.Tuple[str, typing.Callable[[typing.Any], typing.Any], typing.AbstractSet[str]],
+    ],
 ) -> typing.Callable[[typing.Any], typing.MutableMapping[str, typing.Any]]:
     # For the case of no supplied rules, return an empty lambda to avoid syntax errors later on.
     if not rules:
         return lambda _: {}
 
     setters = []
-    casts = {rule[1] for rule in rules if isinstance(rule, tuple)}
+    # Mypy false-positive complains about typing.Callable 'ha[ving] incompatible type "_SpecialForm"'
+    # so we use AbstractSet in this check instead.
+    casts = {rule[1] for rule in rules if isinstance(rule, tuple) and not isinstance(rule[1], typing.AbstractSet)}
     named_casts = {cast: f"c{i}" for i, cast in enumerate(casts)}
 
     for rule in rules:
+        # Handles `str`
         if isinstance(rule, str):
-            setters.append(f"if m.{rule} is not UNDEFINED: data[{rule!r}] = m.{rule}")
-            continue
+            setters.append(f"data[{rule!r}] = m.{rule}")
 
-        name, cast = rule
-        cast_name = named_casts[cast]
-        setters.append(f"if m.{name} is not UNDEFINED: data[{name!r}] = {cast_name}(m.{name})")
+        # Handles `typing.Tuple[str, typing.AbstractSet[str]]`
+        elif isinstance(rule[1], typing.AbstractSet):
+            name = rule[0]
+            flags = rule[1]
+            assert isinstance(flags, typing.AbstractSet), "This is already indirectly asserted above."
+
+            if _UNDEFINABLE in flags:
+                setters.append(f"if m.{name} is not UNDEFINED: data[{name!r}] = m.{name}")
+            else:
+                setters.append(f"data[{name!r}] = m.{name}")
+
+        # Handles
+        # - `typing.Tuple[str, typing.Callable[[typing.Any], typing.Any]]`
+        # - `typing.Tuple[str, typing.Callable[[typing.Any], typing.Any], typing.AbstractSet[str]]`
+        else:
+            name = rule[0]
+            cast = rule[1]
+            # Mypy doesn't support scope narrowing tuple unions using length checks and thus assumes a 2 length tuple.
+            flags = rule[2] if len(rule) > 2 else set()  # type: ignore[misc]
+            cast_name = named_casts[cast]
+            if _UNDEFINABLE in flags:
+                setters.append(f"if m.{name} is not UNDEFINED: data[{name!r}] = {cast_name}(m.{name})")
+
+            else:
+                setters.append(f"data[{name!r}] = {cast_name}(m.{name})")
 
     globals_: typing.Dict[str, typing.Any] = {"UNDEFINED": undefined.UNDEFINED}
     globals_.update((value, key) for key, value in named_casts.items())
@@ -760,7 +795,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         return self.dumps(self._get_invite_serializer()(invite))
 
     def _get_me_deserializer(self) -> typing.Callable[..., users.OwnUser]:
-        try:
+        try:  # TODO: rename to "own_user"
             return self._deserializers[users.OwnUser]
         except KeyError:
             pass
@@ -804,10 +839,10 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         deserialize = _generate_map_deserializer(
             guilds.Member,
             ("guild_id", snowflakes.Snowflake),
-            "is_deaf",
-            "is_mute",
+            ("is_deaf", {_UNDEFINABLE}),
+            ("is_mute", {_UNDEFINABLE}),
             ("joined_at", _deserialize_datetime),
-            "nickname",
+            ("nickname", {_UNDEFINABLE}),
             (
                 "premium_since",
                 _optional_cast(_deserialize_datetime),
@@ -829,9 +864,9 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
 
         serialize = _generate_map_serializer(
             "guild_id",
-            "is_deaf",
-            "is_mute",
-            "nickname",
+            ("is_deaf", {_UNDEFINABLE}),
+            ("is_mute", {_UNDEFINABLE}),
+            ("nickname", {_UNDEFINABLE}),
             ("joined_at", _serialize_datetime),
             ("premium_since", _optional_cast(_serialize_datetime)),
             "role_ids",

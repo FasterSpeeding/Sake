@@ -488,11 +488,11 @@ class _MeCache(ResourceClient, traits.MeCache):
         if not data:
             raise errors.EntryNotFound("Me entry not found")
 
-        return self.marshaller.deserialize_me(data)
+        return self.marshaller.deserialize_own_user(data)
 
     async def set_me(self, me: users.OwnUser, /) -> None:
         # <<Inherited docstring from sake.traits.MeCache>>
-        data = self.marshaller.serialize_me(me)
+        data = self.marshaller.serialize_own_user(me)
         client = await self.get_connection(ResourceIndex.USER)
         await client.set(self.__ME_KEY, data)
         await self._optionally_set_user(me)

@@ -80,14 +80,6 @@ class ObjectMarshaller(abc.ABC, typing.Generic[ValueT]):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deserialize_me(self, value: ValueT) -> users.OwnUser:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def serialize_me(self, me: users.OwnUser) -> ValueT:
-        raise NotImplementedError
-
-    @abc.abstractmethod
     def deserialize_member(self, value: ValueT) -> guilds.Member:
         raise NotImplementedError
 
@@ -101,6 +93,14 @@ class ObjectMarshaller(abc.ABC, typing.Generic[ValueT]):
 
     @abc.abstractmethod
     async def serialize_message(self, message: messages.Message) -> ValueT:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def deserialize_own_user(self, value: ValueT) -> users.OwnUser:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def serialize_own_user(self, me: users.OwnUser) -> ValueT:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -140,10 +140,10 @@ def _get_init_name(field: str) -> str:
     return field[1:] if field.startswith("_") else field
 
 
-_UNDEFINABLE: typing.Final[str] = __name__ + "_UNDEFINABLE"
-_PASS_KWARGS: typing.Final[str] = __name__ + "PASS_KWARG"
+_UNDEFINABLE: typing.Final[str] = "UNDEFINABLE"
+_PASS_KWARGS: typing.Final[str] = "PASS_KWARG"
 """Pass through the kwargs provided to this attribute's cast."""
-_SET_KWARG: typing.Final[str] = __name__ + "SET_KWARG"
+_SET_KWARG: typing.Final[str] = "SET_KWARG"
 """Used to mark a field as being passed through the **kwargs argument."""
 
 _DeserializeCastRuleT = typing.Union[typing.Callable[[typing.Any], typing.Any], str]
@@ -794,42 +794,6 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
     def serialize_invite(self, invite: invites.InviteWithMetadata) -> ValueT:
         return self.dumps(self._get_invite_serializer()(invite))
 
-    def _get_me_deserializer(self) -> typing.Callable[..., users.OwnUser]:
-        try:  # TODO: rename to "own_user"
-            return self._deserializers[users.OwnUser]
-        except KeyError:
-            pass
-
-        deserialize = _generate_map_deserializer(
-            users.OwnUser,
-            *_user_deserialize_rules(),
-            "is_mfa_enabled",
-            "locale",
-            "is_verified",
-            "email",
-            ("premium_type", _optional_cast(users.PremiumType)),
-        )
-        self._deserializers[users.OwnUser] = deserialize
-        return deserialize
-
-    def deserialize_me(self, value: ValueT) -> users.OwnUser:
-        return self._get_me_deserializer()(self.loads(value), app=self._app)
-
-    def _get_me_serializer(self) -> typing.Callable[[users.OwnUser], typing.Mapping[str, typing.Any]]:
-        try:
-            return self._serializers[users.OwnUser]
-        except KeyError:
-            pass
-
-        serialize = _generate_map_serializer(
-            *_user_serialize_rules(), "is_mfa_enabled", "locale", "is_verified", "email", "premium_type"
-        )
-        self._serializers[users.OwnUser] = serialize
-        return serialize
-
-    def serialize_me(self, me: users.OwnUser) -> ValueT:
-        return self.dumps(self._get_me_serializer()(me))
-
     def _get_member_deserializer(self) -> typing.Callable[..., guilds.Member]:
         try:
             return self._deserializers[guilds.Member]
@@ -1243,6 +1207,42 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
 
     async def serialize_message(self, message: messages.Message) -> ValueT:
         return self.dumps(await self._get_message_serializer()(message))
+
+    def _get_own_user_deserializer(self) -> typing.Callable[..., users.OwnUser]:
+        try:
+            return self._deserializers[users.OwnUser]
+        except KeyError:
+            pass
+
+        deserialize = _generate_map_deserializer(
+            users.OwnUser,
+            *_user_deserialize_rules(),
+            "is_mfa_enabled",
+            "locale",
+            "is_verified",
+            "email",
+            ("premium_type", _optional_cast(users.PremiumType)),
+        )
+        self._deserializers[users.OwnUser] = deserialize
+        return deserialize
+
+    def deserialize_own_user(self, value: ValueT) -> users.OwnUser:
+        return self._get_own_user_deserializer()(self.loads(value), app=self._app)
+
+    def _get_own_user_serializer(self) -> typing.Callable[[users.OwnUser], typing.Mapping[str, typing.Any]]:
+        try:
+            return self._serializers[users.OwnUser]
+        except KeyError:
+            pass
+
+        serialize = _generate_map_serializer(
+            *_user_serialize_rules(), "is_mfa_enabled", "locale", "is_verified", "email", "premium_type"
+        )
+        self._serializers[users.OwnUser] = serialize
+        return serialize
+
+    def serialize_own_user(self, me: users.OwnUser) -> ValueT:
+        return self.dumps(self._get_own_user_serializer()(me))
 
     def _get_presence_deserializer(
         self,

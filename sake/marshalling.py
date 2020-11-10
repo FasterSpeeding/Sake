@@ -337,7 +337,7 @@ def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
 
 
 class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
-    __slots__: typing.Sequence[str] = ("_app", "_decoder", "_encoder")
+    __slots__: typing.Sequence[str] = "_app"
 
     # These special case serializers require an asynchronous environment to read referenced data.
     _async_serializers: typing.MutableMapping[
@@ -351,8 +351,6 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
 
     def __init__(self, app: traits.RESTAware) -> None:
         self._app = app
-        self._decoder = json.JSONDecoder()
-        self._encoder = json.JSONEncoder()
 
     @abc.abstractmethod
     def dumps(self, data: typing.Mapping[str, typing.Any], /) -> ValueT:
@@ -1518,6 +1516,13 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
 
 
 class JSONMarshaller(MappingMarshaller[bytes]):
+    __slots__: typing.Sequence[str] = ("_decoder", "_encoder")
+
+    def __init__(self, app: traits.RESTAware) -> None:
+        super().__init__(app)
+        self._decoder = json.JSONDecoder()
+        self._encoder = json.JSONEncoder()
+
     def dumps(self, data: typing.Mapping[str, typing.Any], /) -> bytes:
         return self._encoder.encode(data).encode()
 

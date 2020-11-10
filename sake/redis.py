@@ -644,13 +644,14 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
             await self.__bulk_add_emojis(event.emojis, event.guild_id)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
-        if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
-            await self.clear_emojis_for_guild(event.guild_id)
-            if event.emojis:
-                await self.__bulk_add_emojis(event.emojis.values(), event.guild_id)
+        # A guild going unavailable is as far as I'm concerned completely irrelevant.
+        # Especially since we clear relevant entries on available and other entries are set to expire.
+        if isinstance(event, guild_events.GuildUnavailableEvent):
+            return
 
-        elif isinstance(event, guild_events.GuildLeaveEvent):
-            await self.clear_emojis_for_guild(event.guild_id)
+        await self.clear_emojis_for_guild(event.guild_id)
+        if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)) and event.emojis:
+            await self.__bulk_add_emojis(event.emojis.values(), event.guild_id)
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -826,15 +827,14 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
                 channel.last_pin_timestamp = event.last_pin_timestamp
                 await self.set_guild_channel(channel)
 
-    async def __on_guild_event(self, event: guild_events.GuildVisibilityEvent) -> None:
-        if isinstance(event, guild_events.GuildLeaveEvent):
-            await self.clear_guild_channels_for_guild(event.guild_id)
+    async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
+        # A guild going unavailable is as far as I'm concerned completely irrelevant.
+        # Especially since we clear relevant entries on available and other entries are set to expire.
+        if isinstance(event, guild_events.GuildUnavailableEvent):
+            return
 
-        elif isinstance(event, guild_events.GuildAvailableEvent):
-            await self.clear_guild_channels_for_guild(event.guild_id)
-            if not event.channels:
-                return
-
+        await self.clear_guild_channels_for_guild(event.guild_id)
+        if isinstance(event, guild_events.GuildAvailableEvent) and event.channels:
             client = await self.get_connection(ResourceIndex.CHANNEL)
             windows = redis_iterators.chunk_values(event.channels.items())
             setters = (
@@ -850,14 +850,14 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         super().subscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.subscribe(channel_events.GuildChannelEvent, self.__on_guild_channel_event)
-            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_event)
+            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
         if self.dispatch is not None:
             self.dispatch.dispatcher.unsubscribe(channel_events.GuildChannelEvent, self.__on_guild_channel_event)
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_event)
+            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
 
     async def clear_guild_channels(self) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
@@ -1444,13 +1444,14 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         asyncio.gather(*setters)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
-        if isinstance(event, guild_events.GuildAvailableEvent):
-            await self.clear_presences_for_guild(event.guild_id)
-            if event.presences:
-                await self.__bulk_add_presences(event.guild_id, event.presences)
+        # A guild going unavailable is as far as I'm concerned completely irrelevant.
+        # Especially since we clear relevant entries on available and other entries are set to expire.
+        if isinstance(event, guild_events.GuildUnavailableEvent):
+            return
 
-        elif isinstance(event, guild_events.GuildLeaveEvent):
-            await self.clear_presences_for_guild(event.guild_id)
+        await self.clear_presences_for_guild(event.guild_id)
+        if isinstance(event, guild_events.GuildAvailableEvent) and event.presences:
+            await self.__bulk_add_presences(event.guild_id, event.presences)
 
     async def __on_member_chunk(self, event: shard_events.MemberChunkEvent) -> None:
         await self.__bulk_add_presences(event.guild_id, event.presences)
@@ -1536,14 +1537,13 @@ class RoleCache(_Reference, traits.RoleCache):
         return (ResourceIndex.ROLE,)
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
-        if isinstance(event, guild_events.GuildLeaveEvent):
-            await self.clear_roles_for_guild(event.guild_id)
+        # A guild going unavailable is as far as I'm concerned completely irrelevant.
+        # Especially since we clear relevant entries on available and other entries are set to expire.
+        if isinstance(event, guild_events.GuildUnavailableEvent):
+            return
 
-        elif isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)):
-            await self.clear_roles_for_guild(event.guild_id)
-            if not event.emojis:
-                return
-
+        await self.clear_roles_for_guild(event.guild_id)
+        if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)) and event.emojis:
             client = await self.get_connection(ResourceIndex.ROLE)
             windows = redis_iterators.chunk_values(event.roles.items())
             setters = (client.mset(cast_map_window(window, int, self.marshaller.serialize_role)) for window in windows)
@@ -1671,14 +1671,13 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         return references
 
     async def __on_guild_visibility_event(self, event: guild_events.GuildVisibilityEvent) -> None:
-        if isinstance(event, guild_events.GuildLeaveEvent):
-            await self.clear_voice_states_for_guild(event.guild_id)
+        # A guild going unavailable is as far as I'm concerned completely irrelevant.
+        # Especially since we clear relevant entries on available and other entries are set to expire.
+        if isinstance(event, guild_events.GuildUnavailableEvent):
+            return
 
-        elif isinstance(event, guild_events.GuildAvailableEvent):
-            await self.clear_voice_states_for_guild(event.guild_id)
-            if not event.voice_states:
-                return
-
+        await self.clear_voice_states_for_guild(event.guild_id)
+        if isinstance(event, guild_events.GuildAvailableEvent) and event.voice_states:
             client = await self.get_connection(ResourceIndex.VOICE_STATE)
             windows = redis_iterators.chunk_values(event.voice_states.items())
             setters = (

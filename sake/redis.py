@@ -373,6 +373,7 @@ class ResourceClient(traits.Resource, abc.ABC):
             return
 
         try:
+            # Gather is awaited here so we can assure all clients are started before this returns.
             await asyncio.gather(*map(self._spawn_connection, self._get_indexes()))
         except aioredis.RedisError:
             # Ensure no dangling clients are left if this fails to start.
@@ -397,6 +398,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         self.unsubscribe_listeners()
         clients = self.__clients
         self.__clients = {}
+        # Gather is awaited here so we can assure all clients are closed before this returns.
         await asyncio.gather(*map(_close_client, clients.values()))
 
     @abc.abstractmethod
@@ -683,6 +685,8 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
 
         await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, *emoji_ids)
         client = await self.get_connection(ResourceIndex.EMOJI)
+        # Gather is awaited here to ensure that when internally bulk setting entries after triggering a bulk deletion
+        # (based on events) we don't risk deleting entries after we've re-added them.
         await asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(emoji_ids)))
 
     async def delete_emoji(
@@ -875,6 +879,8 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, *channel_ids)
         client = await self.get_connection(ResourceIndex.CHANNEL)
         #  TODO: is there any benefit to chunking on bulk delete?
+        # Gather is awaited here to ensure that when internally bulk setting entries after triggering a bulk deletion
+        # (based on events) we don't risk deleting entries after we've re-added them.
         await asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(channel_ids)))
 
     async def delete_guild_channel(
@@ -1589,6 +1595,8 @@ class RoleCache(_Reference, traits.RoleCache):
 
         await self._delete_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, *role_ids)
         client = await self.get_connection(ResourceIndex.ROLE)
+        # Gather is awaited here to ensure that when internally bulk setting entries after triggering a bulk deletion
+        # (based on events) we don't risk deleting entries after we've re-added them.
         await asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(role_ids)))
 
     async def delete_role(
@@ -1753,6 +1761,8 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             client.hdel(int(guild_id), *values)
             for values in redis_iterators.chunk_values(int(state.user_id) for state in states)
         )
+        # Gather is awaited here to ensure that when internally bulk setting entries after triggering a bulk deletion
+        # (based on events) we don't risk deleting entries after we've re-added them.
         await asyncio.gather(*id_deleters, *entry_deleters)
 
     async def clear_voice_states_for_channel(

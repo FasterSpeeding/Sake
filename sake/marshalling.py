@@ -337,7 +337,7 @@ def _user_serialize_rules() -> typing.Sequence[typing.Union[str, str]]:
 
 
 class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
-    __slots__: typing.Sequence[str] = "_app"
+    __slots__: typing.Sequence[str] = ("_app",)
 
     # These special case serializers require an asynchronous environment to read referenced data.
     _async_serializers: typing.MutableMapping[

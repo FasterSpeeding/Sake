@@ -222,10 +222,10 @@ class IntegrationCache(Resource, typing.Protocol):
     async def delete_integration(self, integration_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    def iter_integrations(self) -> CacheIterator[guilds.Integration]:
+    async def get_integration(self, integration_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
         raise NotImplementedError
 
-    async def get_integration(self, integration_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
+    def iter_integrations(self) -> CacheIterator[guilds.Integration]:
         raise NotImplementedError
 
     async def set_integration(self, integration: guilds.Integration, /) -> None:
@@ -234,13 +234,25 @@ class IntegrationCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefIntegrationCache(IntegrationCache, typing.Protocol):
+    async def clear_integrations_for_application(self, application_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
     async def clear_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         raise NotImplementedError
 
-    async def delete_integration_by_application(self, application_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_integration_by_application(
+        self, guild_id: snowflakes.Snowflakeish, application_id: snowflakes.Snowflakeish, /
+    ) -> None:
         raise NotImplementedError
 
-    async def get_integration_by_application(self, application_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
+    async def get_integration_by_application(
+        self, guild_id: snowflakes.Snowflakeish, application_id: snowflakes.Snowflakeish, /
+    ) -> guilds.Integration:
+        raise NotImplementedError
+
+    def iter_integrations_for_application(
+        self, application_id: snowflakes.Snowflakeish, /
+    ) -> CacheIterator[guilds.Integration]:
         raise NotImplementedError
 
     def iter_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Integration]:

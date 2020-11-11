@@ -185,7 +185,7 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
     def __init__(
         self,
         client: redis.ResourceClient,
-        key: bytes,
+        key: redis.RedisValueT,
         index: redis.ResourceIndex,
         builder: typing.Callable[[bytes], ValueT],
         *,
@@ -235,7 +235,7 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
     def __init__(
         self,
         client: redis.ResourceClient,
-        key: bytes,
+        key: redis.RedisValueT,
         index: redis.ResourceIndex,
         builder: typing.Callable[[bytes], ValueT],
         *,
@@ -378,7 +378,7 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
     def __init__(
         self,
         client: redis.ResourceClient,
-        key: bytes,
+        key: redis.RedisValueT,
         index: redis.ResourceIndex,
         builder: typing.Callable[[bytes], ValueT],
         *,

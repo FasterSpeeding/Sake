@@ -1206,7 +1206,7 @@ class MappingMarshaller(ObjectMarshaller[ValueT], abc.ABC):
         self._serialize_message = serialize_message
         return self._serialize_message
 
-        # This is a special case serializer as it may have to asynchronously read "file" content.
+    # This is a special case serializer as it may have to asynchronously read "file" content.
     async def serialize_message(self, message: messages.Message) -> ValueT:
         return self.dumps(await self._get_message_serializer()(message))
 

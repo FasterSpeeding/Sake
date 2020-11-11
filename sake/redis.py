@@ -528,8 +528,9 @@ class UserCache(_MeCache, traits.UserCache):
 
     async def get_user(self, user_id: snowflakes.Snowflakeish, /) -> users.User:
         # <<Inherited docstring from sake.traits.UserCache>>
+        user_id = int(user_id)
         client = await self.get_connection(ResourceIndex.USER)
-        data = await client.get(int(user_id))
+        data = await client.get(user_id)
 
         if not data:
             raise errors.EntryNotFound(f"User entry `{user_id}` not found")
@@ -640,8 +641,9 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
 
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis_.KnownCustomEmoji:
         # <<Inherited docstring from sake.traits.EmojiCache>>
+        emoji_id = int(emoji_id)
         client = await self.get_connection(ResourceIndex.EMOJI)
-        data = await client.get(int(emoji_id))
+        data = await client.get(emoji_id)
 
         if not data:
             raise errors.EntryNotFound(f"Emoji entry `{emoji_id}` not found")
@@ -658,7 +660,7 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
         self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
-        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI).encode()
+        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI)
         return redis_iterators.ReferenceIterator(
             self, key, ResourceIndex.EMOJI, self.marshaller.deserialize_emoji, window_size=window_size
         )
@@ -715,8 +717,9 @@ class GuildCache(ResourceClient, traits.GuildCache):
 
     async def get_guild(self, guild_id: snowflakes.Snowflakeish, /) -> guilds.GatewayGuild:
         # <<Inherited docstring from sake.traits.GuildCache>>
+        guild_id = int(guild_id)
         client = await self.get_connection(ResourceIndex.GUILD)
-        data = await client.get(int(guild_id))
+        data = await client.get(guild_id)
 
         if not data:
             raise errors.EntryNotFound(f"Guild entry `{guild_id}` not found")
@@ -825,8 +828,9 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
 
     async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> channels.GuildChannel:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
+        channel_id = int(channel_id)
         client = await self.get_connection(ResourceIndex.CHANNEL)
-        data = await client.get(int(channel_id))
+        data = await client.get(channel_id)
 
         if not data:
             raise errors.EntryNotFound(f"Guild channel entry `{channel_id}` not found")
@@ -843,7 +847,7 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[channels.GuildChannel]:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
-        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL).encode()
+        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL)
         return redis_iterators.ReferenceIterator(
             self, key, ResourceIndex.CHANNEL, self.marshaller.deserialize_guild_channel, window_size=window_size
         )
@@ -897,10 +901,11 @@ class InviteCache(ResourceClient, traits.InviteCache):
 
     async def get_invite(self, invite_code: str, /) -> invites_.InviteWithMetadata:
         # <<Inherited docstring from sake.traits.InviteCache>>
-        client = await self.get_connection(ResourceIndex.INVITE)
         # Aioredis treats keys and values as type invariant so we want to ensure this is a str and not a class which
         # subclasses str.
-        data = await client.get(str(invite_code))
+        invite_code = str(invite_code)
+        client = await self.get_connection(ResourceIndex.INVITE)
+        data = await client.get(invite_code)
         if not data:
             raise errors.EntryNotFound(f"Invite entry `{invite_code}` not found")
 
@@ -925,6 +930,8 @@ class InviteCache(ResourceClient, traits.InviteCache):
         elif expire_time is None:
             expire_time = int(self.metadata.get("expire_invite", DEFAULT_INVITE_EXPIRE))
 
+        # Aioredis treats keys and values as type invariant so we want to ensure this is a str and not a class which
+        # subclasses str.
         await client.set(str(invite.code), data, pexpire=expire_time)
 
         if invite.target_user is not None:
@@ -1022,11 +1029,13 @@ class MemberCache(ResourceClient, traits.MemberCache):
 
     async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> guilds.Member:
         # <<Inherited docstring from sake.traits.MemberCache>>
+        guild_id = int(guild_id)
+        user_id = int(user_id)
         client = await self.get_connection(ResourceIndex.MEMBER)
-        data = await client.hget(int(guild_id), int(user_id))
+        data = await client.hget(guild_id, user_id)
 
         if not data:
-            raise errors.EntryNotFound(f"Member entry `{user_id}` for guild `{guild_id}` not found")
+            raise errors.EntryNotFound(f"Member entry `{user_id}` not found for guild `{guild_id}`")
 
         return self.marshaller.deserialize_member(data)
 
@@ -1042,7 +1051,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
         # <<Inherited docstring from sake.traits.MemberCache>>
         return redis_iterators.SpecificMapIterator(
             self,
-            str(guild_id).encode(),
+            int(guild_id),
             ResourceIndex.MEMBER,
             self.marshaller.deserialize_member,
             window_size=window_size,
@@ -1099,8 +1108,9 @@ class MessageCache(ResourceClient, traits.MessageCache):
 
     async def get_message(self, message_id: snowflakes.Snowflakeish, /) -> messages.Message:
         # <<Inherited docstring from sake.traits.MessageCache>>
+        message_id = int(message_id)
         client = await self.get_connection(ResourceIndex.MESSAGE)
-        data = await client.get(int(message_id))
+        data = await client.get(message_id)
         if not data:
             raise errors.EntryNotFound(f"Message entry `{message_id}` not found")
 
@@ -1280,7 +1290,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         # <<Inherited docstring from sake.traits.PresenceCache>>
         return redis_iterators.SpecificMapIterator(
             self,
-            str(guild_id).encode(),
+            int(guild_id),
             ResourceIndex.PRESENCE,
             self.marshaller.deserialize_presence,
             window_size=window_size,
@@ -1368,8 +1378,9 @@ class RoleCache(_Reference, traits.RoleCache):
 
     async def get_role(self, role_id: snowflakes.Snowflakeish, /) -> guilds.Role:
         # <<Inherited docstring from sake.traits.RoleCache>>
+        role_id = int(role_id)
         client = await self.get_connection(ResourceIndex.ROLE)
-        data = await client.get(int(role_id))
+        data = await client.get(role_id)
 
         if not data:
             raise errors.EntryNotFound(f"Role entry `{role_id}` not found")
@@ -1386,7 +1397,7 @@ class RoleCache(_Reference, traits.RoleCache):
         self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE).encode()
+        key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE)
         return redis_iterators.ReferenceIterator(
             self, key, ResourceIndex.ROLE, self.marshaller.deserialize_role, window_size=window_size
         )
@@ -1547,11 +1558,13 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
     ) -> voices.VoiceState:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
+        guild_id = int(guild_id)
+        user_id = int(user_id)
         client = await self.get_connection(ResourceIndex.VOICE_STATE)
-        data = await client.hget(int(guild_id), int(user_id))
+        data = await client.hget(guild_id, user_id)
 
         if not data:
-            raise errors.EntryNotFound(f"voice state entry `{user_id}` not found for guild `{guild_id}`")
+            raise errors.EntryNotFound(f"Voice state entry `{user_id}` not found for guild `{guild_id}`")
 
         return self.marshaller.deserialize_voice_state(data)
 
@@ -1565,7 +1578,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         self, channel_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
     ) -> traits.CacheIterator[voices.VoiceState]:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
-        key = self._generate_reference_key(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE).encode()
+        key = self._generate_reference_key(ResourceIndex.CHANNEL, channel_id, ResourceIndex.VOICE_STATE)
         return redis_iterators.HashReferenceIterator(
             self,
             key,
@@ -1580,7 +1593,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         return redis_iterators.SpecificMapIterator(
             self,
-            str(guild_id).encode(),
+            int(guild_id),
             ResourceIndex.VOICE_STATE,
             self.marshaller.deserialize_voice_state,
             window_size=window_size,

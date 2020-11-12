@@ -113,7 +113,7 @@ def cast_map_window(
 
 async def _close_client(client: aioredis.Redis) -> None:
     # TODO: will we need to catch errors here?
-    await client.close()
+    client.close()
 
 
 def _convert_expire_time(expire: ExpireT) -> int:

@@ -17,6 +17,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
+    "IntegrationCache",
     "InviteCache",
     "MeCache",
     "MemberCache",
@@ -26,6 +27,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "RefEmojiCache",
     "RefGuildCache",
     "RefGuildChannelCache",
+    "RefIntegrationCache",
     "RefInviteCache",
     "RefMeCache",
     "RefMemberCache",
@@ -209,6 +211,51 @@ class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
     def iter_guild_channels_for_guild(
         self, guild_id: snowflakes.Snowflakeish, /
     ) -> CacheIterator[channels.GuildChannel]:
+        raise NotImplementedError
+
+
+@typing.runtime_checkable
+class IntegrationCache(Resource, typing.Protocol):
+    async def clear_integrations(self) -> None:
+        raise NotImplementedError
+
+    async def delete_integration(self, integration_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    async def get_integration(self, integration_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
+        raise NotImplementedError
+
+    def iter_integrations(self) -> CacheIterator[guilds.Integration]:
+        raise NotImplementedError
+
+    async def set_integration(self, integration: guilds.Integration, /) -> None:
+        raise NotImplementedError
+
+
+@typing.runtime_checkable
+class RefIntegrationCache(IntegrationCache, typing.Protocol):
+    async def clear_integrations_for_application(self, application_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    async def clear_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        raise NotImplementedError
+
+    async def delete_integration_by_application(
+        self, guild_id: snowflakes.Snowflakeish, application_id: snowflakes.Snowflakeish, /
+    ) -> None:
+        raise NotImplementedError
+
+    async def get_integration_by_application(
+        self, guild_id: snowflakes.Snowflakeish, application_id: snowflakes.Snowflakeish, /
+    ) -> guilds.Integration:
+        raise NotImplementedError
+
+    def iter_integrations_for_application(
+        self, application_id: snowflakes.Snowflakeish, /
+    ) -> CacheIterator[guilds.Integration]:
+        raise NotImplementedError
+
+    def iter_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Integration]:
         raise NotImplementedError
 
 
@@ -501,6 +548,7 @@ class Cache(
     GuildCache,
     EmojiCache,
     GuildChannelCache,
+    IntegrationCache,
     InviteCache,
     MeCache,
     MemberCache,
@@ -522,6 +570,7 @@ class RefCache(
     RefGuildCache,
     RefEmojiCache,
     RefGuildChannelCache,
+    RefIntegrationCache,
     RefInviteCache,
     RefMeCache,
     RefMemberCache,

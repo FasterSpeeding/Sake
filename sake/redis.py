@@ -44,6 +44,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "RedisCache",
     "RoleCache",
     "UserCache",
+    "VoiceStateCache",
 ]
 
 import abc

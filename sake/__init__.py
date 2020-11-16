@@ -34,7 +34,8 @@
 For the interfaces defined by this standard see `sake.traits`
 
 For standard implementation(s) see:
-* Redis: `sake.Redis`
+
+* Redis: `sake.redis`
 """
 from __future__ import annotations
 

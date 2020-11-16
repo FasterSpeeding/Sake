@@ -35,16 +35,13 @@
     Unlike the abstract classes defined here, there is no guarantee that the
     protocols defined here will be included in the MRO of the classes which
     implement them.
-
-!!! note
-    Mypy should be used to check for compatibility between protocols and
-    their relevant implementations.
 """
 
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
     "Cache",
+    "CacheIterator",
     "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
@@ -52,6 +49,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "InviteCache",
     "MeCache",
     "MemberCache",
+    "MessageCache",
     "PresenceCache",
     "Resource",
     "RefCache",
@@ -62,6 +60,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "RefInviteCache",
     "RefMeCache",
     "RefMemberCache",
+    "RefMessageCache",
     "RefPresenceCache",
     "RefRoleCache",
     "RefUserCache",

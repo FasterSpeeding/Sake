@@ -73,8 +73,8 @@ from hikari.events import shard_events
 from hikari.events import user_events
 from hikari.events import voice_events
 from hikari.internal import time
+from yuyo import backoff
 
-from sake import backoff
 from sake import errors
 from sake import marshalling
 from sake import redis_iterators

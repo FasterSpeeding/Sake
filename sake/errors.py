@@ -38,6 +38,7 @@
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
+    "BackendError",
     "CannotDelete",
     "EntryNotFound",
     "InvalidDataFound",
@@ -74,7 +75,16 @@ class SakeException(Exception):
         return f"{type.__name__}({self.message!r})"
 
 
-class CannotDelete(SakeException, ValueError):
+class BackendError(SakeException, ValueError):
+    """A error raised when communicating with the backend fails
+
+    This may be a sign of underlying network or database issues.
+    """
+
+    __slots__: typing.Sequence[str] = ()
+
+
+class CannotDelete(SakeException, ValueError):  # TODO: implement and document cascading handling?
     """An error raised in response to an attempt to delete an entry which can't be deleted.
 
     This most likely reason for this to be raised would be due to an attempt to

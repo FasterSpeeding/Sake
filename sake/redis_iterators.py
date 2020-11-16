@@ -51,17 +51,15 @@ if typing.TYPE_CHECKING:
     from hikari import snowflakes
 
 
-KeyT = typing.TypeVar("KeyT")
-ValueT = typing.TypeVar("ValueT")
-OtherKeyT = typing.TypeVar("OtherKeyT")
-OtherValueT = typing.TypeVar("OtherValueT")
+_ValueT = typing.TypeVar("_ValueT")
+_OtherValueT = typing.TypeVar("_OtherValueT")
 WINDOW_SIZE: typing.Final[int] = 1_000
 """The default size used for "windowed" chunking in this client."""
 
 
 def chunk_values(
-    values: typing.Iterable[ValueT], window_size: int = WINDOW_SIZE
-) -> typing.Iterator[typing.Sequence[ValueT]]:
+    values: typing.Iterable[_ValueT], window_size: int = WINDOW_SIZE
+) -> typing.Iterator[typing.Sequence[_ValueT]]:
     """Iterate over slices of the values in an iterator.
 
     Parameters
@@ -340,14 +338,14 @@ async def iter_reference_values(
         yield await client.mget(*window)
 
 
-class Iterator(traits.CacheIterator[ValueT]):
+class Iterator(traits.CacheIterator[_ValueT]):
     __slots__: typing.Sequence[str] = ("_buffer", "_builder", "_client", "_index", "_len", "_windows", "_window_size")
 
     def __init__(
         self,
         client: redis.ResourceClient,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -362,10 +360,10 @@ class Iterator(traits.CacheIterator[ValueT]):
         self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = int(window_size)
 
-    def __aiter__(self) -> Iterator[ValueT]:
+    def __aiter__(self) -> Iterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         if self._windows is None:
             client = await self._client.get_connection(self._index)
             self._windows = iter_values(client, window_size=self._window_size)
@@ -390,7 +388,7 @@ class Iterator(traits.CacheIterator[ValueT]):
         return self._len
 
 
-class ReferenceIterator(traits.CacheIterator[ValueT]):
+class ReferenceIterator(traits.CacheIterator[_ValueT]):
     __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
 
     def __init__(
@@ -398,7 +396,7 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
         client: redis.ResourceClient,
         key: redis.RedisValueT,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -414,10 +412,10 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
         self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = int(window_size)
 
-    def __aiter__(self) -> ReferenceIterator[ValueT]:
+    def __aiter__(self) -> ReferenceIterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         if not self._windows:
             self._windows = iter_reference_values(self._client, self._index, self._key, window_size=self._window_size)
 
@@ -441,7 +439,7 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
         return self._len
 
 
-class HashReferenceIterator(traits.CacheIterator[ValueT]):
+class HashReferenceIterator(traits.CacheIterator[_ValueT]):
     __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
 
     def __init__(
@@ -449,7 +447,7 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
         client: redis.ResourceClient,
         key: redis.RedisValueT,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -469,10 +467,10 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
     def hash_key(hash_key: snowflakes.Snowflakeish) -> str:
         return f"KEY.{int(hash_key)}"
 
-    def __aiter__(self) -> HashReferenceIterator[ValueT]:
+    def __aiter__(self) -> HashReferenceIterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         if self._windows is None:
             reference_client = await self._client.get_connection(redis.ResourceIndex.REFERENCE)
             keys: typing.MutableSequence[bytes] = await reference_client.smembers(self._key)
@@ -517,7 +515,7 @@ async def _empty_async_iterator() -> typing.AsyncIterator[typing.Any]:
         yield  # type: ignore[unreachable]
 
 
-class MultiMapIterator(traits.CacheIterator[ValueT]):
+class MultiMapIterator(traits.CacheIterator[_ValueT]):
     __slots__: typing.Sequence[str] = (
         "_buffer",
         "_builder",
@@ -533,7 +531,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         self,
         client: redis.ResourceClient,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -549,10 +547,10 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         self._windows: typing.AsyncIterator[typing.Sequence[bytes]] = _empty_async_iterator()
         self._window_size = int(window_size)
 
-    def __aiter__(self) -> MultiMapIterator[ValueT]:
+    def __aiter__(self) -> MultiMapIterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         client = await self._client.get_connection(self._index)
 
         if not self._top_level_keys:
@@ -586,7 +584,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         return self._len
 
 
-class SpecificMapIterator(traits.CacheIterator[ValueT]):
+class SpecificMapIterator(traits.CacheIterator[_ValueT]):
     __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
 
     def __init__(
@@ -594,7 +592,7 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
         client: redis.ResourceClient,
         key: redis.RedisValueT,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -610,10 +608,10 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
         self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = window_size
 
-    def __aiter__(self) -> SpecificMapIterator[ValueT]:
+    def __aiter__(self) -> SpecificMapIterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         if not self._windows:
             client = await self._client.get_connection(self._index)
             self._windows = iter_hash_values(client, self._key, window_size=self._window_size)

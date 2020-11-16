@@ -41,6 +41,7 @@ from __future__ import annotations
 __all__: typing.Final[typing.Sequence[str]] = [
     # errors.py
     "errors",
+    "BackendError",
     "CannotDelete",
     "EntryNotFound",
     "InvalidDataFound",

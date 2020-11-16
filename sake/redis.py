@@ -89,7 +89,10 @@ if typing.TYPE_CHECKING:
     from hikari import messages
     from hikari import traits as hikari_traits
 
-
+_KeyT = typing.TypeVar("_KeyT")
+_OtherKeyT = typing.TypeVar("_OtherKeyT")
+_ValueT = typing.TypeVar("_ValueT")
+_OtherValueT = typing.TypeVar("_OtherValueT")
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.redis")
 """Type-Hint The logger instance used by this Sake implementation."""
 RedisValueT = typing.Union[bytearray, bytes, float, int, str]
@@ -98,10 +101,6 @@ RedisMapT = typing.MutableMapping[str, RedisValueT]
 """A type variable of the mapping type accepted by aioredis"""
 ResourceT = typing.TypeVar("ResourceT", bound="ResourceClient")
 """Type-Hint A type hint used to represent a resource client instance."""
-KeyT = typing.TypeVar("KeyT")
-OtherKeyT = typing.TypeVar("OtherKeyT")
-ValueT = typing.TypeVar("ValueT")
-OtherValueT = typing.TypeVar("OtherValueT")
 WINDOW_SIZE: typing.Final[int] = 1_000
 """The default size used for "windowed" chunking in this client."""
 DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
@@ -136,11 +135,11 @@ class ResourceIndex(enum.IntEnum):
     INTEGRATION = 11
 
 
-def cast_map_window(
-    window: typing.Iterable[typing.Tuple[KeyT, ValueT]],
-    key_cast: typing.Callable[[KeyT], OtherKeyT],
-    value_cast: typing.Callable[[ValueT], OtherValueT],
-) -> typing.Dict[OtherKeyT, OtherValueT]:
+def _cast_map_window(
+    window: typing.Iterable[typing.Tuple[_KeyT, _ValueT]],
+    key_cast: typing.Callable[[_KeyT], _OtherKeyT],
+    value_cast: typing.Callable[[_ValueT], _OtherValueT],
+) -> typing.Dict[_OtherKeyT, _OtherValueT]:
     return dict((key_cast(key), value_cast(value)) for key, value in window)
 
 
@@ -501,8 +500,8 @@ class _Reference(ResourceClient, abc.ABC):
         master_id: snowflakes.Snowflakeish,
         slave: ResourceIndex,
         *,
-        cast: typing.Callable[[bytes], ValueT],
-    ) -> typing.MutableSequence[ValueT]:
+        cast: typing.Callable[[bytes], _ValueT],
+    ) -> typing.MutableSequence[_ValueT]:
         key = self._generate_reference_key(master, master_id, slave)
         client = await self.get_connection(ResourceIndex.REFERENCE)
         return [*map(cast, await client.smembers(key))]
@@ -871,7 +870,8 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
             client = await self.get_connection(ResourceIndex.CHANNEL)
             windows = redis_iterators.chunk_values(event.channels.items())
             setters = (
-                client.mset(cast_map_window(window, int, self.marshaller.serialize_guild_channel)) for window in windows
+                client.mset(_cast_map_window(window, int, self.marshaller.serialize_guild_channel))
+                for window in windows
             )
             id_setter = self._add_ids(
                 ResourceIndex.GUILD, event.guild_id, ResourceIndex.CHANNEL, *map(int, event.channels.keys())
@@ -1183,7 +1183,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
         client = await self.get_connection(ResourceIndex.MEMBER)
         windows = redis_iterators.chunk_values(members.items())
         setters = (
-            client.hmset_dict(int(guild_id), cast_map_window(window, int, self.marshaller.serialize_member))
+            client.hmset_dict(int(guild_id), _cast_map_window(window, int, self.marshaller.serialize_member))
             for window in windows
         )
         user_setter = self._optionally_bulk_set_users(member.user for member in members.values())
@@ -1473,7 +1473,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         client = await self.get_connection(ResourceIndex.PRESENCE)
         windows = redis_iterators.chunk_values(presences.items())
         setters = (
-            client.hmset_dict(int(guild_id), cast_map_window(window, int, self.marshaller.serialize_presence))
+            client.hmset_dict(int(guild_id), _cast_map_window(window, int, self.marshaller.serialize_presence))
             for window in windows
         )
         asyncio.gather(*setters)
@@ -1581,7 +1581,7 @@ class RoleCache(_Reference, traits.RoleCache):
         if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)) and event.emojis:
             client = await self.get_connection(ResourceIndex.ROLE)
             windows = redis_iterators.chunk_values(event.roles.items())
-            setters = (client.mset(cast_map_window(window, int, self.marshaller.serialize_role)) for window in windows)
+            setters = (client.mset(_cast_map_window(window, int, self.marshaller.serialize_role)) for window in windows)
             id_setter = self._add_ids(
                 ResourceIndex.GUILD, event.guild_id, ResourceIndex.ROLE, *map(int, event.roles.keys())
             )
@@ -1719,7 +1719,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             windows = redis_iterators.chunk_values(event.voice_states.items())
             setters = (
                 client.hmset_dict(
-                    int(event.guild_id), cast_map_window(window, int, self.marshaller.serialize_voice_state)
+                    int(event.guild_id), _cast_map_window(window, int, self.marshaller.serialize_voice_state)
                 )
                 for window in windows
             )

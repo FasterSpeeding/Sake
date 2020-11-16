@@ -1,3 +1,36 @@
+# -*- coding: utf-8 -*-
+# cython: language_level=3
+# BSD 3-Clause License
+#
+# Copyright (c) 2020, Faster Speeding
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of the copyright holder nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""Utilities used for iteration in the redis implementation."""
+
 from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
@@ -15,21 +48,39 @@ from sake import traits
 
 if typing.TYPE_CHECKING:
     import aioredis
-
     from hikari import snowflakes
 
 
-KeyT = typing.TypeVar("KeyT")
-ValueT = typing.TypeVar("ValueT")
-OtherKeyT = typing.TypeVar("OtherKeyT")
-OtherValueT = typing.TypeVar("OtherValueT")
+_ValueT = typing.TypeVar("_ValueT")
+_OtherValueT = typing.TypeVar("_OtherValueT")
 WINDOW_SIZE: typing.Final[int] = 1_000
 """The default size used for "windowed" chunking in this client."""
 
 
 def chunk_values(
-    values: typing.Iterable[ValueT], window_size: int = WINDOW_SIZE
-) -> typing.Iterator[typing.Sequence[ValueT]]:
+    values: typing.Iterable[_ValueT], window_size: int = WINDOW_SIZE
+) -> typing.Iterator[typing.Sequence[_ValueT]]:
+    """Iterate over slices of the values in an iterator.
+
+    Parameters
+    ----------
+    values : typing.Iterable[ValueT]
+        The iterator to iterate over slices of.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+
+    Yields
+    ------
+    typing.Sequence[ValueT]
+        Slices of the values within the provided `values` iterable.
+
+    Raises
+    ------
+    ValueError
+        If an invalid `window_size` is passed (e.g. negative) or if
+        `values` isn't iterable.
+    """
     iterator = iter(values)
 
     while result := list(itertools.islice(iterator, window_size)):
@@ -39,6 +90,30 @@ def chunk_values(
 async def iter_keys(
     client: aioredis.Redis, *, window_size: int = WINDOW_SIZE, match: typing.Optional[str] = None
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the top level keys in a redis resource.
+
+    Parameters
+    ----------
+    client : aioredis.Redis
+        The underlying redis client for the relevant resource to iterate over.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the top level keys in a redis resource.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     cursor = 0
 
     while True:
@@ -54,6 +129,30 @@ async def iter_keys(
 async def iter_values(
     client: aioredis.Redis, *, window_size: int = WINDOW_SIZE, match: typing.Optional[str] = None
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the values in a key to string datastore.
+
+    Parameters
+    ----------
+    client : aioredis.Redis
+        The underlying redis client for the relevant resource to iterate over.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the byte values in a redis resource.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     async for window in iter_keys(client, window_size=window_size, match=match):
         yield await client.mget(*window)
 
@@ -65,6 +164,33 @@ async def iter_hash_keys(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the keys in a redis hash.
+
+    Parameters
+    ----------
+    client : aioredis.Redis
+        The underlying redis client for the relevant resource to iterate over a
+        specific hash map in.
+    key : sake.redis.RedisValueT
+        The top level key of the hash map to iterate over it's keys.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the keys in a hash map.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     cursor = 0
 
     while True:
@@ -84,6 +210,33 @@ async def iter_hash_values(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the keys in a redis hash.
+
+    Parameters
+    ----------
+    client : aioredis.Redis
+        The underlying redis client for the relevant resource to iterate over a
+        specific hash map in.
+    key : sake.redis.RedisValueT
+        The top level key of the hash map to iterate over it's keys.
+    window_size : int
+        Defaults to `WINDOW_SIZE`.
+        The maximum amount of values that should be yielded per chunk.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the byte values in a hash map.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     cursor = 0
 
     while True:
@@ -103,6 +256,33 @@ async def iter_reference_keys(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the keys in a REFERENCE set.
+
+    Parameters
+    ----------
+    resource_client : sake.redis.ResourceClient
+        The redis implementation resource client to use.
+    key : sake.redis.RedisValue
+        The reference resource key to get the relevant keys from.
+        This defaults to `WINDOW_SIZE`.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the keys in a redis resource.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     reference_client = await resource_client.get_connection(redis.ResourceIndex.REFERENCE)
     cursor = 0
 
@@ -124,20 +304,48 @@ async def iter_reference_values(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.MutableSequence[bytes]]:
+    """Asynchronously iterate over slices of the values referenced by a REFERENCE set.
+
+    Parameters
+    ----------
+    resource_client : sake.redis.ResourceClient
+        The redis implementation resource client to use.
+    index : sake.redis.ResourceIndex
+        The resource to get referenced values from.
+    key : sake.redis.RedisValue
+        The reference resource key to get the relevant keys from.
+    window_size : int
+        The maximum amount of values that should be yielded per chunk.
+        Defaults to `WINDOW_SIZE`.
+    match : typing.Optional[str]
+        A pattern to match keys by or `builtins.None` to yield all the keys.
+        Defaults to `builtins.None`.
+        See https://redis.io/commands/keys for more information.
+
+    Yields
+    ------
+    typing.MutableSequence[bytes]
+        Slices of the referenced bytes in the `index` reference store.
+
+    Raises
+    ------
+    ValueError
+        If any of the values provided are invalid.
+    """
     client = await resource_client.get_connection(index)
 
     async for window in iter_reference_keys(resource_client, key, window_size=window_size, match=match):
         yield await client.mget(*window)
 
 
-class Iterator(traits.CacheIterator[ValueT]):
+class Iterator(traits.CacheIterator[_ValueT]):
     __slots__: typing.Sequence[str] = ("_buffer", "_builder", "_client", "_index", "_len", "_windows", "_window_size")
 
     def __init__(
         self,
         client: redis.ResourceClient,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -152,10 +360,10 @@ class Iterator(traits.CacheIterator[ValueT]):
         self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = int(window_size)
 
-    def __aiter__(self) -> Iterator[ValueT]:
+    def __aiter__(self) -> Iterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         if self._windows is None:
             client = await self._client.get_connection(self._index)
             self._windows = iter_values(client, window_size=self._window_size)
@@ -172,6 +380,7 @@ class Iterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
             client = await self._client.get_connection(self._index)
             self._len = int(await client.dbsize())
@@ -179,7 +388,7 @@ class Iterator(traits.CacheIterator[ValueT]):
         return self._len
 
 
-class ReferenceIterator(traits.CacheIterator[ValueT]):
+class ReferenceIterator(traits.CacheIterator[_ValueT]):
     __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
 
     def __init__(
@@ -187,7 +396,7 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
         client: redis.ResourceClient,
         key: redis.RedisValueT,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -203,10 +412,10 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
         self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = int(window_size)
 
-    def __aiter__(self) -> ReferenceIterator[ValueT]:
+    def __aiter__(self) -> ReferenceIterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         if not self._windows:
             self._windows = iter_reference_values(self._client, self._index, self._key, window_size=self._window_size)
 
@@ -222,6 +431,7 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
             client = await self._client.get_connection(redis.ResourceIndex.REFERENCE)
             self._len = int(await client.scard(self._key))
@@ -229,7 +439,7 @@ class ReferenceIterator(traits.CacheIterator[ValueT]):
         return self._len
 
 
-class HashReferenceIterator(traits.CacheIterator[ValueT]):
+class HashReferenceIterator(traits.CacheIterator[_ValueT]):
     __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
 
     def __init__(
@@ -237,7 +447,7 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
         client: redis.ResourceClient,
         key: redis.RedisValueT,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -257,10 +467,10 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
     def hash_key(hash_key: snowflakes.Snowflakeish) -> str:
         return f"KEY.{int(hash_key)}"
 
-    def __aiter__(self) -> HashReferenceIterator[ValueT]:
+    def __aiter__(self) -> HashReferenceIterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         if self._windows is None:
             reference_client = await self._client.get_connection(redis.ResourceIndex.REFERENCE)
             keys: typing.MutableSequence[bytes] = await reference_client.smembers(self._key)
@@ -292,6 +502,7 @@ class HashReferenceIterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
             client = await self._client.get_connection(redis.ResourceIndex.REFERENCE)
             self._len = int(await client.scard(self._key)) - 1
@@ -304,7 +515,7 @@ async def _empty_async_iterator() -> typing.AsyncIterator[typing.Any]:
         yield  # type: ignore[unreachable]
 
 
-class MultiMapIterator(traits.CacheIterator[ValueT]):
+class MultiMapIterator(traits.CacheIterator[_ValueT]):
     __slots__: typing.Sequence[str] = (
         "_buffer",
         "_builder",
@@ -320,7 +531,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         self,
         client: redis.ResourceClient,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -336,10 +547,10 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         self._windows: typing.AsyncIterator[typing.Sequence[bytes]] = _empty_async_iterator()
         self._window_size = int(window_size)
 
-    def __aiter__(self) -> MultiMapIterator[ValueT]:
+    def __aiter__(self) -> MultiMapIterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         client = await self._client.get_connection(self._index)
 
         if not self._top_level_keys:
@@ -363,6 +574,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
             client = await self._client.get_connection(self._index)
             keys = await client.keys("*")
@@ -372,7 +584,7 @@ class MultiMapIterator(traits.CacheIterator[ValueT]):
         return self._len
 
 
-class SpecificMapIterator(traits.CacheIterator[ValueT]):
+class SpecificMapIterator(traits.CacheIterator[_ValueT]):
     __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
 
     def __init__(
@@ -380,7 +592,7 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
         client: redis.ResourceClient,
         key: redis.RedisValueT,
         index: redis.ResourceIndex,
-        builder: typing.Callable[[bytes], ValueT],
+        builder: typing.Callable[[bytes], _ValueT],
         *,
         window_size: int = WINDOW_SIZE,
     ) -> None:
@@ -396,10 +608,10 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
         self._windows: typing.Optional[typing.AsyncIterator[typing.Sequence[bytes]]] = None
         self._window_size = window_size
 
-    def __aiter__(self) -> SpecificMapIterator[ValueT]:
+    def __aiter__(self) -> SpecificMapIterator[_ValueT]:
         return self
 
-    async def __anext__(self) -> ValueT:
+    async def __anext__(self) -> _ValueT:
         if not self._windows:
             client = await self._client.get_connection(self._index)
             self._windows = iter_hash_values(client, self._key, window_size=self._window_size)
@@ -416,6 +628,7 @@ class SpecificMapIterator(traits.CacheIterator[ValueT]):
         return self._builder(self._buffer.pop(0))
 
     async def len(self) -> int:
+        # <<Inherited docstring from sake.traits.CacheIterator>>
         # TODO: override "count" method?
         if self._len is None:
             client = await self._client.get_connection(self._index)

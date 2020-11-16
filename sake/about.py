@@ -29,34 +29,16 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-"""A distributed asynchronous cache standard designed to be hikari with Hikari.
+"""Package metadata."""
 
-For the interfaces defined by this standard see `sake.traits`
-
-For standard implementation(s) see:
-
-* Redis: `sake.redis`
-"""
-from __future__ import annotations
-
-__all__: typing.Final[typing.Sequence[str]] = [
-    # errors.py
-    "errors",
-    "BackendError",
-    "CannotDelete",
-    "EntryNotFound",
-    "InvalidDataFound",
-    "SakeException",
-    # traits.py
-    "traits",
-    # redis.py
-    "redis",
-    "RedisCache",
-]
-
-import typing
-
-from sake import redis
-from sake import traits
-from sake.errors import *
-from sake.redis import RedisCache
+__author__ = "Faster Speeding"
+__ci__ = ""
+__copyright__ = "© 2020 Faster Speeding"
+__coverage__ = ""
+__docs__ = "https://fasterspeeding.github.io/Sake/"
+__email__ = "luke@lmbyrne.dev"
+__issue_tracker__ = "https://github.com/FasterSpeeding/Sake/issues"
+__license__ = "BSD"
+__url__ = "https://github.com/FasterSpeeding/Sake"
+__version__ = "0.0.1"
+__git_sha1__ = "HEAD"

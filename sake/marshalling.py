@@ -250,7 +250,7 @@ def _generate_map_deserializer(
     code = f"def deserialize(data, /, **kwargs): return cls({','.join(getters)})"
     _LOGGER.debug("generating mapping deserialize method for %r\n  %r", cls, code)
     exec(code, globals_)
-    return typing.cast("typing.Callable[..., ValueT]", globals_["deserialize"])
+    return typing.cast("typing.Callable[..., _ValueT]", globals_["deserialize"])
 
 
 def _generate_map_serializer(
@@ -1117,25 +1117,26 @@ class MappingMarshaller(ObjectMarshaller[_ValueT], abc.ABC):
         self, resource: files.Resource[_AsyncReaderT]
     ) -> typing.MutableMapping[str, typing.Any]:
         data: typing.Mapping[str, typing.Any]
+        # For some reason despite the isinstance type narrowing MYPY always thinks resource is <nothing>
         if isinstance(resource, files.URL):
-            return {"type": "url", "url": resource.url}
+            return {"type": "url", "url": resource.url}  # type: ignore[attr-defined]
 
         # TODO: is there any point in serializing a local file or should this just raise
         if isinstance(resource, files.File):
             return {
                 "type": "file",
-                "path": str(resource.path),
-                "is_spoiler": resource.is_spoiler,
-                "filename": resource.filename,
+                "path": str(resource.path),  # type: ignore[attr-defined]
+                "is_spoiler": resource.is_spoiler,  # type: ignore[attr-defined]
+                "filename": resource.filename,  # type: ignore[attr-defined]
             }
 
         if isinstance(resource, files.Bytes):
             return {
                 "type": "bytes",
-                "data": base64.b64encode(await resource.read()),  # TODO: this feels iffy
-                "mimetype": resource.mimetype,
-                "is_spoiler": resource.is_spoiler,
-                "filename": resource.filename,
+                "data": base64.b64encode(await resource.read()),  # type: ignore[attr-defined]
+                "mimetype": resource.mimetype,  # type: ignore[attr-defined]
+                "is_spoiler": resource.is_spoiler,  # type: ignore[attr-defined]
+                "filename": resource.filename,  # type: ignore[attr-defined]
             }
 
         raise RuntimeError(f"Missing marshalling implementation for {type(resource)!r} file implementation")

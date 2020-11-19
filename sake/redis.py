@@ -235,7 +235,10 @@ class ResourceClient(traits.Resource, abc.ABC):
         return self
 
     async def __aexit__(
-        self, exc_type: typing.Type[Exception], exc_val: Exception, exc_tb: types.TracebackType
+        self,
+        exc_type: typing.Type[typing.Type[BaseException]],
+        exc_val: typing.Type[BaseException],
+        exc_tb: typing.Type[types.TracebackType],
     ) -> None:
         await self.close()
 
@@ -244,7 +247,12 @@ class ResourceClient(traits.Resource, abc.ABC):
         cls = type(self)
         raise TypeError(f"{cls.__module__}.{cls.__qualname__} is async-only, did you mean 'async with'?") from None
 
-    def __exit__(self, exc_type: typing.Type[Exception], exc_val: Exception, exc_tb: types.TracebackType) -> None:
+    def __exit__(
+        self,
+        exc_type: typing.Optional[typing.Type[BaseException]],
+        exc_val: typing.Optional[BaseException],
+        exc_tb: typing.Optional[types.TracebackType],
+    ) -> None:
         return None
 
     @classmethod

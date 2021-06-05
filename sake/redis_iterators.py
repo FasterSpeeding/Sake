@@ -47,7 +47,7 @@ from sake import redis
 from sake import traits
 
 if typing.TYPE_CHECKING:
-    import aioredis
+    import aioredis  # type: ignore[import]
     from hikari import snowflakes
 
 

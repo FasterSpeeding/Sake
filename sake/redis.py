@@ -57,7 +57,7 @@ import logging
 import math
 import typing
 
-import aioredis
+import aioredis  # type: ignore[import]
 from hikari import channels
 from hikari import errors as hikari_errors
 from hikari import guilds
@@ -87,7 +87,7 @@ if typing.TYPE_CHECKING:
     import ssl as ssl_
     import types
 
-    import aioredis.abc
+    import aioredis.abc  # type: ignore[import]
     from hikari import emojis as emojis_
     from hikari import messages
     from hikari import traits as hikari_traits
@@ -195,8 +195,8 @@ class ResourceClient(traits.Resource, abc.ABC):
 
     Other Parameters
     ----------------
-    dispatch : typing.Optional[hikari.traits.DispatchAware]
-        The dispatcher aware Hikari client to bind this resource client to.
+    events : typing.Optional[hikari.traits.EventManagerAware]
+        The event manager aware Hikari client to bind this resource client to.
         This can be left as `builtins.None` to avoid this client from
         automatically registering any event listeners.
     password : typing.Optional[str]
@@ -212,8 +212,8 @@ class ResourceClient(traits.Resource, abc.ABC):
         "__address",
         "__clients",
         "__default_expire",
+        "__events",
         "__marshaller",
-        "__dispatch",
         "__metadata",
         "__password",
         "__rest",
@@ -224,8 +224,7 @@ class ResourceClient(traits.Resource, abc.ABC):
     def __init__(
         self,
         rest: hikari_traits.RESTAware,
-        dispatch: typing.Optional[hikari_traits.DispatcherAware] = None,
-        /,
+        events: typing.Optional[hikari_traits.EventManagerAware] = None,
         *,
         address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
         default_expire: ExpireT = DEFAULT_SLOW_EXPIRE,
@@ -237,7 +236,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         self.__address = address
         self.__clients: typing.Dict[int, aioredis.Redis] = {}
         self.__default_expire = _convert_expire_time(default_expire)
-        self.__dispatch = dispatch
+        self.__events = events
         self.__index_overrides: typing.Dict[ResourceIndex, int] = {}
         self.__marshaller = object_marshaller or marshalling.JSONMarshaller(rest)
         self.__metadata = metadata or {}
@@ -294,9 +293,9 @@ class ResourceClient(traits.Resource, abc.ABC):
         """
         return ()
 
-    @property  # As a note, this will only be set if this is actively hooked into event dispatchers
-    def dispatch(self) -> typing.Optional[hikari_traits.DispatcherAware]:
-        """The dispatcher aware client this resource client is tied to, if set.
+    @property
+    def events(self) -> typing.Optional[hikari_traits.EventManagerAware]:
+        """The event manager aware client this resource client is tied to, if set.
 
         !!! note
             If this is set then event listeners will be (de)registered
@@ -304,11 +303,11 @@ class ResourceClient(traits.Resource, abc.ABC):
 
         Returns
         -------
-        typing.Optional[hikari.traits.DispatcherAware]
-            The dispatcher aware client this resource is tied to if set,
+        typing.Optional[hikari.traits.EventManagerAware]
+            The event manager aware client this resource is tied to if set,
             else `builtins.None`.
         """
-        return self.__dispatch
+        return self.__events
 
     @property
     def marshaller(self) -> marshalling.ObjectMarshaller[bytes]:
@@ -577,16 +576,16 @@ class _MeCache(ResourceClient, traits.MeCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
-            self.dispatch.dispatcher.subscribe(shard_events.ShardReadyEvent, self.__on_shard_ready)
+        if self.events is not None:
+            self.events.event_manager.subscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
+            self.events.event_manager.subscribe(shard_events.ShardReadyEvent, self.__on_shard_ready)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
-            self.dispatch.dispatcher.subscribe(shard_events.ShardReadyEvent, self.__on_shard_ready)
+        if self.events is not None:
+            self.events.event_manager.subscribe(user_events.OwnUserUpdateEvent, self.__on_own_user_update)
+            self.events.event_manager.subscribe(shard_events.ShardReadyEvent, self.__on_shard_ready)
 
     async def delete_me(self) -> None:
         # <<Inherited docstring from sake.traits.MeCache>>
@@ -785,17 +784,17 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(guild_events.EmojisUpdateEvent, self.__on_emojis_update)
-            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+        if self.events is not None:
+            self.events.event_manager.subscribe(guild_events.EmojisUpdateEvent, self.__on_emojis_update)
+            self.events.event_manager.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
             #  TODO: can we also listen for member delete to manage this?
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(guild_events.EmojisUpdateEvent, self.__on_emojis_update)
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(guild_events.EmojisUpdateEvent, self.__on_emojis_update)
+            self.events.event_manager.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
             #  TODO: can we also listen for member delete to manage this?
 
     async def clear_emojis(self) -> None:
@@ -888,14 +887,14 @@ class GuildCache(ResourceClient, traits.GuildCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+        if self.events is not None:
+            self.events.event_manager.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
 
     async def clear_guilds(self) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>
@@ -980,16 +979,16 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(channel_events.GuildChannelEvent, self.__on_guild_channel_event)
-            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+        if self.events is not None:
+            self.events.event_manager.subscribe(channel_events.GuildChannelEvent, self.__on_guild_channel_event)
+            self.events.event_manager.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(channel_events.GuildChannelEvent, self.__on_guild_channel_event)
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(channel_events.GuildChannelEvent, self.__on_guild_channel_event)
+            self.events.event_manager.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
 
     async def clear_guild_channels(self) -> None:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
@@ -1081,16 +1080,16 @@ class IntegrationCache(_Reference, traits.IntegrationCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave_event)
-            self.dispatch.dispatcher.subscribe(guild_events.IntegrationEvent, self.__on_integration_event)
+        if self.events is not None:
+            self.events.event_manager.subscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave_event)
+            self.events.event_manager.subscribe(guild_events.IntegrationEvent, self.__on_integration_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave_event)
-            self.dispatch.dispatcher.unsubscribe(guild_events.IntegrationEvent, self.__on_integration_event)
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(guild_events.GuildLeaveEvent, self.__on_guild_leave_event)
+            self.events.event_manager.unsubscribe(guild_events.IntegrationEvent, self.__on_integration_event)
 
     async def clear_integrations(self) -> None:
         # <<Inherited docstring from sake.traits.IntegrationCache>>
@@ -1173,14 +1172,14 @@ class InviteCache(ResourceClient, traits.InviteCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(channel_events.InviteEvent, self.__on_invite_event)
+        if self.events is not None:
+            self.events.event_manager.subscribe(channel_events.InviteEvent, self.__on_invite_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(channel_events.InviteEvent, self.__on_invite_event)
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(channel_events.InviteEvent, self.__on_invite_event)
 
     def with_invite_expire(self: ResourceT, expire: typing.Optional[ExpireT], /) -> ResourceT:
         """Set the default expire time for invite entries added with this client.
@@ -1328,18 +1327,18 @@ class MemberCache(ResourceClient, traits.MemberCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(guild_events.GuildAvailableEvent, self.__on_guild_availability)
-            self.dispatch.dispatcher.subscribe(member_events.MemberEvent, self.__on_member_event)
-            self.dispatch.dispatcher.subscribe(shard_events.MemberChunkEvent, self.__on_member_chunk_event)
+        if self.events is not None:
+            self.events.event_manager.subscribe(guild_events.GuildAvailableEvent, self.__on_guild_availability)
+            self.events.event_manager.subscribe(member_events.MemberEvent, self.__on_member_event)
+            self.events.event_manager.subscribe(shard_events.MemberChunkEvent, self.__on_member_chunk_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildAvailableEvent, self.__on_guild_availability)
-            self.dispatch.dispatcher.unsubscribe(member_events.MemberEvent, self.__on_member_event)
-            self.dispatch.dispatcher.unsubscribe(shard_events.MemberChunkEvent, self.__on_member_chunk_event)
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(guild_events.GuildAvailableEvent, self.__on_guild_availability)
+            self.events.event_manager.unsubscribe(member_events.MemberEvent, self.__on_member_event)
+            self.events.event_manager.unsubscribe(shard_events.MemberChunkEvent, self.__on_member_chunk_event)
 
     async def clear_members(self) -> None:
         # <<Inherited docstring from sake.traits.MemberCache>>
@@ -1416,14 +1415,14 @@ class MessageCache(ResourceClient, traits.MessageCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(message_events.MessageEvent, self.__on_message_event)
+        if self.events is not None:
+            self.events.event_manager.subscribe(message_events.MessageEvent, self.__on_message_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(message_events.MessageEvent, self.__on_message_event)
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(message_events.MessageEvent, self.__on_message_event)
 
     def with_message_expire(self: ResourceT, expire: typing.Optional[ExpireT], /) -> ResourceT:
         """Set the default expire time for message entries added with this client.
@@ -1489,7 +1488,8 @@ class MessageCache(ResourceClient, traits.MessageCache):
         await client.set(int(message.id), data, expire=expire_time)
         await self._optionally_set_user(message.author)
 
-    async def update_message(self, message: messages.PartialMessage, /) -> bool:
+    # TODO: update this
+    async def update_message(self, message: messages.PartialMessage, /) -> bool:  # noqa: C901
         # <<Inherited docstring from sake.traits.MessageCache>>
         # This is a special case method for handling the partial message updates we get
         try:
@@ -1601,18 +1601,18 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
-            self.dispatch.dispatcher.subscribe(shard_events.MemberChunkEvent, self.__on_member_chunk)
-            self.dispatch.dispatcher.subscribe(guild_events.PresenceUpdateEvent, self.__on_presence_update_event)
+        if self.events is not None:
+            self.events.event_manager.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.events.event_manager.subscribe(shard_events.MemberChunkEvent, self.__on_member_chunk)
+            self.events.event_manager.subscribe(guild_events.PresenceUpdateEvent, self.__on_presence_update_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
-            self.dispatch.dispatcher.unsubscribe(shard_events.MemberChunkEvent, self.__on_member_chunk)
-            self.dispatch.dispatcher.unsubscribe(guild_events.PresenceUpdateEvent, self.__on_presence_update_event)
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.events.event_manager.unsubscribe(shard_events.MemberChunkEvent, self.__on_member_chunk)
+            self.events.event_manager.unsubscribe(guild_events.PresenceUpdateEvent, self.__on_presence_update_event)
 
     async def clear_presences(self) -> None:
         # <<Inherited docstring from sake.traits.PresenceCache>>
@@ -1696,16 +1696,16 @@ class RoleCache(_Reference, traits.RoleCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
-            self.dispatch.dispatcher.subscribe(role_events.RoleEvent, self.__on_role_update)
+        if self.events is not None:
+            self.events.event_manager.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.events.event_manager.subscribe(role_events.RoleEvent, self.__on_role_update)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
-            self.dispatch.dispatcher.unsubscribe(role_events.RoleEvent, self.__on_role_update)
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.events.event_manager.unsubscribe(role_events.RoleEvent, self.__on_role_update)
 
     async def clear_roles(self) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
@@ -1841,22 +1841,22 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(
+        if self.events is not None:
+            self.events.event_manager.subscribe(
                 channel_events.GuildChannelDeleteEvent, self.__on_guild_channel_delete_event
             )
-            self.dispatch.dispatcher.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
-            self.dispatch.dispatcher.subscribe(voice_events.VoiceStateUpdateEvent, self.__on_voice_state_update)
+            self.events.event_manager.subscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.events.event_manager.subscribe(voice_events.VoiceStateUpdateEvent, self.__on_voice_state_update)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(
+        if self.events is not None:
+            self.events.event_manager.unsubscribe(
                 channel_events.GuildChannelDeleteEvent, self.__on_guild_channel_delete_event
             )
-            self.dispatch.dispatcher.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
-            self.dispatch.dispatcher.unsubscribe(voice_events.VoiceStateUpdateEvent, self.__on_voice_state_update)
+            self.events.event_manager.unsubscribe(guild_events.GuildVisibilityEvent, self.__on_guild_visibility_event)
+            self.events.event_manager.unsubscribe(voice_events.VoiceStateUpdateEvent, self.__on_voice_state_update)
 
     @staticmethod
     def _pop_reference(keys: typing.MutableSequence[bytes]) -> typing.Tuple[bytes, typing.Sequence[bytes]]:

@@ -122,7 +122,7 @@ class Resource(typing.Protocol):
     __slots__: typing.Sequence[str] = ()
 
     def subscribe_listeners(self) -> None:
-        """Register this resource's internal listener to a dispatcher aware app.
+        """Register this resource's internal listener to a event manager aware app.
 
         !!! note
             Dependent on the implementation, this may be called by
@@ -130,13 +130,13 @@ class Resource(typing.Protocol):
             when this resource's listeners have already been registered.
 
         !!! note
-            If the event dispatcher isn't provided during initialisation then
+            If the event event manager isn't provided during initialisation then
             this method will do nothing.
         """
         raise NotImplementedError
 
     def unsubscribe_listeners(self) -> None:
-        """Unregister this resource's internal listener to a dispatcher aware app.
+        """Unregister this resource's internal listener to a event manager aware app.
 
         !!! note
             Dependent on the implementation, this may be called by
@@ -144,7 +144,7 @@ class Resource(typing.Protocol):
             when this resource's listeners haven't been registered yet.
 
         !!! note
-            If the event dispatcher isn't provided during initialisation then
+            If the event event manager isn't provided during initialisation then
             this method will do nothing.
         """
         raise NotImplementedError

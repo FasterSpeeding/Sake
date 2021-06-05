@@ -16,7 +16,7 @@ def nsfw_check(content: str) -> bool:
 # client implementation which use multiple sake cache resources without being
 # bound to any specific implementations.
 def register(
-    dispatch: hikari.DispatcherAware,
+    events: hikari.EventManagerAware,
     *,
     prefix: str = "!",
     channel_cache: sake.traits.GuildChannelCache,
@@ -27,7 +27,7 @@ def register(
     # implementations we will take in each resources as a separate argument.
 ) -> typing.Callable[..., None]:
     # This listener simply deletes a message if it's updated to NSFW content.
-    @dispatch.dispatcher.listen()
+    @events.event_manager.listen()
     async def on_message_update(event: hikari.MessageUpdateEvent) -> None:
         if event.message.content is hikari.undefined.UNDEFINED:
             return
@@ -40,7 +40,7 @@ def register(
 
     # This listener handles both a "member count" command which performs a database lookup and
     # the deletion of messages created with nsfw content.
-    @dispatch.dispatcher.listen()
+    @events.event_manager.listen()
     async def on_message_create(event: hikari.MessageCreateEvent) -> None:
         # Delete nsfw content
         if nsfw_check(event.message.content):
@@ -62,8 +62,8 @@ def register(
 
     def unsubscribe() -> None:
         """Unsubscribe the listeners registered by this function."""
-        dispatch.dispatcher.unsubscribe(hikari.MessageUpdateEvent, on_message_update)
-        dispatch.dispatcher.unsubscribe(hikari.MessageCreateEvent, on_message_create)
+        events.event_manager.unsubscribe(hikari.MessageUpdateEvent, on_message_update)
+        events.event_manager.unsubscribe(hikari.MessageCreateEvent, on_message_create)
 
     # Return a callable which can be used to unsubscribe the listeners this
     # function registered, essentially turning it off.

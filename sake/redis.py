@@ -53,6 +53,7 @@ import datetime
 import enum
 import itertools
 import logging
+import math
 import typing
 
 import aioredis
@@ -108,13 +109,16 @@ DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
 """The default expire time (in milliseconds) used for expiring resources of 60 minutes."""
 DEFAULT_FAST_EXPIRE: typing.Final[int] = 300_000
 """The default expire time (in milliseconds) used for expiring resources quickly of 5 minutes."""
+DEFAULT_SLOW_EXPIRE: typing.Final[int] = 604_800
+"""The default expire time (in milliseconds) used for gateway-event deleted resources (1 week)."""
 DEFAULT_INVITE_EXPIRE: typing.Final[int] = 2_592_000_000
 """A special case month long default expire time for invite entries without a set "expire_at"."""
-ExpireT = typing.Union[datetime.timedelta, int, float]
+ExpireT = typing.Union[datetime.timedelta, int, float, None]
 """A type hint used to represent expire times.
 
-These may either be the number of seconds as an int or float (where
-millisecond precision is supported) or a timedelta.
+These may either be the number of seconds as an int or float (where millisecond
+precision is supported) or a timedelta. `builtins.None`, float("nan") and
+float("inf") all represent no expire.
 """
 
 
@@ -149,8 +153,11 @@ async def _close_client(client: aioredis.Redis) -> None:
     client.close()
 
 
-def _convert_expire_time(expire: ExpireT) -> int:
+def _convert_expire_time(expire: ExpireT) -> typing.Optional[int]:
     """Convert a timedelta, int or float expire time representation to an integer."""
+    if expire is None:
+        return None
+
     if isinstance(expire, datetime.timedelta):
         return round(expire.total_seconds() * 1000)
 
@@ -158,6 +165,9 @@ def _convert_expire_time(expire: ExpireT) -> int:
         return expire * 1000
 
     if isinstance(expire, float):
+        if math.isnan(expire) or math.isinf(expire):
+            return None
+
         return round(expire * 1000)
 
     raise ValueError(f"Invalid expire time passed; expected a float, int or timedelta but got a {type(expire)!r}")
@@ -199,6 +209,7 @@ class ResourceClient(traits.Resource, abc.ABC):
     __slots__: typing.Sequence[str] = (
         "__address",
         "__clients",
+        "__default_expire",
         "__marshaller",
         "__dispatch",
         "__metadata",
@@ -215,14 +226,16 @@ class ResourceClient(traits.Resource, abc.ABC):
         /,
         *,
         address: typing.Union[str, typing.Tuple[str, typing.Union[str, int]]],
+        default_expire: ExpireT = DEFAULT_SLOW_EXPIRE,
         password: typing.Optional[str] = None,
         ssl: typing.Union[ssl_.SSLContext, bool, None] = None,
         metadata: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
         object_marshaller: typing.Optional[marshalling.ObjectMarshaller[bytes]] = None,
     ) -> None:
         self.__address = address
-        self.__dispatch = dispatch
         self.__clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
+        self.__default_expire = _convert_expire_time(default_expire)
+        self.__dispatch = dispatch
         self.__marshaller = object_marshaller or marshalling.JSONMarshaller(rest)
         self.__metadata = metadata or {}
         self.__password = password
@@ -254,6 +267,10 @@ class ResourceClient(traits.Resource, abc.ABC):
         exc_tb: typing.Optional[types.TracebackType],
     ) -> None:
         return None
+
+    @property
+    def default_expire(self) -> typing.Optional[int]:
+        return self.__default_expire   # TODO: , pexpire=self.default_expire
 
     @classmethod
     @abc.abstractmethod

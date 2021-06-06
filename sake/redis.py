@@ -226,7 +226,7 @@ def as_raw_listener(
 ) -> typing.Callable[
     [CallbackT[ResourceT, shard_events.ShardPayloadEvent]], CallbackT[ResourceT, shard_events.ShardPayloadEvent]
 ]:
-    event_names = (event_name, *event_names)
+    event_names = (event_name.upper(), *(name.upper() for name in event_names))
 
     def decorator(
         listener: CallbackT[ResourceT, shard_events.ShardPayloadEvent], /
@@ -581,7 +581,7 @@ class ResourceClient(traits.Resource, abc.ABC):
     async def hmget(
         self, resource_index: ResourceIndex, outer_key: RedisKeyT, inner_key: RedisKeyT, /, *inner_keys: RedisKeyT
     ) -> typing.Iterator[ObjectT]:
-        client = await self.get_connection(resource_index)
+        client = self.get_connection(resource_index)
         data = await client.hmget(outer_key, inner_key, *inner_keys)
         # TODO: won't this also return None or empty responses?
         assert not data or isinstance(data[0], bytes)
@@ -652,11 +652,11 @@ class ResourceClient(traits.Resource, abc.ABC):
         client = self.get_connection(resource_index)
         await client.mset({key_getter(payload): self.dump(payload) for payload in payloads})
 
-    async def _on_shard_payload_event(self, event: shard_events.ShardPayloadEvent, /) -> None:
+    async def __on_shard_payload_event(self, event: shard_events.ShardPayloadEvent, /) -> None:
         if listeners := self.__raw_listeners.get(event.name.upper()):
             await asyncio.gather(*(listener(event) for listener in listeners))
 
-    async def _spawn_connection(self, resource: int, /) -> None:
+    async def __spawn_connection(self, resource: int, /) -> None:
         self.__clients[resource] = await aioredis.create_redis_pool(
             address=self.__address,
             db=int(resource),
@@ -672,7 +672,7 @@ class ResourceClient(traits.Resource, abc.ABC):
 
         try:
             # Gather is awaited here so we can assure all clients are started before this returns.
-            await asyncio.gather(*map(self._spawn_connection, self.__get_indexes()))
+            await asyncio.gather(*map(self.__spawn_connection, self.__get_indexes()))
         except aioredis.RedisError:
             # Ensure no dangling clients are left if this fails to start.
             clients = self.__clients
@@ -681,7 +681,7 @@ class ResourceClient(traits.Resource, abc.ABC):
             raise
 
         if self.__event_manager:
-            self.__event_manager.event_manager.subscribe(shard_events.ShardPayloadEvent, self._on_shard_payload_event)
+            self.__event_manager.event_manager.subscribe(shard_events.ShardPayloadEvent, self.__on_shard_payload_event)
 
             for event_type, listeners in self.__listeners.items():
                 for listener in listeners:
@@ -702,7 +702,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         if self.__event_manager:
             try:
                 self.__event_manager.event_manager.unsubscribe(
-                    shard_events.ShardPayloadEvent, self._on_shard_payload_event
+                    shard_events.ShardPayloadEvent, self.__on_shard_payload_event
                 )
             except LookupError:
                 pass
@@ -1012,8 +1012,8 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
         emoji_id = int(emoji_id)
         if guild_id is None:
             try:
-                #  TODO: we can avoid unmarshalling all together here now
-                guild_id = (await self.get_emoji(emoji_id)).guild_id
+                payload = await self._get(ResourceIndex.EMOJI, emoji_id)
+                guild_id = int(payload["guild_id"])
             except errors.EntryNotFound:
                 return
 
@@ -1024,16 +1024,16 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
     async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis_.KnownCustomEmoji:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         payload = await self._get(ResourceIndex.EMOJI, int(emoji_id))
-        return self._deserialize_known_custom_emoji(payload)
+        return self.__deserialize_known_custom_emoji(payload)
 
-    def _deserialize_known_custom_emoji(self, payload: ObjectT, /) -> emojis_.KnownCustomEmoji:
+    def __deserialize_known_custom_emoji(self, payload: ObjectT, /) -> emojis_.KnownCustomEmoji:
         guild_id = snowflakes.Snowflake(payload["guild_id"])
         return self.entity_factory.deserialize_known_custom_emoji(payload, guild_id=guild_id)
 
     def iter_emojis(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[emojis_.KnownCustomEmoji]:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         return redis_iterators.Iterator(
-            self, ResourceIndex.EMOJI, self._deserialize_known_custom_emoji, window_size=window_size
+            self, ResourceIndex.EMOJI, self.__deserialize_known_custom_emoji, window_size=window_size
         )
 
     def iter_emojis_for_guild(
@@ -1042,13 +1042,14 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
         # <<Inherited docstring from sake.traits.EmojiCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI)
         return redis_iterators.ReferenceIterator(
-            self, key, ResourceIndex.EMOJI, self._deserialize_known_custom_emoji, window_size=window_size
+            self, key, ResourceIndex.EMOJI, self.__deserialize_known_custom_emoji, window_size=window_size
         )
 
     async def set_emoji(self, payload: ObjectT, /, guild_id: int) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         guild_id = int(guild_id)
         emoji_id = int(payload["id"])
+        payload["guild_id"] = guild_id  # TODO: is this necessary
         await self._set(ResourceIndex.EMOJI, emoji_id, payload)
         await self._add_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.EMOJI, emoji_id)
 
@@ -1082,17 +1083,17 @@ class GuildCache(ResourceClient, traits.GuildCache):
         client = self.get_connection(ResourceIndex.GUILD)
         await client.delete(int(guild_id))
 
-    def _deserialize_guild(self, payload: ObjectT, /) -> guilds.GatewayGuild:
+    def __deserialize_guild(self, payload: ObjectT, /) -> guilds.GatewayGuild:
         return self.entity_factory.deserialize_gateway_guild(payload).guild
 
     async def get_guild(self, guild_id: snowflakes.Snowflakeish, /) -> guilds.GatewayGuild:
         # <<Inherited docstring from sake.traits.GuildCache>>
         payload = await self._get(ResourceIndex.GUILD, int(guild_id))
-        return self._deserialize_guild(payload)
+        return self.__deserialize_guild(payload)
 
     def iter_guilds(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[guilds.GatewayGuild]:
         # <<Inherited docstring from sake.traits.GuildCache>>
-        return redis_iterators.Iterator(self, ResourceIndex.GUILD, self._deserialize_guild, window_size=window_size)
+        return redis_iterators.Iterator(self, ResourceIndex.GUILD, self.__deserialize_guild, window_size=window_size)
 
     async def set_guild(self, payload: ObjectT, /) -> None:
         # <<Inherited docstring from sake.traits.GuildCache>>
@@ -1182,8 +1183,8 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         channel_id = int(channel_id)
         if guild_id is None:
             try:
-                # TODO: we can avoid deserialization in cases like this now since we know the loader and dumpers
-                guild_id = (await self.get_guild_channel(channel_id)).guild_id
+                payload = await self._get(ResourceIndex.CHANNEL, channel_id)
+                guild_id = int(payload["guild_id"])
             except errors.EntryNotFound:
                 return
 
@@ -1194,9 +1195,9 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
     async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> channels_.GuildChannel:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
         payload = await self._get(ResourceIndex.CHANNEL, int(channel_id))
-        return self._deserialize_guild_channel(payload)
+        return self.__deserialize_guild_channel(payload)
 
-    def _deserialize_guild_channel(self, payload: ObjectT, /) -> channels_.GuildChannel:
+    def __deserialize_guild_channel(self, payload: ObjectT, /) -> channels_.GuildChannel:
         channel = self.entity_factory.deserialize_channel(payload)
         assert isinstance(channel, channels_.GuildChannel)
         return channel
@@ -1204,7 +1205,7 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
     def iter_guild_channels(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[channels_.GuildChannel]:
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
         return redis_iterators.Iterator(
-            self, ResourceIndex.CHANNEL, self._deserialize_guild_channel, window_size=window_size
+            self, ResourceIndex.CHANNEL, self.__deserialize_guild_channel, window_size=window_size
         )
 
     def iter_guild_channels_for_guild(
@@ -1213,7 +1214,7 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         # <<Inherited docstring from sake.traits.GuildChannelCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL)
         return redis_iterators.ReferenceIterator(
-            self, key, ResourceIndex.CHANNEL, self._deserialize_guild_channel, window_size=window_size
+            self, key, ResourceIndex.CHANNEL, self.__deserialize_guild_channel, window_size=window_size
         )
 
     async def set_guild_channel(self, payload: ObjectT, /) -> None:
@@ -1267,8 +1268,8 @@ class IntegrationCache(_Reference, traits.IntegrationCache):
         integration_id = int(integration_id)
         if guild_id is None:
             try:
-                # TODO: we don't have to unmarshall for this anymore
-                guild_id = (await self.get_integration(integration_id)).guild_id
+                payload = await self._get(ResourceIndex.INTEGRATION, integration_id)
+                guild_id = int(payload["guild_id"])
             except errors.EntryNotFound:
                 return
 
@@ -1305,8 +1306,10 @@ class IntegrationCache(_Reference, traits.IntegrationCache):
     async def set_integration(self, payload: ObjectT, /, guild_id: int) -> None:
         # <<Inherited docstring from sake.traits.IntegrationCache>>
         integration_id = int(payload["id"])
+        guild_id = int(guild_id)
+        payload["guild_id"] = guild_id  # TODO: is this necessary?
         await self._set(ResourceIndex.INTEGRATION, integration_id, payload)
-        await self._add_ids(ResourceIndex.GUILD, int(guild_id), ResourceIndex.INTEGRATION, integration_id)
+        await self._add_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.INTEGRATION, integration_id)
 
 
 class InviteCache(ResourceClient, traits.InviteCache):
@@ -1793,8 +1796,9 @@ class RoleCache(_Reference, traits.RoleCache):
         # <<Inherited docstring from sake.traits.RoleCache>>
         role_id = int(role_id)
         if guild_id is None:
-            try:  # TODO: we don't need to deserialize for this anymore
-                guild_id = (await self.get_role(role_id)).guild_id
+            try:
+                payload = await self._get(ResourceIndex.ROLE, int(role_id))
+                guild_id = int(payload["guild_id"])
             except errors.EntryNotFound:
                 return
 
@@ -1805,15 +1809,15 @@ class RoleCache(_Reference, traits.RoleCache):
     async def get_role(self, role_id: snowflakes.Snowflakeish, /) -> guilds.Role:
         # <<Inherited docstring from sake.traits.RoleCache>>
         payload = await self._get(ResourceIndex.ROLE, int(role_id))
-        return self._deserialize_role(payload)
+        return self.__deserialize_role(payload)
 
-    def _deserialize_role(self, payload: ObjectT, /) -> guilds.Role:
+    def __deserialize_role(self, payload: ObjectT, /) -> guilds.Role:
         guild_id = snowflakes.Snowflake(payload["guild_id"])
         return self.entity_factory.deserialize_role(payload, guild_id=guild_id)
 
     def iter_roles(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[guilds.Role]:
         # <<Inherited docstring from sake.traits.RoleCache>>
-        return redis_iterators.Iterator(self, ResourceIndex.ROLE, self._deserialize_role, window_size=window_size)
+        return redis_iterators.Iterator(self, ResourceIndex.ROLE, self.__deserialize_role, window_size=window_size)
 
     def iter_roles_for_guild(
         self, guild_id: snowflakes.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
@@ -1821,7 +1825,7 @@ class RoleCache(_Reference, traits.RoleCache):
         # <<Inherited docstring from sake.traits.RoleCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE)
         return redis_iterators.ReferenceIterator(
-            self, key, ResourceIndex.ROLE, self._deserialize_role, window_size=window_size
+            self, key, ResourceIndex.ROLE, self.__deserialize_role, window_size=window_size
         )
 
     async def set_role(self, payload: ObjectT, /, guild_id: int) -> None:
@@ -1910,7 +1914,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             await self.set_voice_state(dict(event.payload), guild_id)
 
     @staticmethod
-    def _pop_reference(keys: typing.MutableSequence[bytes], /) -> typing.Tuple[bytes, typing.Sequence[bytes]]:
+    def __pop_reference(keys: typing.MutableSequence[bytes], /) -> typing.Tuple[bytes, typing.Sequence[bytes]]:
         for key in keys:
             if key.startswith(b"KEY."):
                 keys.remove(key)
@@ -1923,7 +1927,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         references = await self._dump_relationship(ResourceIndex.CHANNEL, ResourceIndex.VOICE_STATE)
         client = self.get_connection(ResourceIndex.VOICE_STATE)
         await asyncio.gather(
-            *(client.hdel(key, *values) for key, values in map(self._pop_reference, references.values()) if values)
+            *(client.hdel(key, *values) for key, values in map(self.__pop_reference, references.values()) if values)
         )
 
     async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
@@ -1972,16 +1976,15 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
         client = self.get_connection(ResourceIndex.VOICE_STATE)
 
         try:
-            # TODO: we don't need to deserialize here anymore
-            voice_state = await self.get_voice_state(guild_id, user_id)
+            payload = await self._hget(ResourceIndex.VOICE_STATE, guild_id, user_id)
+            channel_id = int(payload["channel_id"])
         except errors.EntryNotFound:
             pass
         else:
-            assert voice_state.channel_id is not None, "Cached voice states should always have a bound channel"
             await client.hdel(guild_id, user_id)
             await self._delete_ids(
                 ResourceIndex.CHANNEL,
-                voice_state.channel_id,
+                channel_id,
                 ResourceIndex.VOICE_STATE,
                 user_id,
                 reference_key=True,

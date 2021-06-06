@@ -208,7 +208,7 @@ async def iter_hash_values(
     cursor = 0
 
     while True:
-        cursor, window = await client.hscan(resource_index, key, cursor, count=window_size, match=match)
+        cursor, window = await client.hscan(resource_index, key, cursor=cursor, count=window_size, match=match)
 
         if window:
             yield (value for _, value in window)

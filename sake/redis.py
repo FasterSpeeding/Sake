@@ -147,7 +147,7 @@ class ResourceIndex(enum.IntEnum):
     PREFIX = 12
 
 
-def _try_find_type(cls: typing.Type[_ValueT], *values: typing.Any) -> undefined.UndefinedOr[_ValueT]:
+def _try_find_type(cls: typing.Type[_ValueT], /, *values: typing.Any) -> undefined.UndefinedOr[_ValueT]:
     for value in values:
         if isinstance(value, cls):
             return value
@@ -157,18 +157,19 @@ def _try_find_type(cls: typing.Type[_ValueT], *values: typing.Any) -> undefined.
 
 def _cast_map_window(
     window: typing.Iterable[typing.Tuple[_KeyT, _ValueT]],
+    /,
     key_cast: typing.Callable[[_KeyT], _OtherKeyT],
     value_cast: typing.Callable[[_ValueT], _OtherValueT],
 ) -> typing.Dict[_OtherKeyT, _OtherValueT]:
     return dict((key_cast(key), value_cast(value)) for key, value in window)
 
 
-async def _close_client(client: aioredis.Redis) -> None:
+async def _close_client(client: aioredis.Redis, /) -> None:
     # TODO: will we need to catch errors here?
     client.close()
 
 
-def _convert_expire_time(expire: ExpireT) -> typing.Optional[int]:
+def _convert_expire_time(expire: ExpireT, /) -> typing.Optional[int]:
     """Convert a timedelta, int or float expire time representation to an integer."""
     if expire is None:
         return None
@@ -432,10 +433,10 @@ class ResourceClient(traits.Resource, abc.ABC):
         """
         return self.__rest
 
-    def dump(self, data: ObjectT) -> bytes:
+    def dump(self, data: ObjectT, /) -> bytes:
         return self.__dumps(data)
 
-    def load(self, data: bytes) -> ObjectT:
+    def load(self, data: bytes, /) -> ObjectT:
         return self.__loads(data)
 
     def get_index_override(self, index: ResourceIndex, /) -> typing.Optional[int]:
@@ -507,7 +508,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         resource = self.__index_overrides.get(resource, resource)
         return resource in self.__clients and not self.__clients[resource].closed
 
-    async def _try_bulk_set_users(self, users_: typing.Iterator[ObjectT]) -> None:  # TODO: update
+    async def _try_bulk_set_users(self, users_: typing.Iterator[ObjectT], /) -> None:
         try:
             client = self.get_connection(ResourceIndex.USER)
         except ValueError:
@@ -573,7 +574,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         return self.load(data)
 
     async def hmget(
-        self, resource_index: ResourceIndex, outer_key: RedisKeyT, inner_key: RedisKeyT, *inner_keys: RedisKeyT
+        self, resource_index: ResourceIndex, outer_key: RedisKeyT, inner_key: RedisKeyT, /, *inner_keys: RedisKeyT
     ) -> typing.Iterator[ObjectT]:
         client = await self.get_connection(resource_index)
         data = await client.hmget(outer_key, inner_key, *inner_keys)
@@ -581,7 +582,9 @@ class ResourceClient(traits.Resource, abc.ABC):
         assert not data or isinstance(data[0], bytes)
         return map(self.load, data)
 
-    async def mget(self, resource_index: ResourceIndex, key: RedisKeyT, *keys: RedisKeyT) -> typing.Iterator[ObjectT]:
+    async def mget(
+        self, resource_index: ResourceIndex, key: RedisKeyT, /, *keys: RedisKeyT
+    ) -> typing.Iterator[ObjectT]:
         client = self.get_connection(resource_index)
         data = await client.mget(key, *keys)
         # TODO: won't this also return None or empty responses?
@@ -592,6 +595,8 @@ class ResourceClient(traits.Resource, abc.ABC):
         self,
         resource_index: ResourceIndex,
         key: RedisKeyT,
+        /,
+        *,
         cursor: int = 0,
         count: typing.Optional[int] = None,
         match: typing.Optional[str] = None,
@@ -607,17 +612,15 @@ class ResourceClient(traits.Resource, abc.ABC):
         resource_index: ResourceIndex,
         key: RedisKeyT,
         payload: ObjectT,
+        /,
+        *,
         pexpire: typing.Optional[int] = None,
     ) -> None:
         client = self.get_connection(resource_index)
         await client.set(key, self.dump(payload), pexpire=pexpire)
 
     async def _hset(
-        self,
-        resource_index: ResourceIndex,
-        outer_key: RedisKeyT,
-        inner_key: RedisKeyT,
-        payload: ObjectT,
+        self, resource_index: ResourceIndex, outer_key: RedisKeyT, inner_key: RedisKeyT, payload: ObjectT, /
     ) -> None:
         client = self.get_connection(resource_index)
         # TODO: expire?
@@ -629,6 +632,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         key: RedisKeyT,
         key_getter: typing.Callable[[ObjectT], RedisKeyT],
         payloads: typing.Iterable[ObjectT],
+        /,
     ) -> None:
         client = self.get_connection(resource_index)
         await client.hmset_dict(key, {key_getter(payload): self.dump(payload) for payload in payloads})
@@ -638,6 +642,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         resource_index: ResourceIndex,
         key_getter: typing.Callable[[ObjectT], RedisKeyT],
         payloads: typing.Iterable[ObjectT],
+        /,
     ) -> None:
         client = self.get_connection(resource_index)
         await client.mset({key_getter(payload): self.dump(payload) for payload in payloads})
@@ -646,7 +651,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         if listeners := self.__raw_listeners.get(event.name.upper()):
             await asyncio.gather(*(listener(event) for listener in listeners))
 
-    async def _spawn_connection(self, resource: int) -> None:
+    async def _spawn_connection(self, resource: int, /) -> None:
         self.__clients[resource] = await aioredis.create_redis_pool(
             address=self.__address,
             db=int(resource),
@@ -729,6 +734,7 @@ class _Reference(ResourceClient, abc.ABC):
         master_id: snowflakes.Snowflakeish,
         slave: ResourceIndex,
         identifier: RedisKeyT,
+        /,
         *identifiers: RedisKeyT,
     ) -> None:
         key = self._generate_reference_key(master, master_id, slave)
@@ -742,6 +748,7 @@ class _Reference(ResourceClient, abc.ABC):
         master_id: snowflakes.Snowflakeish,
         slave: ResourceIndex,
         identifier: RedisKeyT,
+        /,
         *identifiers: RedisKeyT,
         reference_key: bool = False,
     ) -> None:
@@ -753,7 +760,7 @@ class _Reference(ResourceClient, abc.ABC):
             await client.delete(key)
 
     async def _dump_relationship(
-        self, master: ResourceIndex, slave: ResourceIndex
+        self, master: ResourceIndex, slave: ResourceIndex, /
     ) -> typing.MutableMapping[bytes, typing.MutableSequence[bytes]]:
         client = self.get_connection(ResourceIndex.REFERENCE)
         keys = await client.keys(pattern=f"{master}:*:{slave}")
@@ -767,6 +774,7 @@ class _Reference(ResourceClient, abc.ABC):
         master: ResourceIndex,
         master_id: snowflakes.Snowflakeish,
         slave: ResourceIndex,
+        /,
         *,
         cast: typing.Callable[[bytes], _ValueT],
     ) -> typing.MutableSequence[_ValueT]:
@@ -875,12 +883,12 @@ class UserCache(_MeCache, traits.UserCache):
         await self._set(ResourceIndex.USER, int(payload["id"]), payload, pexpire=expire_time)
 
 
-def _add_guild_id(data: ObjectT, guild_id: int) -> ObjectT:
+def _add_guild_id(data: ObjectT, /, guild_id: int) -> ObjectT:
     data["guild_id"] = guild_id
     return data
 
 
-def _get_id(data: ObjectT) -> int:
+def _get_id(data: ObjectT, /) -> int:
     return int(data["id"])
 
 
@@ -942,7 +950,7 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.EMOJI,)
 
-    async def __bulk_add_emojis(self, emojis: typing.Iterable[ObjectT], guild_id: int) -> None:
+    async def __bulk_add_emojis(self, emojis: typing.Iterable[ObjectT], /, guild_id: int) -> None:
         windows = redis_iterators.chunk_values(_add_guild_id(emoji, guild_id) for emoji in emojis)
         setters = (self._mset(ResourceIndex.EMOJI, _get_id, window) for window in windows)
         user_setter = self._try_bulk_set_users(user for payload in emojis if (user := payload.get("user")))
@@ -1013,7 +1021,7 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
         payload = await self._get(ResourceIndex.EMOJI, int(emoji_id))
         return self._deserialize_known_custom_emoji(payload)
 
-    def _deserialize_known_custom_emoji(self, payload: ObjectT) -> emojis_.KnownCustomEmoji:
+    def _deserialize_known_custom_emoji(self, payload: ObjectT, /) -> emojis_.KnownCustomEmoji:
         guild_id = snowflakes.Snowflake(payload["guild_id"])
         return self.entity_factory.deserialize_known_custom_emoji(payload, guild_id=guild_id)
 
@@ -1032,7 +1040,7 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
             self, key, ResourceIndex.EMOJI, self._deserialize_known_custom_emoji, window_size=window_size
         )
 
-    async def set_emoji(self, payload: ObjectT, guild_id: int, /) -> None:
+    async def set_emoji(self, payload: ObjectT, /, guild_id: int) -> None:
         # <<Inherited docstring from sake.traits.EmojiCache>>
         guild_id = int(guild_id)
         emoji_id = int(payload["id"])
@@ -1183,7 +1191,7 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
         payload = await self._get(ResourceIndex.CHANNEL, int(channel_id))
         return self._deserialize_guild_channel(payload)
 
-    def _deserialize_guild_channel(self, payload: ObjectT) -> channels_.GuildChannel:
+    def _deserialize_guild_channel(self, payload: ObjectT, /) -> channels_.GuildChannel:
         channel = self.entity_factory.deserialize_channel(payload)
         assert isinstance(channel, channels_.GuildChannel)
         return channel
@@ -1289,7 +1297,7 @@ class IntegrationCache(_Reference, traits.IntegrationCache):
             window_size=window_size,
         )
 
-    async def set_integration(self, payload: ObjectT, guild_id: int, /) -> None:
+    async def set_integration(self, payload: ObjectT, /, guild_id: int) -> None:
         # <<Inherited docstring from sake.traits.IntegrationCache>>
         integration_id = int(payload["id"])
         await self._set(ResourceIndex.INTEGRATION, integration_id, payload)
@@ -1441,7 +1449,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.MEMBER,)
 
-    async def __bulk_set_members(self, guild_id: int, members: typing.Iterator[ObjectT], /) -> None:
+    async def __bulk_set_members(self, members: typing.Iterator[ObjectT], /, guild_id: int) -> None:
         windows = redis_iterators.chunk_values((_add_guild_id(payload, guild_id) for payload in members))
         setters = (self._hmset_dict(ResourceIndex.MEMBER, guild_id, _get_sub_user_id, window) for window in windows)
         user_setter = self._try_bulk_set_users(member["user"] for member in members)
@@ -1451,7 +1459,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
     async def __on_guild_create(self, event: shard_events.ShardPayloadEvent, /) -> None:
         guild_id = int(event.payload["id"])
         await self.clear_members_for_guild(guild_id)
-        await self.__bulk_set_members(guild_id, event.payload["members"])
+        await self.__bulk_set_members(event.payload["members"], guild_id)
 
     @as_listener(guild_events.GuildLeaveEvent)
     async def __on_guild_delete(self, event: guild_events.GuildLeaveEvent, /) -> None:
@@ -1480,7 +1488,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
 
     @as_raw_listener("GUILD_MEMBERS_CHUNK")
     async def __on_guild_members_chunk_event(self, event: shard_events.ShardPayloadEvent, /) -> None:
-        await self.__bulk_set_members(int(event.payload["guild_id"]), event.payload["members"])
+        await self.__bulk_set_members(event.payload["members"], int(event.payload["guild_id"]))
 
     async def clear_members(self) -> None:
         # <<Inherited docstring from sake.traits.MemberCache>>
@@ -1520,7 +1528,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
             window_size=window_size,
         )
 
-    async def set_member(self, payload: ObjectT, guild_id: int, /) -> None:
+    async def set_member(self, payload: ObjectT, /, guild_id: int) -> None:
         # <<Inherited docstring from sake.traits.MemberCache>>
         user_data = payload["user"]
         await self._hset(ResourceIndex.MEMBER, int(guild_id), int(user_data["id"]), payload)
@@ -1632,7 +1640,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.PRESENCE,)
 
-    async def __bulk_add_presences(self, presences: typing.Iterator[ObjectT], guild_id: int) -> None:
+    async def __bulk_add_presences(self, presences: typing.Iterator[ObjectT], /, guild_id: int) -> None:
         windows = redis_iterators.chunk_values(_add_guild_id(payload, guild_id) for payload in presences)
         setters = (self._hmset_dict(ResourceIndex.PRESENCE, guild_id, _get_sub_user_id, window) for window in windows)
         await asyncio.gather(*setters)
@@ -1793,7 +1801,7 @@ class RoleCache(_Reference, traits.RoleCache):
             self, key, ResourceIndex.ROLE, self._deserialize_role, window_size=window_size
         )
 
-    async def set_role(self, payload: ObjectT, guild_id: int, /) -> None:
+    async def set_role(self, payload: ObjectT, /, guild_id: int) -> None:
         # <<Inherited docstring from sake.traits.RoleCache>>
         guild_id = int(guild_id)
         role_id = int(payload["id"])
@@ -1802,7 +1810,7 @@ class RoleCache(_Reference, traits.RoleCache):
         await self._add_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.ROLE, role_id)
 
 
-def _add_voice_fields(payload: ObjectT, guild_id: int, member: ObjectT) -> ObjectT:
+def _add_voice_fields(payload: ObjectT, /, guild_id: int, member: ObjectT) -> ObjectT:
     payload["guild_id"] = guild_id
     payload["member"] = member
     return payload
@@ -1826,7 +1834,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
 
     @staticmethod
     def __generate_references(
-        voice_states: typing.Iterable[ObjectT], *, guild_id: typing.Optional[int] = None
+        voice_states: typing.Iterable[ObjectT], /, *, guild_id: typing.Optional[int] = None
     ) -> typing.Dict[int, typing.MutableSet[str]]:
         all_references: typing.Dict[int, typing.MutableSet[str]] = {}
         for payload in voice_states:
@@ -1879,7 +1887,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             await self.set_voice_state(dict(event.payload), guild_id)
 
     @staticmethod
-    def _pop_reference(keys: typing.MutableSequence[bytes]) -> typing.Tuple[bytes, typing.Sequence[bytes]]:
+    def _pop_reference(keys: typing.MutableSequence[bytes], /) -> typing.Tuple[bytes, typing.Sequence[bytes]]:
         for key in keys:
             if key.startswith(b"KEY."):
                 keys.remove(key)
@@ -1994,7 +2002,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             window_size=window_size,
         )
 
-    async def set_voice_state(self, payload: ObjectT, guild_id: int, /) -> None:
+    async def set_voice_state(self, payload: ObjectT, /, guild_id: int) -> None:
         # <<Inherited docstring from sake.traits.VoiceStateCache>>
         channel_id = payload.get("channel_id")
         if not channel_id:

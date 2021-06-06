@@ -121,39 +121,8 @@ class Resource(typing.Protocol):
 
     __slots__: typing.Sequence[str] = ()
 
-    def subscribe_listeners(self) -> None:
-        """Register this resource's internal listener to a event manager aware app.
-
-        !!! note
-            Dependent on the implementation, this may be called by
-            `Resource.open` and may raise a `builtins.TypeError`if called
-            when this resource's listeners have already been registered.
-
-        !!! note
-            If the event event manager isn't provided during initialisation then
-            this method will do nothing.
-        """
-        raise NotImplementedError
-
-    def unsubscribe_listeners(self) -> None:
-        """Unregister this resource's internal listener to a event manager aware app.
-
-        !!! note
-            Dependent on the implementation, this may be called by
-            `Resource.close` and may raise a `builtins.TypeError`if called
-            when this resource's listeners haven't been registered yet.
-
-        !!! note
-            If the event event manager isn't provided during initialisation then
-            this method will do nothing.
-        """
-        raise NotImplementedError
-
     async def open(self) -> None:
         """Startup the resource(s) and allow them to connect to their relevant backend(s).
-
-        !!! note
-            This should implicitly call `Resource.subscribe_listeners`.
 
         !!! note
             This should pass without raising if called on an already opened
@@ -163,9 +132,6 @@ class Resource(typing.Protocol):
 
     async def close(self) -> None:
         """Close the resource(s) and allow them to disconnect from their relevant backend(s).
-
-        !!! note
-            This should implicitly call `Resource.unsubscribe_listeners`.
 
         !!! note
             This should pass without raising if called on an already closed

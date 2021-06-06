@@ -92,6 +92,7 @@ if typing.TYPE_CHECKING:
     from hikari import users
     from hikari import voices
     from hikari.api import entity_factory as entity_factory_
+    from hikari.api import event_manager as event_manager_
     from hikari.events import base_events
 
 
@@ -415,6 +416,10 @@ class ResourceClient(traits.Resource, abc.ABC):
     @property
     def entity_factory(self) -> entity_factory_.EntityFactory:
         return self.__entity_factory.entity_factory
+
+    @property
+    def event_manager(self) -> typing.Optional[event_manager_.EventManager]:
+        return self.__event_manager.event_manager if self.__event_manager else None
 
     @property
     def metadata(self) -> typing.MutableMapping[str, typing.Any]:
@@ -1449,6 +1454,19 @@ class MemberCache(ResourceClient, traits.MemberCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.MEMBER,)
 
+    def chunk_on_guild_create(self: ResourceT, shard_aware: typing.Optional[hikari_traits.ShardAware], /) -> ResourceT:
+        if shard_aware:
+            if not self.event_manager:
+                raise ValueError("An event manager-less cache instance cannot request member chunk on guild crate")
+
+            self.metadata["chunk_on_create"] = shard_aware
+            self.metadata["chunk_presences"] = isinstance(self, traits.PresenceCache)
+
+        else:
+            self.metadata.pop("chunk_on_create", None)
+
+        return self
+
     async def __bulk_set_members(self, members: typing.Iterator[ObjectT], /, guild_id: int) -> None:
         windows = redis_iterators.chunk_values((_add_guild_id(payload, guild_id) for payload in members))
         setters = (self._hmset_dict(ResourceIndex.MEMBER, guild_id, _get_sub_user_id, window) for window in windows)
@@ -1460,6 +1478,11 @@ class MemberCache(ResourceClient, traits.MemberCache):
         guild_id = int(event.payload["id"])
         await self.clear_members_for_guild(guild_id)
         await self.__bulk_set_members(event.payload["members"], guild_id)
+
+        if shard_aware := self.metadata.get("chunk_on_create"):
+            assert isinstance(shard_aware, hikari_traits.ShardAware)
+            include_presences = bool(self.metadata.get("chunk_presences", False))
+            await shard_aware.request_guild_members(guild_id, include_presences=include_presences)
 
     @as_listener(guild_events.GuildLeaveEvent)
     async def __on_guild_delete(self, event: guild_events.GuildLeaveEvent, /) -> None:

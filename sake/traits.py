@@ -428,22 +428,6 @@ class EmojiCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def set_emoji(self, emoji: emojis.KnownCustomEmoji, /) -> None:
-        """Add an emoji to the cache.
-
-        Parameters
-        ----------
-        emoji : hikari.emojis.KnownCustomEmoji
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        raise NotImplementedError
-
 
 @typing.runtime_checkable
 class RefEmojiCache(EmojiCache, typing.Protocol):
@@ -598,22 +582,6 @@ class GuildCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def set_guild(self, guild: guilds.GatewayGuild, /) -> None:
-        """Add a guild to the cache.
-
-        Parameters
-        ----------
-        guild : hikari.guilds.GatewayGuild
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        raise NotImplementedError
-
 
 RefGuildCache = GuildCache
 
@@ -710,22 +678,6 @@ class GuildChannelCache(Resource, typing.Protocol):
             either invalid for this implementation or corrupt.
             This may be a sign of multiple sake versions or implementations
             being used with the same backend store.
-        """
-        raise NotImplementedError
-
-    async def set_guild_channel(self, channel: channels.GuildChannel, /) -> None:
-        """Add a guild channel to the cache.
-
-        Parameters
-        ----------
-        channel : hikari.channels.GuildChannel
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
         """
         raise NotImplementedError
 
@@ -881,23 +833,6 @@ class IntegrationCache(Resource, typing.Protocol):
             either invalid for this implementation or corrupt.
             This may be a sign of multiple sake versions or implementations
             being used with the same backend store.
-        """
-        raise NotImplementedError
-
-    async def set_integration(self, integration: guilds.Integration, /) -> None:
-        """Add an integration to the cache.
-
-        Parameters
-        ----------
-        integration : hikari.guilds.Integration
-            The integration to add to the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
         """
         raise NotImplementedError
 
@@ -1164,23 +1099,6 @@ class InviteCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def set_invite(self, invite: invites.InviteWithMetadata, /) -> None:
-        """Add an invite to the cache.
-
-        Parameters
-        ----------
-        invite : hikari.invites.InviteWithMetadata
-            The invite to add to the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        raise NotImplementedError
-
 
 @typing.runtime_checkable
 class RefInviteCache(InviteCache, typing.Protocol):
@@ -1339,23 +1257,6 @@ class MeCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def set_me(self, me: users.OwnUser, /) -> None:
-        """Set the own user entry in the cache.
-
-        Parameters
-        ----------
-        me : hikari.users.OwnUser
-            The own user object to set in the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        raise NotImplementedError
-
 
 RefMeCache = MeCache
 
@@ -1458,23 +1359,6 @@ class MemberCache(Resource, typing.Protocol):
             either invalid for this implementation or corrupt.
             This may be a sign of multiple sake versions or implementations
             being used with the same backend store.
-        """
-        raise NotImplementedError
-
-    async def set_member(self, member: guilds.Member, /) -> None:
-        """Add a member to the cache.
-
-        Parameters
-        ----------
-        member : hikari.guilds.Member
-            The member to add to the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
         """
         raise NotImplementedError
 
@@ -1683,45 +1567,6 @@ class MessageCache(Resource, typing.Protocol):
             This may be a sign of multiple sake versions or implementations
             being used with the same backend store.
         """
-        raise NotImplementedError
-
-    async def set_message(self, message: messages.Message, /) -> None:
-        """Add a message to the cache.
-
-        Parameters
-        ----------
-        message : hikari.messages.Message
-            The message to add to the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        raise NotImplementedError
-
-    async def update_message(self, message: messages.PartialMessage, /) -> bool:
-        """Update a message in the cache using a partial message object.
-
-        !!! note
-            This won't be able to do anything unless an older version of the
-            passed message is already cached.
-
-        Parameters
-        ----------
-        message : messages.PartialMessage
-            The partial object of the message to update in the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        # This is a special case method for handling the partial message updates we get
         raise NotImplementedError
 
 
@@ -1991,23 +1836,6 @@ class PresenceCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def set_presence(self, presence: presences.MemberPresence, /) -> None:
-        """Add a presence to the cache.
-
-        Parameters
-        ----------
-        presence : hikari.presences.MemberPresence
-            The presence to add to the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        raise NotImplementedError
-
 
 @typing.runtime_checkable
 class RefPresenceCache(PresenceCache, typing.Protocol):
@@ -2215,23 +2043,6 @@ class RoleCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def set_role(self, role: guilds.Role, /) -> None:
-        """Add a role to the cache.
-
-        Parameters
-        ----------
-        role : hikari.guilds.Role
-            The role to add to the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        raise NotImplementedError
-
 
 @typing.runtime_checkable
 class RefRoleCache(RoleCache, typing.Protocol):
@@ -2393,23 +2204,6 @@ class UserCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def set_user(self, user: users.User, /) -> None:
-        """Add a user to the cache.
-
-        Parameters
-        ----------
-        user : hikari.users.User
-            The user to add to the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        raise NotImplementedError
-
 
 RefUserCache = UserCache
 
@@ -2512,23 +2306,6 @@ class VoiceStateCache(Resource, typing.Protocol):
             either invalid for this implementation or corrupt.
             This may be a sign of multiple sake versions or implementations
             being used with the same backend store.
-        """
-        raise NotImplementedError
-
-    async def set_voice_state(self, voice_state: voices.VoiceState, /) -> None:
-        """Add a voice state to the cache.
-
-        Parameters
-        ----------
-        voice_state : hikari.voices.VoiceState
-            The voice state to add to the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
         """
         raise NotImplementedError
 

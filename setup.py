@@ -1,5 +1,7 @@
 import os
 import re
+import typing
+
 import setuptools
 import types
 
@@ -18,8 +20,17 @@ def load_meta_data():
 
 metadata = load_meta_data()
 
+requires: typing.List[str] = []
+dependency_links: typing.List[str] = []
 with open("requirements.txt") as f:
     REQUIREMENTS = f.readlines()
+    for line in REQUIREMENTS:
+        if line.startswith("git+"):
+            dependency_links.append(line[4:])
+
+        else:
+            requires.append(line)
+
 
 with open("README.md") as f:
     README = f.read()
@@ -37,7 +48,8 @@ setuptools.setup(
     long_description=README,
     long_description_content_type="text/markdown",
     include_package_data=True,
-    install_requires=REQUIREMENTS,
+    install_requires=requires,
+    dependency_links=dependency_links,
     python_requires=">=3.8.0,<3.10",
     classifiers=[
         "Development Status :: 1 - Planning",

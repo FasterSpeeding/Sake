@@ -315,7 +315,7 @@ class ResourceClient(traits.Resource, abc.ABC):
             event_manager = _try_find_type(hikari_traits.EventManagerAware, rest, entity_factory)
 
             if event_manager is undefined.UNDEFINED:
-                raise ValueError("An event manager implementation must be provided")
+                raise ValueError("An event manager implementation must be provided or explicitly passed as None")
 
         elif event_manager is None:
             ...  # TODO: add warning about running statelessly?
@@ -514,39 +514,35 @@ class ResourceClient(traits.Resource, abc.ABC):
         return resource in self.__clients and not self.__clients[resource].closed
 
     async def _try_bulk_set_users(self, users_: typing.Iterator[ObjectT], /) -> None:
-        try:
-            client = self.get_connection(ResourceIndex.USER)
-        except ValueError:
-            pass
-        else:
-            expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
-            # user_setters = []
-            # expire_setters: typing.MutableSequence[typing.Coroutine[typing.Any, typing.Any, None]] = []
+        if not (client := self.__clients.get(ResourceIndex.USER)):
+            return
 
-            for window in redis_iterators.chunk_values(users_):
-                # transaction = client.multi_exec()
-                #
-                # for user_id in processed_window.keys():
-                #     transaction.pexpire(user_id, expire_time)
-                #
-                # expire_setters.append(transaction.execute())
-                await self._mset(ResourceIndex.USER, _get_id, window)
-                await asyncio.gather(*(client.pexpire(_get_id(payload), expire_time) for payload in window))
-                #  TODO: benchmark bulk setting expire with transaction vs this
-                # user_setters.append(client.mset(processed_window))
-                # expire_setters.extend((client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
+        expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
+        # user_setters = []
+        # expire_setters: typing.MutableSequence[typing.Coroutine[typing.Any, typing.Any, None]] = []
 
-            # asyncio.gather(*user_setters)
-            # asyncio.gather(*expire_setters)
+        for window in redis_iterators.chunk_values(users_):
+            # transaction = client.multi_exec()
+            #
+            # for user_id in processed_window.keys():
+            #     transaction.pexpire(user_id, expire_time)
+            #
+            # expire_setters.append(transaction.execute())
+            await self._mset(ResourceIndex.USER, _get_id, window)
+            await asyncio.gather(*(client.pexpire(_get_id(payload), expire_time) for payload in window))
+            #  TODO: benchmark bulk setting expire with transaction vs this
+            # user_setters.append(client.mset(processed_window))
+            # expire_setters.extend((client.pexpire(user_id, expire_time) for user_id in processed_window.keys()))
+
+        # asyncio.gather(*user_setters)
+        # asyncio.gather(*expire_setters)
 
     async def _try_set_user(self, payload: ObjectT, /) -> None:
-        try:
-            client = self.get_connection(ResourceIndex.USER)
-        except ValueError:
-            pass
-        else:
-            expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
-            await client.set(int(payload["id"]), self.dump(payload), pexpire=expire_time)
+        if ResourceIndex.USER not in self.__clients:
+            return
+
+        expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
+        await self._set(ResourceIndex.USER, int(payload["id"]), payload, pexpire=expire_time)
 
     async def _get(
         self, resource_index: ResourceIndex, key: RedisKeyT, /, *, error: str = "Resource not found"

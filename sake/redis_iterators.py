@@ -590,7 +590,6 @@ class SpecificMapIterator(traits.CacheIterator[_ValueT]):
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
-        # TODO: override "count" method?
         if self._len is None:
             client = self._client.get_connection(self._index)
             self._len = await client.hlen(self._key)

@@ -51,7 +51,6 @@ import typing
 from hikari import undefined
 
 if typing.TYPE_CHECKING:
-
     from hikari.events import base_events
     from hikari.events import shard_events
 

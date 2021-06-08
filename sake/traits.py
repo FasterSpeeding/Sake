@@ -92,8 +92,7 @@ if typing.TYPE_CHECKING:
 ValueT = typing.TypeVar("ValueT")
 
 
-# TODO: should we explicitly raise a ValueError if the wrong object is passed to a set method?
-class CacheIterator(iterators.LazyIterator[ValueT], abc.ABC):  # TODO: cascade arguments on referential traits?
+class CacheIterator(iterators.LazyIterator[ValueT], abc.ABC):
     """A asynchronous iterator of entries within a defined cache store."""
 
     __slots__: typing.Sequence[str] = ()
@@ -128,7 +127,7 @@ class Resource(typing.Protocol):
             This should pass without raising if called on an already opened
             resource.
         """
-        raise NotImplementedError  # TODO: connection errors.
+        raise NotImplementedError
 
     async def close(self) -> None:
         """Close the resource(s) and allow them to disconnect from their relevant backend(s).
@@ -1179,7 +1178,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable  # TODO: rename to OwnUserCache
+@typing.runtime_checkable
 class MeCache(Resource, typing.Protocol):
     """The traits of a implementation which supports a own user cache."""
 
@@ -2081,7 +2080,7 @@ class UserCache(Resource, typing.Protocol):
 
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_users(self) -> None:  # TODO: cascade
+    async def clear_users(self) -> None:
         """Empty the users cache store.
 
         !!! note
@@ -2280,7 +2279,7 @@ class VoiceStateCache(Resource, typing.Protocol):
 class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
     """The traits of a implementation which supports a referencial voice state cache."""
 
-    __slots__: typing.Sequence[str] = ()  # TODO: for user?
+    __slots__: typing.Sequence[str] = ()
 
     async def clear_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
         """Remove the voice states cached for a specified channel.

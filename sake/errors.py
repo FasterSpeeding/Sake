@@ -84,7 +84,7 @@ class BackendError(SakeException, ValueError):
     __slots__: typing.Sequence[str] = ()
 
 
-class CannotDelete(SakeException, ValueError):  # TODO: implement and document cascading handling?
+class CannotDelete(SakeException, ValueError):
     """An error raised in response to an attempt to delete an entry which can't be deleted.
 
     This most likely reason for this to be raised would be due to an attempt to

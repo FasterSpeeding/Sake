@@ -95,17 +95,14 @@ if typing.TYPE_CHECKING:
     from hikari.api import event_manager as event_manager_
 
 
-_KeyT = typing.TypeVar("_KeyT")
-_OtherKeyT = typing.TypeVar("_OtherKeyT")
-_ValueT = typing.TypeVar("_ValueT")
-_OtherValueT = typing.TypeVar("_OtherValueT")
 ObjectT = typing.Dict[str, typing.Any]
-_LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.redis")
-"""The logger instance used by this Sake implementation."""
-
 RedisValueT = typing.Union[int, str, bytes]
 ResourceT = typing.TypeVar("ResourceT", bound="ResourceClient")
 """Type-Hint A type hint used to represent a resource client instance."""
+
+_LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.redis")
+"""The logger instance used by this Sake implementation."""
+
 WINDOW_SIZE: typing.Final[int] = 1_000
 """The default size used for "windowed" chunking in this client."""
 DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
@@ -410,9 +407,6 @@ class ResourceClient(traits.Resource, abc.ABC):
 
             if event_manager is undefined.UNDEFINED:
                 raise ValueError("An event manager implementation must be provided or explicitly passed as None")
-
-        elif event_manager is None:
-            ...  # TODO: add warning about running statelessly?
 
         self.__address = address
         self.__clients: typing.Dict[int, AioRedisFacade] = {}
@@ -802,8 +796,8 @@ class _Reference(ResourceClient, abc.ABC):
         slave: ResourceIndex,
         /,
         *,
-        cast: typing.Callable[[bytes], _ValueT],
-    ) -> typing.MutableSequence[_ValueT]:
+        cast: typing.Callable[[bytes], utility.T],
+    ) -> typing.MutableSequence[utility.T]:
         key = self._generate_reference_key(master, master_id, slave)
         client = self.get_connection(ResourceIndex.REFERENCE)
         members = typing.cast("typing.List[bytes]", await client.smembers(key))
@@ -1768,7 +1762,6 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
     async def __on_presence_update_event(self, event: shard_events.ShardPayloadEvent, /) -> None:
         if event.payload["status"] == presences_.Status.OFFLINE:
             await self.delete_presence(int(event.payload["guild_id"]), int(event.payload["user"]["id"]))
-            # TODO: handle presence.user?
 
         else:
             await self.set_presence(dict(event.payload))

@@ -135,6 +135,19 @@ class ResourceIndex(enum.IntEnum):
     PREFIX = 12
 
 
+def _assert_optional_byte_sequence(seq: typing.Sequence[typing.Any], /) -> bool:
+    for entry in seq:
+        if entry is None:
+            continue
+
+        if isinstance(entry, bytes):
+            break
+
+        return False
+
+    return True
+
+
 class AioRedisFacade:
     __slots__ = ("client", "dump", "load")
 
@@ -206,9 +219,8 @@ class AioRedisFacade:
         self, outer_key: RedisValueT, inner_key: RedisValueT, /, *inner_keys: RedisValueT
     ) -> typing.Iterator[ObjectT]:
         data = await self.client.hmget(outer_key, inner_key, *inner_keys)
-        # TODO: won't this also return None or empty responses?
-        assert not data or isinstance(data[0], bytes)
-        return map(self.load, data)
+        assert typing.cast("typing.List[typing.Optional[bytes]]", _assert_optional_byte_sequence(data))
+        return (self.load(entry) for entry in data if entry)
 
     async def hmset_dict(
         self,
@@ -247,14 +259,13 @@ class AioRedisFacade:
     async def keys(self, *, pattern: str = "*") -> typing.List[bytes]:
         result = await self.client.keys(pattern)
         assert isinstance(result, list)
-        assert not result or isinstance(result[0], (str, int, bytes))
+        assert not result or isinstance(result[0], bytes)
         return result
 
     async def mget(self, key: RedisValueT, /, *keys: RedisValueT) -> typing.Iterator[ObjectT]:
-        data = await self.client.mget(key, *keys)
-        # TODO: won't this also return None or empty responses?
-        assert not data or isinstance(data[0], bytes)
-        return map(self.load, data)
+        data = typing.cast("typing.List[typing.Optional[bytes]]", await self.client.mget(key, *keys))
+        assert _assert_optional_byte_sequence(data)
+        return (self.load(entry) for entry in data if entry)
 
     async def mset(
         self,
@@ -273,7 +284,6 @@ class AioRedisFacade:
         cursor, keys = await self.client.scan(cursor=cursor, count=count, match=match)
         assert isinstance(cursor, int)
         assert isinstance(keys, list)
-        # TODO: Is this good enough?
         assert not keys or isinstance(keys[0], bytes)
         return cursor, keys
 
@@ -294,7 +304,7 @@ class AioRedisFacade:
 
     async def smembers(self, key: RedisValueT, /) -> typing.List[RedisValueT]:
         result = await self.client.smembers(key)
-        assert isinstance(result, list)  # TODO: is this right?
+        assert isinstance(result, list)
         assert not result or isinstance(result[0], (int, str, bytes))
         return result
 
@@ -312,7 +322,7 @@ class AioRedisFacade:
     ) -> typing.Tuple[int, typing.List[RedisValueT]]:
         cursor, result = await self.client.sscan(key, cursor=cursor, match=match, count=count)
         assert isinstance(cursor, int)
-        assert isinstance(result, list)  # TODO: does this work?
+        assert isinstance(result, list)
         assert not result or isinstance(result[0], (bytes, int, str))
         return cursor, result
 

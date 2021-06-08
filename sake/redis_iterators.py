@@ -169,7 +169,7 @@ async def iter_hash_values(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.Iterator[redis.ObjectT]]:
-    """Asynchronously iterate over slices of the keys in a redis hash.
+    """Asynchronously iterate over slices of the values in a redis hash.
 
     Parameters
     ----------
@@ -325,10 +325,10 @@ class Iterator(traits.CacheIterator[_ValueT]):
             client = self._client.get_connection(self._index)
             self._windows = iter_values(client, window_size=self._window_size)
 
+        # A window might be empty due to none of the requested keys being found, hence the while not self._buffer
         while not self._buffer:
             async for window in self._windows:
-                # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
-                self._buffer.extend(filter(bool, window))
+                self._buffer.extend(window)
                 break
 
             else:
@@ -376,10 +376,10 @@ class ReferenceIterator(traits.CacheIterator[_ValueT]):
         if not self._windows:
             self._windows = iter_reference_values(self._client, self._index, self._key, window_size=self._window_size)
 
+        # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
         while not self._buffer:
             async for window in self._windows:
-                # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
-                self._buffer.extend(filter(bool, window))
+                self._buffer.extend(window)
                 break
 
             else:
@@ -452,10 +452,10 @@ class HashReferenceIterator(traits.CacheIterator[_ValueT]):
             # More MyPy weridness
             assert self._windows is not None
 
+        # A window might be empty due to none of the requested keys being found, hence the while not self._buffer
         while not self._buffer:
             async for window in self._windows:
-                # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
-                self._buffer.extend(filter(bool, window))
+                self._buffer.extend(window)
                 break
 
             else:
@@ -520,8 +520,7 @@ class MultiMapIterator(traits.CacheIterator[_ValueT]):
 
         while not self._buffer:
             async for window in self._windows:
-                # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
-                self._buffer.extend(filter(bool, window))
+                self._buffer.extend(window)
                 break
 
             else:
@@ -581,7 +580,7 @@ class SpecificMapIterator(traits.CacheIterator[_ValueT]):
         while not self._buffer:
             async for window in self._windows:
                 # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
-                self._buffer.extend(filter(bool, window))
+                self._buffer.extend(window)
                 break
 
             else:

@@ -83,12 +83,11 @@ if typing.TYPE_CHECKING:
     import ssl as ssl_
     import types
 
-    import aioredis.abc  # type: ignore[import]
     from hikari import emojis as emojis_
     from hikari import guilds
     from hikari import invites as invites_
     from hikari import messages
-    from hikari import users
+    from hikari import users as users_
     from hikari import voices
     from hikari.api import entity_factory as entity_factory_
     from hikari.api import event_manager as event_manager_
@@ -580,7 +579,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         resource = self.__index_overrides.get(resource, resource)
         return resource in self.__clients and not self.__clients[resource].is_closed
 
-    async def _try_bulk_set_users(self, users_: typing.Iterator[ObjectT], /) -> None:
+    async def _try_bulk_set_users(self, users: typing.Iterator[ObjectT], /) -> None:
         if not (client := self.__clients.get(ResourceIndex.USER)):
             return
 
@@ -588,7 +587,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         # user_setters = []
         # expire_setters: typing.MutableSequence[typing.Coroutine[typing.Any, typing.Any, None]] = []
 
-        for window in redis_iterators.chunk_values(users_):
+        for window in redis_iterators.chunk_values(users):
             # transaction = client.multi_exec()
             #
             # for user_id in processed_window.keys():
@@ -774,7 +773,7 @@ class _MeCache(ResourceClient, traits.MeCache):
         client = self.get_connection(ResourceIndex.USER)
         await client.delete(self.__ME_KEY)
 
-    async def get_me(self) -> users.OwnUser:
+    async def get_me(self) -> users_.OwnUser:
         # <<Inherited docstring from sake.traits.MeCache>>
         payload = await self.get_connection(ResourceIndex.USER).get(self.__ME_KEY)
         return self.entity_factory.deserialize_my_user(payload)
@@ -827,12 +826,12 @@ class UserCache(_MeCache, traits.UserCache):
         client = self.get_connection(ResourceIndex.USER)
         await client.delete(int(user_id))
 
-    async def get_user(self, user_id: snowflakes.Snowflakeish, /) -> users.User:
+    async def get_user(self, user_id: snowflakes.Snowflakeish, /) -> users_.User:
         # <<Inherited docstring from sake.traits.UserCache>>
         payload = await self.get_connection(ResourceIndex.USER).get(int(user_id))
         return self.entity_factory.deserialize_user(payload)
 
-    def iter_users(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[users.User]:
+    def iter_users(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[users_.User]:
         # <<Inherited docstring from sake.traits.UserCache>>
         return redis_iterators.Iterator(
             self, ResourceIndex.USER, self.entity_factory.deserialize_user, window_size=window_size

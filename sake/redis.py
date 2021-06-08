@@ -56,10 +56,12 @@ import itertools
 import json
 import logging
 import typing
+import warnings
 
 import aioredis  # type: ignore[import]
 from hikari import channels as channels_
 from hikari import errors as hikari_errors
+from hikari import intents as intents_
 from hikari import presences as presences_
 from hikari import snowflakes
 from hikari import traits as hikari_traits
@@ -432,6 +434,8 @@ class ResourceClient(traits.Resource, abc.ABC):
         if event_managed and event_manager:
             event_manager.event_manager.subscribe(lifetime_events.StartingEvent, self.__on_starting_event)
             event_manager.event_manager.subscribe(lifetime_events.StoppingEvent, self.__on_stopping_event)
+            if isinstance(event_manager, hikari_traits.ShardAware):
+                self.__check_intents(event_manager.intents)
 
     async def __on_starting_event(self, _: lifetime_events.StartingEvent, /) -> None:
         await self.open()
@@ -470,6 +474,14 @@ class ResourceClient(traits.Resource, abc.ABC):
     def default_expire(self) -> typing.Optional[int]:
         return self.__default_expire  # TODO: , pexpire=self.default_expire
 
+    @property
+    def entity_factory(self) -> entity_factory_.EntityFactory:
+        return self.__entity_factory.entity_factory
+
+    @property
+    def event_manager(self) -> typing.Optional[event_manager_.EventManager]:
+        return self.__event_manager.event_manager if self.__event_manager else None
+
     @classmethod
     @abc.abstractmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
@@ -489,13 +501,21 @@ class ResourceClient(traits.Resource, abc.ABC):
         """
         return ()
 
-    @property
-    def entity_factory(self) -> entity_factory_.EntityFactory:
-        return self.__entity_factory.entity_factory
+    @classmethod
+    @abc.abstractmethod
+    def intents(cls) -> intents_.Intents:
+        """The intents the resource requires to function properly.
 
-    @property
-    def event_manager(self) -> typing.Optional[event_manager_.EventManager]:
-        return self.__event_manager.event_manager if self.__event_manager else None
+        !!! note
+            This should be called on specific base classes and will not be
+            accurate after inheritance.
+
+        Returns
+        -------
+        hikari.intents.Intents
+            The intents the resource requires to function properly.
+        """
+        return intents_.Intents.NONE
 
     @property
     def metadata(self) -> typing.MutableMapping[str, typing.Any]:
@@ -513,6 +533,44 @@ class ResourceClient(traits.Resource, abc.ABC):
             The REST aware client this resource is tied to.
         """
         return self.__rest
+
+    def all_indexes(self) -> typing.MutableSet[int]:
+        """Get a set of all the Redis client indexes this is using.
+
+        !!! note
+            This accounts for index overrides.
+
+        Returns
+        -------
+        typing.MutableSet[int]
+            A set of all the Redis client indexes this is using.
+        """
+        results: typing.Set[int] = set()
+        for sub_class in type(self).mro():
+            if issubclass(sub_class, ResourceClient):
+                results.update((self.__index_overrides.get(index, index) for index in sub_class.index()))
+
+        return results
+
+    @classmethod
+    def all_intents(cls) -> intents_.Intents:
+        result = intents_.Intents.NONE
+        for sub_class in cls.mro():
+            if issubclass(sub_class, ResourceClient):
+                result |= sub_class.intents()
+
+        return result
+
+    def __check_intents(self, intents: intents_.Intents, /) -> None:
+        for cls in type(self).mro():
+            if issubclass(cls, ResourceClient):
+                required_intents = cls.intents()
+                if (required_intents & intents) != required_intents:
+                    warnings.warn(
+                        f"{cls.__name__} resource will not function properly without the"
+                        f" following intents: {required_intents}",
+                        stacklevel=3,
+                    )
 
     def dump(self, data: ObjectT, /) -> bytes:
         return self.__dump(data)
@@ -564,14 +622,6 @@ class ResourceClient(traits.Resource, abc.ABC):
             return self.__clients[self.__index_overrides.get(resource, resource)]
         except KeyError:
             raise ValueError(f"Resource index `{resource}` isn't invalid for this client") from None
-
-    def __get_indexes(self) -> typing.MutableSet[int]:
-        results: typing.Set[int] = set()
-        for sub_class in type(self).mro():
-            if issubclass(sub_class, ResourceClient):
-                results.update((self.__index_overrides.get(index, index) for index in sub_class.index()))
-
-        return results
 
     async def get_connection_status(self, resource: ResourceIndex, /) -> bool:
         """Get the status of the internal connection for a specific resource.
@@ -641,7 +691,7 @@ class ResourceClient(traits.Resource, abc.ABC):
 
         try:
             # Gather is awaited here so we can assure all clients are started before this returns.
-            await asyncio.gather(*map(self.__spawn_connection, self.__get_indexes()))
+            await asyncio.gather(*map(self.__spawn_connection, self.all_indexes()))
         except aioredis.RedisError:
             # Ensure no dangling clients are left if this fails to start.
             clients = self.__clients
@@ -652,9 +702,11 @@ class ResourceClient(traits.Resource, abc.ABC):
         if self.__event_manager:
             self.__event_manager.event_manager.subscribe(shard_events.ShardPayloadEvent, self.__on_shard_payload_event)
 
-            for event_type, listeners in self.__listeners.items():
-                for listener in listeners:
-                    self.__event_manager.event_manager.subscribe(event_type, listener)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=hikari_errors.MissingIntentWarning)
+                for event_type, listeners in self.__listeners.items():
+                    for listener in listeners:
+                        self.__event_manager.event_manager.subscribe(event_type, listener)
 
         self.__started = True
 
@@ -770,6 +822,11 @@ class _MeCache(ResourceClient, traits.MeCache):
         # This isn't a full MeCache implementation in itself as it's reliant on the UserCache implementation.
         return ()
 
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.NONE
+
     @utility.as_raw_listener("USER_UPDATE")
     async def __on_own_user_update(self, event: shard_events.ShardPayloadEvent, /) -> None:
         await self.set_me(dict(event.payload))
@@ -801,6 +858,11 @@ class UserCache(_MeCache, traits.UserCache):
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.USER,)
+
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.NONE
 
     def with_user_expire(self: ResourceT, expire: typing.Optional[utility.ExpireT], /) -> ResourceT:
         """Set the default expire time for user entries added with this client.
@@ -925,6 +987,11 @@ class EmojiCache(_Reference, traits.RefEmojiCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.EMOJI,)
 
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.GUILD_EMOJIS | intents_.Intents.GUILDS
+
     async def __bulk_add_emojis(self, emojis: typing.Iterable[ObjectT], /, guild_id: int) -> None:
         client = self.get_connection(ResourceIndex.EMOJI)
         windows = redis_iterators.chunk_values(_add_guild_id(emoji, guild_id) for emoji in emojis)
@@ -1036,6 +1103,11 @@ class GuildCache(ResourceClient, traits.GuildCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.GUILD,)
 
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.GUILDS
+
     @utility.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
     async def __on_guild_create_update(self, event: shard_events.ShardPayloadEvent, /) -> None:
         await self.set_guild(dict(event.payload))
@@ -1087,6 +1159,11 @@ class GuildChannelCache(_Reference, traits.RefGuildChannelCache):
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.CHANNEL,)
+
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.GUILDS
 
     @utility.as_raw_listener("CHANNEL_CREATE", "CHANNEL_UPDATE")
     async def __on_channel_create_update(self, event: shard_events.ShardPayloadEvent, /) -> None:
@@ -1205,6 +1282,11 @@ class IntegrationCache(_Reference, traits.IntegrationCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.INTEGRATION,)
 
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.GUILDS | intents_.Intents.GUILD_INTEGRATIONS
+
     @utility.as_listener(guild_events.GuildLeaveEvent)
     async def __on_guild_leave_event(self, event: guild_events.GuildLeaveEvent, /) -> None:
         await self.clear_integrations_for_guild(event.guild_id)
@@ -1292,13 +1374,18 @@ class InviteCache(ResourceClient, traits.InviteCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.INVITE,)
 
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.GUILD_INVITES
+
     @utility.as_raw_listener("INVITE_CREATE")
     async def __on_invite_create(self, event: shard_events.ShardPayloadEvent, /) -> None:
         await self.set_invite(dict(event.payload))
 
     @utility.as_listener(channel_events.InviteDeleteEvent)
     async def __on_invite_delete_event(self, event: channel_events.InviteDeleteEvent, /) -> None:
-        await self.delete_invite(event.code)
+        await self.delete_invite(event.code)  # TODO: on guild leave?
 
     def with_invite_expire(self: ResourceT, expire: typing.Optional[utility.ExpireT], /) -> ResourceT:
         """Set the default expire time for invite entries added with this client.
@@ -1429,13 +1516,22 @@ class MemberCache(ResourceClient, traits.MemberCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.MEMBER,)
 
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.GUILD_MEMBERS | intents_.Intents.GUILDS
+
     def chunk_on_guild_create(self: ResourceT, shard_aware: typing.Optional[hikari_traits.ShardAware], /) -> ResourceT:
         if shard_aware:
             if not self.event_manager:
                 raise ValueError("An event manager-less cache instance cannot request member chunk on guild crate")
 
+            if not (shard_aware.intents & intents_.Intents.GUILD_MEMBERS):
+                raise ValueError("Cannot request guild member chunks without the GUILD_MEMBERS intents declared")
+
+            presences = (shard_aware.intents & intents_.Intents.GUILD_PRESENCES) == intents_.Intents.GUILD_PRESENCES
             self.metadata["chunk_on_create"] = shard_aware
-            self.metadata["chunk_presences"] = isinstance(self, traits.PresenceCache)
+            self.metadata["chunk_presences"] = presences and isinstance(self, traits.PresenceCache)
 
         else:
             self.metadata.pop("chunk_on_create", None)
@@ -1542,6 +1638,11 @@ class MessageCache(ResourceClient, traits.MessageCache):
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.MESSAGE,)
 
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.ALL_MESSAGES
+
     @utility.as_raw_listener("MESSAGE_CREATE")
     async def __on_message_create(self, event: shard_events.ShardPayloadEvent, /) -> None:
         await self.set_message(dict(event.payload))
@@ -1639,6 +1740,11 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.PRESENCE,)
 
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.GUILDS | intents_.Intents.GUILD_PRESENCES
+
     async def __bulk_add_presences(self, presences: typing.Iterator[ObjectT], /, guild_id: int) -> None:
         client = self.get_connection(ResourceIndex.PRESENCE)
         windows = redis_iterators.chunk_values(_add_guild_id(payload, guild_id) for payload in presences)
@@ -1720,6 +1826,11 @@ class RoleCache(_Reference, traits.RoleCache):
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.ROLE,)
+
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.GUILDS
 
     @utility.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
     async def __on_guild_create_update(self, event: shard_events.ShardPayloadEvent, /) -> None:
@@ -1830,6 +1941,11 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.traits.Resource>>
         return (ResourceIndex.VOICE_STATE,)
+
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.GUILDS | intents_.Intents.GUILD_VOICE_STATES
 
     @utility.as_listener(channel_events.ChannelDeleteEvent)  # type: ignore[misc]
     async def __on_channel_delete_event(self, event: channel_events.ChannelDeleteEvent, /) -> None:

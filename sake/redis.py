@@ -443,9 +443,9 @@ class ResourceClient(traits.Resource, abc.ABC):
 
     async def __aexit__(
         self,
-        exc_type: typing.Type[typing.Type[BaseException]],
-        exc_val: typing.Type[BaseException],
-        exc_tb: typing.Type[types.TracebackType],
+        exc_type: typing.Optional[typing.Type[BaseException]],
+        exc_val: typing.Optional[BaseException],
+        exc_tb: typing.Optional[types.TracebackType],
     ) -> None:
         await self.close()
 

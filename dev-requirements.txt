@@ -1,5 +1,5 @@
 mypy==0.901
-black==21.5b2
+black==21.6b0
 isort==5.8.0
 
 # Mocks (stdlib ones change between versions of Python, so are not consistent in behaviour like the backport is).

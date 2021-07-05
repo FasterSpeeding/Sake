@@ -55,6 +55,7 @@ import enum
 import itertools
 import json
 import logging
+import sys
 import typing
 import warnings
 
@@ -82,6 +83,7 @@ from sake import traits
 from sake import utility
 
 if typing.TYPE_CHECKING:
+    import collections.abc as collections
     import ssl as ssl_
     import types
 
@@ -134,17 +136,27 @@ class ResourceIndex(enum.IntEnum):
     PREFIX = 12
 
 
-def _assert_optional_byte_sequence(seq: typing.Sequence[typing.Any], /) -> bool:
-    for entry in seq:
-        if entry is None:
-            continue
+if typing.TYPE_CHECKING and sys.version_info >= (3, 9):
 
-        if isinstance(entry, bytes):
-            break
+    def _assert_optional_byte_sequence(
+        seq: typing.Sequence[typing.Any], /
+    ) -> typing.TypeGuard[collections.Sequence[bytes]]:
+        ...
 
-        return False
 
-    return True
+else:
+
+    def _assert_optional_byte_sequence(seq: typing.Sequence[typing.Any], /) -> bool:
+        for entry in seq:
+            if entry is None:
+                continue
+
+            if isinstance(entry, bytes):
+                break
+
+            return False
+
+        return True
 
 
 class AioRedisFacade:
@@ -218,7 +230,7 @@ class AioRedisFacade:
         self, outer_key: RedisValueT, inner_key: RedisValueT, /, *inner_keys: RedisValueT
     ) -> typing.Iterator[ObjectT]:
         data = await self.client.hmget(outer_key, inner_key, *inner_keys)
-        assert typing.cast("typing.List[typing.Optional[bytes]]", _assert_optional_byte_sequence(data))
+        assert _assert_optional_byte_sequence(data)
         return (self.load(entry) for entry in data if entry)
 
     async def hmset_dict(

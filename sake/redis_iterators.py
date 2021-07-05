@@ -309,7 +309,7 @@ class Iterator(traits.CacheIterator[_ValueT]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.MutableSequence[redis.ObjectT] = []
+        self._buffer: typing.List[redis.ObjectT] = []
         self._builder = builder
         self._client = client
         self._index = index
@@ -360,7 +360,7 @@ class ReferenceIterator(traits.CacheIterator[_ValueT]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.MutableSequence[redis.ObjectT] = []
+        self._buffer: typing.List[redis.ObjectT] = []
         self._builder = builder
         self._client = client
         self._index = index
@@ -411,7 +411,7 @@ class HashReferenceIterator(traits.CacheIterator[_ValueT]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.MutableSequence[redis.ObjectT] = []
+        self._buffer: typing.List[redis.ObjectT] = []
         self._builder = builder
         self._client = client
         self._index = index
@@ -500,7 +500,7 @@ class MultiMapIterator(traits.CacheIterator[_ValueT]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.MutableSequence[redis.ObjectT] = []
+        self._buffer: typing.List[redis.ObjectT] = []
         self._builder = builder
         self._client = client
         self._index = index
@@ -560,7 +560,7 @@ class SpecificMapIterator(traits.CacheIterator[_ValueT]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.MutableSequence[redis.ObjectT] = []
+        self._buffer: typing.List[redis.ObjectT] = []
         self._builder = builder
         self._client = client
         self._index = index

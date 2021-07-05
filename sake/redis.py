@@ -651,7 +651,7 @@ class ResourceClient(traits.Resource, abc.ABC):
 
         expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
         # user_setters = []
-        # expire_setters: typing.MutableSequence[typing.Coroutine[typing.Any, typing.Any, None]] = []
+        # expire_setters: typing.List[typing.Coroutine[typing.Any, typing.Any, None]] = []
 
         for window in redis_iterators.chunk_values(users):
             # transaction = client.multi_exec()
@@ -793,7 +793,7 @@ class _Reference(ResourceClient, abc.ABC):
 
     async def _dump_relationship(
         self, master: ResourceIndex, slave: ResourceIndex, /
-    ) -> typing.MutableMapping[bytes, typing.MutableSequence[bytes]]:
+    ) -> typing.Dict[bytes, typing.List[bytes]]:
         client = self.get_connection(ResourceIndex.REFERENCE)
         keys = await client.keys(pattern=f"{master}:*:{slave}")
         values = await asyncio.gather(*map(client.smembers, keys))
@@ -809,7 +809,7 @@ class _Reference(ResourceClient, abc.ABC):
         /,
         *,
         cast: typing.Callable[[bytes], utility.T],
-    ) -> typing.MutableSequence[utility.T]:
+    ) -> typing.List[utility.T]:
         key = self._generate_reference_key(master, master_id, slave)
         client = self.get_connection(ResourceIndex.REFERENCE)
         members = typing.cast("typing.List[bytes]", await client.smembers(key))
@@ -1959,8 +1959,8 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
     @staticmethod
     def __generate_references(
         voice_states: typing.Iterable[ObjectT], /, *, guild_id: typing.Optional[int] = None
-    ) -> typing.Dict[int, typing.MutableSet[str]]:
-        all_references: typing.Dict[int, typing.MutableSet[str]] = {}
+    ) -> typing.Dict[int, typing.Set[str]]:
+        all_references: typing.Dict[int, typing.Set[str]] = {}
         for payload in voice_states:
             channel_id = int(payload["channel_id"])
             user_id = int(payload["user_id"])
@@ -2012,7 +2012,7 @@ class VoiceStateCache(_Reference, traits.VoiceStateCache):
             await self.set_voice_state(dict(event.payload), guild_id)
 
     @staticmethod
-    def __pop_reference(keys: typing.MutableSequence[bytes], /) -> typing.Tuple[bytes, typing.Sequence[bytes]]:
+    def __pop_reference(keys: typing.List[bytes], /) -> typing.Tuple[bytes, typing.Sequence[bytes]]:
         for key in keys:
             if key.startswith(b"KEY."):
                 keys.remove(key)

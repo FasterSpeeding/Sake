@@ -627,7 +627,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         try:
             return self.__clients[self.__index_overrides.get(resource, resource)]
         except KeyError:
-            raise ValueError(f"Resource index `{resource}` isn't invalid for this client") from None
+            raise ValueError(f"Resource index `{resource}` isn't valid for this client") from None
 
     async def get_connection_status(self, resource: ResourceIndex, /) -> bool:
         """Get the status of the internal connection for a specific resource.

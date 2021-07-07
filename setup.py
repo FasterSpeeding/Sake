@@ -1,9 +1,9 @@
 import os
 import re
+import types
 import typing
 
 import setuptools
-import types
 
 MAIN_MODULE_NAME = "sake"
 TARGET_PROJECT_NAME = "hikari-sake"

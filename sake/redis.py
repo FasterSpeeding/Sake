@@ -233,9 +233,10 @@ class ResourceClient(traits.Resource, abc.ABC):
         object_marshaller: typing.Optional[marshalling.ObjectMarshaller[bytes]] = None,
     ) -> None:
         self.__address = address
-        self.__clients: typing.MutableMapping[ResourceIndex, aioredis.Redis] = {}
+        self.__clients: typing.Dict[int, aioredis.Redis] = {}
         self.__default_expire = _convert_expire_time(default_expire)
         self.__dispatch = dispatch
+        self.__index_overrides: typing.Dict[ResourceIndex, int] = {}
         self.__marshaller = object_marshaller or marshalling.JSONMarshaller(rest)
         self.__metadata = metadata or {}
         self.__password = password
@@ -270,7 +271,7 @@ class ResourceClient(traits.Resource, abc.ABC):
 
     @property
     def default_expire(self) -> typing.Optional[int]:
-        return self.__default_expire   # TODO: , pexpire=self.default_expire
+        return self.__default_expire  # TODO: , pexpire=self.default_expire
 
     @classmethod
     @abc.abstractmethod
@@ -280,6 +281,9 @@ class ResourceClient(traits.Resource, abc.ABC):
         !!! note
             This should be called on specific base classes and will not be
             accurate after inheritance.
+
+        !!! warning
+            This doesn't account for overrides.
 
         Returns
         -------
@@ -325,6 +329,23 @@ class ResourceClient(traits.Resource, abc.ABC):
         """
         return self.__rest
 
+    def get_index_override(self, index: ResourceIndex, /) -> typing.Optional[int]:
+        return self.__index_overrides.get(index)
+
+    def with_index_override(
+        self: ResourceT, index: ResourceIndex, override: typing.Optional[int] = None, /
+    ) -> ResourceT:
+        if self.__started:
+            raise ValueError("Cannot set an index override while the client is active")
+
+        if override is not None:
+            self.__index_overrides[index] = override
+
+        else:
+            self.__index_overrides.pop(index, None)
+
+        return self
+
     async def get_connection(self, resource: ResourceIndex, /) -> aioredis.Redis:
         """Get the connection for a specific resource.
 
@@ -349,16 +370,15 @@ class ResourceClient(traits.Resource, abc.ABC):
             raise TypeError("Cannot use an inactive client")
 
         try:
-            return self.__clients[resource]
+            return self.__clients[self.__index_overrides.get(resource, resource)]
         except KeyError:
-            raise ValueError(f"Resource index `{resource}` is invalid for this client") from None
+            raise ValueError(f"Resource index `{resource}` isn't invalid for this client") from None
 
-    @classmethod
-    def _get_indexes(cls) -> typing.MutableSet[ResourceIndex]:
-        results: typing.Set[ResourceIndex] = set()
-        for sub_class in cls.mro():
+    def __get_indexes(self) -> typing.MutableSet[int]:
+        results: typing.Set[int] = set()
+        for sub_class in type(self).mro():
             if issubclass(sub_class, ResourceClient):
-                results.update(sub_class.index())
+                results.update((self.__index_overrides.get(index, index) for index in sub_class.index()))
 
         return results
 
@@ -375,6 +395,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         bool
             Whether the client has an active connection for the specified resource.
         """
+        resource = self.__index_overrides.get(resource, resource)
         return resource in self.__clients and not self.__clients[resource].closed
 
     async def _optionally_bulk_set_users(self, users_: typing.Iterator[users.User]) -> None:
@@ -414,7 +435,7 @@ class ResourceClient(traits.Resource, abc.ABC):
             expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
             await client.set(int(user.id), data, pexpire=expire_time)
 
-    async def _spawn_connection(self, resource: ResourceIndex) -> None:
+    async def _spawn_connection(self, resource: int) -> None:
         self.__clients[resource] = await aioredis.create_redis_pool(
             address=self.__address,
             db=int(resource),
@@ -430,7 +451,7 @@ class ResourceClient(traits.Resource, abc.ABC):
 
         try:
             # Gather is awaited here so we can assure all clients are started before this returns.
-            await asyncio.gather(*map(self._spawn_connection, self._get_indexes()))
+            await asyncio.gather(*map(self._spawn_connection, self.__get_indexes()))
         except aioredis.RedisError:
             # Ensure no dangling clients are left if this fails to start.
             clients = self.__clients

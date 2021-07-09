@@ -448,7 +448,6 @@ class MappingMarshaller(ObjectMarshaller[_ValueT], abc.ABC):
     def serialize_emoji(self, emoji: emojis.KnownCustomEmoji, /) -> _ValueT:
         return self.dumps(self._get_emoji_serializer()(emoji))
 
-
     def _get_guild_deserializer(self) -> typing.Callable[..., guilds.GatewayGuild]:
         try:
             return self._deserializers[guilds.GatewayGuild]

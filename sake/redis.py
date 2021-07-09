@@ -500,9 +500,7 @@ class _Reference(ResourceClient, abc.ABC):
         return (ResourceIndex.REFERENCE,)
 
     @staticmethod
-    def _generate_reference_key(
-        master: ResourceIndex, master_id: snowflakes.Snowflakeish, slave: ResourceIndex
-    ) -> str:
+    def _generate_reference_key(master: ResourceIndex, master_id: snowflakes.Snowflakeish, slave: ResourceIndex) -> str:
         return f"{int(master)}:{master_id}:{int(slave)}"
 
     # To ensure at least 1 ID is always provided we have a required arg directly before the variable-length argument.
@@ -701,7 +699,7 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
     @classmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return ResourceIndex.PREFIX
+        return (ResourceIndex.PREFIX)
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -1361,9 +1359,7 @@ class MemberCache(ResourceClient, traits.MemberCache):
         client = await self.get_connection(ResourceIndex.MEMBER)
         await client.hdel(int(guild_id), int(user_id))
 
-    async def get_member(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
-    ) -> guilds.Member:
+    async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> guilds.Member:
         # <<Inherited docstring from sake.traits.MemberCache>>
         guild_id = int(guild_id)
         user_id = int(user_id)
@@ -1418,9 +1414,7 @@ class MessageCache(ResourceClient, traits.MessageCache):
 
         elif isinstance(event, message_events.MessageDeleteEvent):
             client = await self.get_connection(ResourceIndex.MESSAGE)
-            asyncio.gather(
-                *itertools.starmap(client.delete, redis_iterators.chunk_values(map(int, event.message_ids)))
-            )
+            asyncio.gather(*itertools.starmap(client.delete, redis_iterators.chunk_values(map(int, event.message_ids))))
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -1576,9 +1570,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         return (ResourceIndex.PRESENCE,)
 
     async def __bulk_add_presences(
-        self,
-        guild_id: snowflakes.Snowflake,
-        presences: typing.Mapping[snowflakes.Snowflake, presences_.MemberPresence],
+        self, guild_id: snowflakes.Snowflake, presences: typing.Mapping[snowflakes.Snowflake, presences_.MemberPresence]
     ) -> None:
         client = await self.get_connection(ResourceIndex.PRESENCE)
         windows = redis_iterators.chunk_values(presences.items())
@@ -1691,9 +1683,7 @@ class RoleCache(_Reference, traits.RoleCache):
         if isinstance(event, (guild_events.GuildAvailableEvent, guild_events.GuildUpdateEvent)) and event.emojis:
             client = await self.get_connection(ResourceIndex.ROLE)
             windows = redis_iterators.chunk_values(event.roles.items())
-            setters = (
-                client.mset(_cast_map_window(window, int, self.marshaller.serialize_role)) for window in windows
-            )
+            setters = (client.mset(_cast_map_window(window, int, self.marshaller.serialize_role)) for window in windows)
             id_setter = self._add_ids(
                 ResourceIndex.GUILD, event.guild_id, ResourceIndex.ROLE, *map(int, event.roles.keys())
             )

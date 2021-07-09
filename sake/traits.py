@@ -42,7 +42,8 @@ from __future__ import annotations
 __all__: typing.Final[typing.Sequence[str]] = [
     "Cache",
     "CacheIterator",
-    "PrefixCache" "EmojiCache",
+    "PrefixCache",
+    "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
     "IntegrationCache",
@@ -1221,9 +1222,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_invites_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, /
-    ) -> CacheIterator[invites.InviteWithMetadata]:
+    def iter_invites_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[invites.InviteWithMetadata]:
         """Iterate over the invites stored in the cache for a specific guild.
 
         Parameters
@@ -1364,9 +1363,7 @@ class MemberCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_member(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
-    ) -> guilds.Member:
+    async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> guilds.Member:
         """Get a member from the cache.
 
         Parameters
@@ -2019,9 +2016,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_presences_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, /
-    ) -> CacheIterator[presences.MemberPresence]:
+    def iter_presences_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[presences.MemberPresence]:
         """Iterate over the presences stored in the cache for a specific guild.
 
         Parameters
@@ -2545,9 +2540,7 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_voice_states_for_channel(
-        self, channel_id: snowflakes.Snowflakeish, /
-    ) -> CacheIterator[voices.VoiceState]:
+    def iter_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> CacheIterator[voices.VoiceState]:
         """Iterate over the voice states stored in the cache for a specific channel.
 
         Parameters
@@ -2651,4 +2644,3 @@ class RefCache(
     """Protocol of a cache which implements all the defined reference resources."""
 
     __slots__: typing.Sequence[str] = ()
-

@@ -33,6 +33,7 @@ from __future__ import annotations
 
 __all__: typing.Final[typing.Sequence[str]] = [
     "ResourceClient",
+    "PrefixCache",
     "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
@@ -138,6 +139,7 @@ class ResourceIndex(enum.IntEnum):
     #  REFERENCE is a special case database solely used for linking other entries to other master entities.
     MESSAGE = 10
     INTEGRATION = 11
+    PREFIX = 12
 
 
 def _cast_map_window(
@@ -689,6 +691,59 @@ class UserCache(_MeCache, traits.UserCache):
             expire_time = _convert_expire_time(expire_time)
 
         await client.set(int(user.id), self.marshaller.serialize_user(user), pexpire=expire_time)
+
+
+class PrefixCache(ResourceClient, traits.PrefixCache):
+    __slots__: typing.Sequence[str] = ()
+
+    @classmethod
+    def index(cls) -> typing.Sequence[ResourceIndex]:
+        # <<Inherited docstring from ResourceClient>>
+        return (ResourceIndex.PREFIX,)
+
+    def subscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().subscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.subscribe()
+
+    def unsubscribe_listeners(self) -> None:
+        # <<Inherited docstring from sake.traits.Resource>>
+        super().unsubscribe_listeners()
+        if self.dispatch is not None:
+            self.dispatch.dispatcher.unsubscribe()
+
+    async def clear_prefixes(self) -> None:
+        # <<Inherited docstring from sake.traits.PrefixCache>>
+        client = await self.get_connection(ResourceIndex.PREFIX)
+        await client.flushdb()
+
+    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        # <<Inherited docstring from sake.traits.PrefixCache>>
+        client = await self.get_connection(ResourceIndex.PREFIX)
+        await client.delete(int(guild_id))
+
+    async def get_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> typing.List[str]:
+        # <<Inherited docstring from sake.traits.PrefixCache>>
+        guild_id = int(guild_id)
+        client = await self.get_connection(ResourceIndex.PREFIX)
+        data = await client.get(guild_id)
+        if not data:
+            raise errors.EntryNotFound(f"Prefix entry `{guild_id}` not found")
+
+        return self.marshaller.deserialize_prefixes(data)
+
+    def iter_prefixes(self, *, window_size: int = WINDOW_SIZE) -> CacheIterator[typing.List[str]]:
+        # <<Inherited docstring from sake.traits.PrefixCache>>
+        return redis_iterators.Iterator(
+            self, ResourceIndex.PREFIX, self.marshaller.deserialize_prefixes, window_size=window_size
+        )
+
+    async def set_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Sequence[str], /) -> None:
+        # <<Inherited docstring from sake.traits.PrefixCache>>
+        client = await self.get_connection(ResourceIndex.PREFIX)
+        data = self.marshaller.serialize_prefixes(prefixes)
+        await client.set(int(guild_id), data)
 
 
 class EmojiCache(_Reference, traits.RefEmojiCache):

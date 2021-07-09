@@ -404,6 +404,9 @@ class EmojiCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
+RefPrefixCache = PrefixCache
+
+
 @typing.runtime_checkable
 class RefEmojiCache(EmojiCache, typing.Protocol):
     """The traits of a implementation which supports a referencial emoji cache."""

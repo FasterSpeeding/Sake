@@ -699,7 +699,7 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
     @classmethod
     def index(cls) -> typing.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
-        return (ResourceIndex.PREFIX)
+        return (ResourceIndex.PREFIX,)
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>

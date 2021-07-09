@@ -701,8 +701,10 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.PREFIX,)
 
+
     async def __on_guild_message_create_event(self, event:message_events.GuildMessageCreateEvent):
         pass #TODO add automatic caching (needs getting the prefix from message_events.GuildMessageCreateEvent)
+
 
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
@@ -714,6 +716,7 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
         if self.dispatch is not None:
+
             self.dispatch.dispatcher.unsubscribe(message_events.GuildMessageCreateEvent, self.__on_guild_message_create_event)
 
     async def clear_prefixes(self) -> None:

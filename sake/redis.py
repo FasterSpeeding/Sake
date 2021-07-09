@@ -701,20 +701,13 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.PREFIX,)
 
-    async def __on_guild_message_create_event(self, event:message_events.GuildMessageCreateEvent):
-        pass #TODO add automatic caching (needs getting the prefix from message_events.GuildMessageCreateEvent)
-
     def subscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().subscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.subscribe(message_events.GuildMessageCreateEvent, self.__on_guild_message_create_event)
 
     def unsubscribe_listeners(self) -> None:
         # <<Inherited docstring from sake.traits.Resource>>
         super().unsubscribe_listeners()
-        if self.dispatch is not None:
-            self.dispatch.dispatcher.unsubscribe(message_events.GuildMessageCreateEvent, self.__on_guild_message_create_event)
 
     async def clear_prefixes(self) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
@@ -736,7 +729,7 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
 
         return self.marshaller.deserialize_prefixes(data)
 
-    def iter_prefixes(self, *, window_size: int = WINDOW_SIZE) -> CacheIterator[typing.List[str]]:
+    def iter_prefixes(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[typing.List[str]]:
         # <<Inherited docstring from sake.traits.PrefixCache>>
         return redis_iterators.Iterator(
             self, ResourceIndex.PREFIX, self.marshaller.deserialize_prefixes, window_size=window_size

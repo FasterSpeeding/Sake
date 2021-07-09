@@ -81,6 +81,14 @@ class ObjectMarshaller(abc.ABC, typing.Generic[_ValueT]):
     __slots__: typing.Sequence[str] = ()
 
     @abc.abstractmethod
+    def deserialize_prefixes(self, value: _ValueT, /) -> typing.List[str]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def serialize_prefixes(self, prefixes: typing.Sequence[str], /) -> _ValueT:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def deserialize_emoji(self, value: _ValueT, /) -> emojis.KnownCustomEmoji:
         raise NotImplementedError
 
@@ -385,6 +393,12 @@ class MappingMarshaller(ObjectMarshaller[_ValueT], abc.ABC):
     def loads(self, data: _ValueT, /) -> typing.MutableMapping[str, typing.Any]:
         raise NotImplementedError
 
+    def deserialize_prefixes(self, value: _ValueT, /) -> typing.List[str]:
+        return self.loads(value)
+
+    def serialize_prefixes(self, prefixes: typing.Sequence[str], /) -> _ValueT:
+        return self.dumps(prefixes)
+
     def _get_emoji_deserializer(self) -> typing.Callable[..., emojis.KnownCustomEmoji]:
         try:
             return self._deserializers[emojis.KnownCustomEmoji]
@@ -433,6 +447,7 @@ class MappingMarshaller(ObjectMarshaller[_ValueT], abc.ABC):
 
     def serialize_emoji(self, emoji: emojis.KnownCustomEmoji, /) -> _ValueT:
         return self.dumps(self._get_emoji_serializer()(emoji))
+
 
     def _get_guild_deserializer(self) -> typing.Callable[..., guilds.GatewayGuild]:
         try:

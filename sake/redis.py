@@ -731,7 +731,7 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         if not data:
             raise errors.EntryNotFound(f"Prefix entry `{guild_id}` not found")
 
-        return [prefix.decode() for prefix in data]
+        return self.marshaller.deserialize_prefixes(data)
 
     def iter_prefixes(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[typing.List[str]]:
         # <<Inherited docstring from sake.traits.PrefixCache>>
@@ -744,7 +744,6 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         client = await self.get_connection(ResourceIndex.PREFIX)
         await client.sadd(int(guild_id), prefix)
         
-    
     async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
         client = await self.get_connection(ResourceIndex.PREFIX)

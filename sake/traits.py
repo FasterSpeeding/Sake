@@ -196,13 +196,35 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> None:
-        """Remove prefixes from the cache.
+    async def clear_prefixes_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        """Clear prefixes for a specific guild.
 
         Parameters
         ----------
         guild_id : hikari.snowflakes.Snowflakeish
-            The ID of the guild to remove the prefixes.
+            The ID of the guild to clear the prefixes.
+
+        !!! note
+            Delete methods do not raise `sake.errors.EntryNotFound` when the
+            targeted entity doesn't exist.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this failed to communicate with the cache's backend.
+            This may be a sign of underlying network or database issues.
+        """
+        raise NotImplementedError
+    
+    async def delete_prefix(self, guild_id: snowflakes.Snowflakeish, prefix: str) -> None:
+        """Delete a specific prefix..
+
+        Parameters
+        ----------
+        guild_id : hikari.snowflakes.Snowflakeish
+            The ID of the guild to clear the prefixes.
+        prefix : str
+            The prefix to delete.
 
         !!! note
             Delete methods do not raise `sake.errors.EntryNotFound` when the
@@ -268,16 +290,54 @@ class PrefixCache(Resource, typing.Protocol):
             being used with the same backend store.
         """
         raise NotImplementedError
+    
+    async def add_prefix(self, guild_id:snowflakes.Snowflakeish, prefix: str) -> None:
+        """Add a prefix to the cache.
 
-    async def set_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Sequence[str], /) -> None:
-        """Add an prefixes to the cache.
+        Parameters
+        ----------
+        guild_id : hikari.snowflakes.Snowflakeish
+            The ID of the guild to store the prefix in the cache.
+        prefix : str
+            The prefix to store in the cache.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this failed to communicate with the cache's
+            backend. This may be a sign of underlying network or database
+            issues.
+        """
+        raise NotImplementedError
+    
+    async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
+        """Add prefixes to the cache.
+
+        Parameters
+        ----------
+        guild_id : hikari.snowflakes.Snowflakeish
+            The ID of the guild to store the prefix in the cache.
+        prefixes : typing.Iterable[str]
+            An iterable of prefixes to store in the cache.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this failed to communicate with the cache's
+            backend. This may be a sign of underlying network or database
+            issues.
+        """
+        raise NotImplementedError
+
+    async def set_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
+        """Set prefixes for a guild.
 
         Parameters
         ----------
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to store the prefixes in the cache.
-        prefixes : typing.Sequence[str]
-            A sequence of prefixes to store in the cache.
+        prefixes : typing.Iterable[str]
+            An iterable of prefixes to store in the cache.
 
         Raises
         ------

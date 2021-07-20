@@ -1566,7 +1566,7 @@ class PresenceCache(ResourceClient, traits.PresenceCache):
         return (ResourceIndex.PRESENCE,)
 
     async def __bulk_add_presences(
-    self, guild_id: snowflakes.Snowflake, presences: typing.Mapping[snowflakes.Snowflake, presences_.MemberPresence]
+        self, guild_id: snowflakes.Snowflake, presences: typing.Mapping[snowflakes.Snowflake, presences_.MemberPresence]
     ) -> None:
         client = await self.get_connection(ResourceIndex.PRESENCE)
         windows = redis_iterators.chunk_values(presences.items())

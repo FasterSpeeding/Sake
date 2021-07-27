@@ -719,7 +719,7 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         client = await self.get_connection(ResourceIndex.PREFIX)
         await client.delete(int(guild_id))
     
-    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes:str) -> None:
+    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
         client = await self.get_connection(ResourceIndex.PREFIX)
         await client.srem(int(guild_id), prefix, *prefixes)

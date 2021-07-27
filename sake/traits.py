@@ -216,7 +216,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
     
-    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes:str) -> None:
+    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         """Delete prefixes from the cache.
 
         Parameters

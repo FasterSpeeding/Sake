@@ -216,15 +216,15 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
     
-    async def delete_prefix(self, guild_id: snowflakes.Snowflakeish, prefix: str) -> None:
-        """Delete a specific prefix..
+    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes:str) -> None:
+        """Delete prefixes from the cache.
 
         Parameters
         ----------
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to clear the prefixes.
         prefix : str
-            The prefix to delete.
+            The first prefix to delete from the cache.
 
         !!! note
             Delete methods do not raise `sake.errors.EntryNotFound` when the
@@ -291,34 +291,15 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
     
-    async def add_prefix(self, guild_id:snowflakes.Snowflakeish, prefix: str) -> None:
-        """Add a prefix to the cache.
-
-        Parameters
-        ----------
-        guild_id : hikari.snowflakes.Snowflakeish
-            The ID of the guild to store the prefix in the cache.
-        prefix : str
-            The prefix to store in the cache.
-
-        Raises
-        ------
-        sake.errors.BackendError
-            Raised when this failed to communicate with the cache's
-            backend. This may be a sign of underlying network or database
-            issues.
-        """
-        raise NotImplementedError
-    
-    async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
+    async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         """Add prefixes to the cache.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
-            The ID of the guild to store the prefix in the cache.
-        prefixes : typing.Iterable[str]
-            An iterable of prefixes to store in the cache.
+        guild_id : snowflakes.Snowflakeish
+            The ID of the guild to store the prefix for in the cache.
+        prefix : str
+            The first prefix to add to the cache.
 
         Raises
         ------

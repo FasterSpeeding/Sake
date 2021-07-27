@@ -719,10 +719,10 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         client = await self.get_connection(ResourceIndex.PREFIX)
         await client.delete(int(guild_id))
     
-    async def delete_prefix(self, guild_id: snowflakes.Snowflakeish, prefix: str) -> None:
+    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes:str) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
         client = await self.get_connection(ResourceIndex.PREFIX)
-        await client.srem(int(guild_id), prefix)
+        await client.srem(int(guild_id), prefix, *prefixes)
 
     async def get_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> typing.List[str]:
         # <<Inherited docstring from sake.traits.PrefixCache>>
@@ -739,21 +739,16 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         return redis_iterators.Iterator(
             self, ResourceIndex.PREFIX, self.marshaller.deserialize_prefixes, window_size=window_size
         )
-
-    async def add_prefix(self, guild_id:snowflakes.Snowflakeish, prefix: str, /) -> None:
-        # <<Inherited docstring from sake.traits.PrefixCache>>
-        client = await self.get_connection(ResourceIndex.PREFIX)
-        await client.sadd(int(guild_id), prefix)
         
-    async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
+    async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
         client = await self.get_connection(ResourceIndex.PREFIX)
-        await client.sadd(int(guild_id), *prefixes)
+        await client.sadd(int(guild_id), prefix, *prefixes)
 
     async def set_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
         await self.clear_prefixes_for_guild(guild_id)
-        await self.add_prefixes(guild_id, prefixes)
+        await self.add_prefixes(guild_id, *prefixes)
 
 
 class EmojiCache(_Reference, traits.RefEmojiCache):

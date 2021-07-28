@@ -701,14 +701,6 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.PREFIX,)
 
-    def subscribe_listeners(self) -> None:
-        # <<Inherited docstring from sake.traits.Resource>>
-        super().subscribe_listeners()
-
-    def unsubscribe_listeners(self) -> None:
-        # <<Inherited docstring from sake.traits.Resource>>
-        super().unsubscribe_listeners()
-
     async def clear_prefixes(self) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
         client = await self.get_connection(ResourceIndex.PREFIX)

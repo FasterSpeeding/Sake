@@ -42,6 +42,7 @@ from __future__ import annotations
 __all__: typing.Final[typing.Sequence[str]] = [
     "Cache",
     "CacheIterator",
+    "PrefixCache",
     "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
@@ -53,6 +54,7 @@ __all__: typing.Final[typing.Sequence[str]] = [
     "PresenceCache",
     "Resource",
     "RefCache",
+    "RefPrefixCache",
     "RefEmojiCache",
     "RefGuildCache",
     "RefGuildChannelCache",
@@ -170,6 +172,165 @@ class Resource(typing.Protocol):
             resource.
         """
         raise NotImplementedError
+
+
+@typing.runtime_checkable
+class PrefixCache(Resource, typing.Protocol):
+    """The traits of a implementation which supports a prefix cache."""
+
+    __slots__: typing.Sequence[str] = ()
+
+    async def clear_prefixes(self) -> None:
+        """Empty the prefix cache store.
+
+        !!! note
+            There is no guarantee that this operation will be complete before
+            the returned coroutine finishes.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this call failed to communicate with the cache's
+            backend. This may be a sign of underlying network or database
+            issues.
+        """
+        raise NotImplementedError
+
+    async def clear_prefixes_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+        """Clear prefixes for a specific guild.
+
+        Parameters
+        ----------
+        guild_id : hikari.snowflakes.Snowflakeish
+            The ID of the guild to clear the prefixes.
+
+        !!! note
+            Delete methods do not raise `sake.errors.EntryNotFound` when the
+            targeted entity doesn't exist.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this failed to communicate with the cache's backend.
+            This may be a sign of underlying network or database issues.
+        """
+        raise NotImplementedError
+    
+    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
+        """Delete prefixes from the cache.
+
+        Parameters
+        ----------
+        guild_id : hikari.snowflakes.Snowflakeish
+            The ID of the guild to clear the prefixes.
+        prefix : str
+            The first prefix to delete from the cache.
+
+        !!! note
+            Delete methods do not raise `sake.errors.EntryNotFound` when the
+            targeted entity doesn't exist.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this failed to communicate with the cache's backend.
+            This may be a sign of underlying network or database issues.
+        """
+        raise NotImplementedError
+
+    async def get_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> typing.List[str]:
+        """Get prefixes from the cache.
+
+        Parameters
+        ----------
+        guild_id : hikari.snowflakes.Snowflakeish
+            The ID of the guild to get the prefixes from the cache.
+
+        Returns
+        -------
+        typing.List[str]
+            The list of prefixes fetched from the cache.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this failed to communicate with the cache's backend.
+            This may be a sign of underlying network or database issues.
+        sake.errors.EntryNotFound
+            Raised when the targeted entity wasn't found.
+        sake.errors.InvalidDataFound
+            Raised when the data retrieved from the backend datastore was
+            either invalid for this implementation or corrupt.
+            This may be a sign of multiple sake versions or implementations
+            being used with the same backend store.
+        """
+        raise NotImplementedError
+
+    def iter_prefixes(self) -> CacheIterator[typing.List[str]]:
+        """Iterate over the prefixes stored in the cache.
+
+        Returns
+        -------
+        CacheIterator[typing.List[str]]
+            An async iterator of the prefixes stored in the cache.
+
+        !!! note
+            Errors won't be raised by the initial call to this method but rather
+            while iterating over the returned asynchronous iterator.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this failed to communicate with the cache's backend.
+            This may be a sign of underlying network or database issues.
+        sake.errors.InvalidDataFound
+            Raised when the data retrieved from the backend datastore was
+            either invalid for this implementation or corrupt.
+            This may be a sign of multiple sake versions or implementations
+            being used with the same backend store.
+        """
+        raise NotImplementedError
+    
+    async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
+        """Add prefixes to the cache.
+
+        Parameters
+        ----------
+        guild_id : snowflakes.Snowflakeish
+            The ID of the guild to store the prefix for in the cache.
+        prefix : str
+            The first prefix to add to the cache.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this failed to communicate with the cache's
+            backend. This may be a sign of underlying network or database
+            issues.
+        """
+        raise NotImplementedError
+
+    async def set_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
+        """Set prefixes for a guild.
+
+        Parameters
+        ----------
+        guild_id : hikari.snowflakes.Snowflakeish
+            The ID of the guild to store the prefixes in the cache.
+        prefixes : typing.Iterable[str]
+            An iterable of prefixes to store in the cache.
+
+        Raises
+        ------
+        sake.errors.BackendError
+            Raised when this failed to communicate with the cache's
+            backend. This may be a sign of underlying network or database
+            issues.
+        """
+        raise NotImplementedError
+
+
+RefPrefixCache = PrefixCache
 
 
 @typing.runtime_checkable

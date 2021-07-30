@@ -382,6 +382,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         "__entity_factory",
         "__event_managed",
         "__event_manager",
+        "__index_overrides",
         "__listeners",
         "__load",
         "__metadata",
@@ -407,9 +408,7 @@ class ResourceClient(traits.Resource, abc.ABC):
         dumps: typing.Callable[[ObjectT], bytes] = lambda obj: json.dumps(obj).encode(),
         loads: typing.Callable[[bytes], ObjectT] = json.loads,
     ) -> None:
-        entity_factory = utility.try_find_type(
-            hikari_traits.EntityFactoryAware, entity_factory, rest, event_manager  # type: ignore[misc]
-        )
+        entity_factory = entity_factory or utility.try_find_type(hikari_traits.EntityFactoryAware, rest, event_manager)
 
         if entity_factory is undefined.UNDEFINED:
             raise ValueError("An entity factory implementation must be provided")
@@ -427,8 +426,8 @@ class ResourceClient(traits.Resource, abc.ABC):
         self.__entity_factory = entity_factory
         self.__event_managed = event_managed
         self.__event_manager = event_manager
-        self.__listeners = utility.find_listeners(self)
         self.__index_overrides: typing.Dict[ResourceIndex, int] = {}
+        self.__listeners = utility.find_listeners(self)
         self.__load = loads
         self.__metadata = metadata or {}
         self.__password = password
@@ -935,6 +934,10 @@ def _get_id(data: ObjectT, /) -> int:
     return int(data["id"])
 
 
+def _decode_prefixes(data: typing.Any, /) -> typing.List[str]:
+    return [prefix.decode() for prefix in typing.cast("typing.List[bytes]", data)]
+
+
 class PrefixCache(ResourceClient, traits.PrefixCache):
     __slots__: typing.Sequence[str] = ()
 
@@ -943,46 +946,45 @@ class PrefixCache(ResourceClient, traits.PrefixCache):
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.PREFIX,)
 
+    @classmethod
+    def intents(cls) -> intents_.Intents:
+        # <<Inherited docstring from ResourceClient>>
+        return intents_.Intents.NONE
+
     async def clear_prefixes(self) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
-        client = await self.get_connection(ResourceIndex.PREFIX)
-        await client.flushdb()
+        await self.get_connection(ResourceIndex.PREFIX).flushdb()
 
     async def clear_prefixes_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
-        client = await self.get_connection(ResourceIndex.PREFIX)
-        await client.delete(int(guild_id))
-    
+        await self.get_connection(ResourceIndex.PREFIX).delete(int(guild_id))
+
     async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
-        client = await self.get_connection(ResourceIndex.PREFIX)
-        await client.srem(int(guild_id), prefix, *prefixes)
+        await self.get_connection(ResourceIndex.PREFIX).srem(int(guild_id), prefix, *prefixes)
 
-    async def get_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> typing.List[str]:
+    async def get_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> typing.Sequence[str]:
         # <<Inherited docstring from sake.traits.PrefixCache>>
         guild_id = int(guild_id)
-        client = await self.get_connection(ResourceIndex.PREFIX)
-        data = await client.smembers(int(guild_id))
+        data = await self.get_connection(ResourceIndex.PREFIX).smembers(int(guild_id))
         if not data:
             raise errors.EntryNotFound(f"Prefix entry `{guild_id}` not found")
 
-        return self.marshaller.deserialize_prefixes(data)
+        return _decode_prefixes(data)
 
-    def iter_prefixes(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[typing.List[str]]:
+    def iter_prefixes(self, *, window_size: int = WINDOW_SIZE) -> traits.CacheIterator[typing.Sequence[str]]:
         # <<Inherited docstring from sake.traits.PrefixCache>>
-        return redis_iterators.Iterator(
-            self, ResourceIndex.PREFIX, self.marshaller.deserialize_prefixes, window_size=window_size
-        )
-        
+        return redis_iterators.Iterator(self, ResourceIndex.PREFIX, _decode_prefixes, window_size=window_size)
+
     async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
-        client = await self.get_connection(ResourceIndex.PREFIX)
-        await client.sadd(int(guild_id), prefix, *prefixes)
+        await self.get_connection(ResourceIndex.PREFIX).sadd(int(guild_id), str(prefix), *map(str, prefixes))
 
     async def set_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
         # <<Inherited docstring from sake.traits.PrefixCache>>
         await self.clear_prefixes_for_guild(guild_id)
-        await self.add_prefixes(guild_id, *prefixes)
+        if prefixes:
+            await self.add_prefixes(guild_id, *prefixes)
 
 
 class EmojiCache(_Reference, traits.RefEmojiCache):

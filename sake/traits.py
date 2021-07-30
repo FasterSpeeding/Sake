@@ -180,7 +180,7 @@ class PrefixCache(Resource, typing.Protocol):
             This may be a sign of underlying network or database issues.
         """
         raise NotImplementedError
-    
+
     async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         """Delete prefixes from the cache.
 
@@ -203,7 +203,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> typing.List[str]:
+    async def get_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> typing.Sequence[str]:
         """Get prefixes from the cache.
 
         Parameters
@@ -213,8 +213,8 @@ class PrefixCache(Resource, typing.Protocol):
 
         Returns
         -------
-        typing.List[str]
-            The list of prefixes fetched from the cache.
+        typing.Sequence[str]
+            The sequences of prefixes fetched from the cache.
 
         Raises
         ------
@@ -231,7 +231,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_prefixes(self) -> CacheIterator[typing.List[str]]:
+    def iter_prefixes(self) -> CacheIterator[typing.Sequence[str]]:
         """Iterate over the prefixes stored in the cache.
 
         Returns
@@ -255,7 +255,7 @@ class PrefixCache(Resource, typing.Protocol):
             being used with the same backend store.
         """
         raise NotImplementedError
-    
+
     async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         """Add prefixes to the cache.
 

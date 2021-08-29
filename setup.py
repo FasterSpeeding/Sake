@@ -44,7 +44,7 @@ setuptools.setup(
     author=metadata.author,
     author_email=metadata.email,
     license=metadata.license,
-    description="A Discord API for Python and asyncio built on good intentions.",
+    description="Asynchronous cache framework (with standard Redis impl) for Hikari.",
     long_description=README,
     long_description_content_type="text/markdown",
     include_package_data=True,

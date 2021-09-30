@@ -50,7 +50,7 @@ setuptools.setup(
     include_package_data=True,
     install_requires=requires,
     dependency_links=dependency_links,
-    python_requires=">=3.8.0,<3.10",
+    python_requires=">=3.8.0,<3.11",
     classifiers=[
         "Development Status :: 1 - Planning",
         "License :: OSI Approved :: BSD License",

@@ -146,98 +146,6 @@ def _to_map(
     return {key_cast(entry): value_cast(entry) for entry in iterator}
 
 
-# class AioRedisFacade:
-#     __slots__ = ("client", "dump", "load")
-
-#     def __init__(
-#         self,
-#         *,
-#         client: aioredis.Redis,
-#         dump: typing.Callable[[ObjectT], bytes],
-#         load: typing.Callable[[bytes], ObjectT],
-#     ) -> None:
-#         self.client = client
-#         self.dump = dump
-#         self.load = load
-
-#     @property
-#     def is_closed(self) -> bool:
-#         state = self.client.closed
-#         assert isinstance(state, bool)
-#         return state
-
-#     async def close(self) -> None:
-#         self.client.close()
-
-#     async def get(self, key: RedisValueT, /, *, error: str = "Resource not found") -> ObjectT:
-#         data = await self.client.get(key)
-
-#         if data is None:
-#             raise errors.EntryNotFound(error)
-
-#         assert isinstance(data, bytes)
-#         return self.load(data)
-
-#     async def hget(
-#         self,
-#         inner_key: RedisValueT,
-#         outer_key: RedisValueT,
-#         /,
-#         *,
-#         error: str = "Resource not found",
-#     ) -> ObjectT:
-#         data = await self.client.hget(inner_key, outer_key)
-
-#         if data is None:
-#             raise errors.EntryNotFound(error)
-
-#         assert isinstance(data, bytes)
-#         return self.load(data)
-
-#     async def hset(self, outer_key: RedisValueT, inner_key: RedisValueT, payload: ObjectT, /) -> None:
-#         # TODO: expire?
-#         await self.client.hset(outer_key, inner_key, self.dump(payload))
-
-#     async def sadd(self, key: RedisValueT, value: RedisValueT, /, *values: RedisValueT) -> None:
-#         await self.client.sadd(key, value, *values)
-
-#     async def scard(self, key: RedisValueT, /) -> int:
-#         result = await self.client.scard(key)
-#         assert isinstance(result, int)
-#         return result
-
-#     async def set(
-#         self,
-#         key: RedisValueT,
-#         payload: ObjectT,
-#         /,
-#         *,
-#         pexpire: typing.Optional[int] = None,
-#     ) -> None:
-#         await self.client.set(key, self.dump(payload), pexpire=pexpire)
-
-#     async def srem(self, key: RedisValueT, value: RedisValueT, /, *values: RedisValueT) -> None:
-#         await self.client.srem(key, value, *values)
-
-#     async def sscan(
-#         self,
-#         key: RedisValueT,
-#         /,
-#         *,
-#         cursor: int = 0,
-#         match: typing.Optional[str] = None,
-#         count: typing.Optional[int] = None,
-#     ) -> typing.Tuple[int, typing.List[RedisValueT]]:
-#         cursor, result = await self.client.sscan(key, cursor=cursor, match=match, count=count)
-#         assert isinstance(cursor, int)
-#         assert isinstance(result, list)
-#         assert not result or isinstance(result[0], (bytes, int, str))
-#         return cursor, result
-
-#     async def pexpire(self, key: RedisValueT, expire: int, /) -> None:
-#         await self.client.pexpire(key, expire)
-
-
 # TODO: document that it isn't guaranteed that deletion will be finished before clear command coroutines finish.
 # TODO: may go back to approach where client logic and interface are separate classes
 class ResourceClient(sake_abc.Resource, abc.ABC):
@@ -722,8 +630,10 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
 
     async def get_me(self) -> hikari.OwnUser:
         # <<Inherited docstring from sake.abc.MeCache>>
-        payload = await self.get_connection(ResourceIndex.USER).get(self.__ME_KEY)
-        return self.rest.entity_factory.deserialize_my_user(payload)
+        if payload := await self.get_connection(ResourceIndex.USER).get(self.__ME_KEY):
+            return self.rest.entity_factory.deserialize_my_user(payload)
+
+        raise errors.EntryNotFound("Own user not found")
 
     async def set_me(self, payload: ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.MeCache>>
@@ -778,8 +688,10 @@ class UserCache(_MeCache, sake_abc.UserCache):
 
     async def get_user(self, user_id: hikari.Snowflakeish, /) -> hikari.User:
         # <<Inherited docstring from sake.abc.UserCache>>
-        payload = await self.get_connection(ResourceIndex.USER).get(str(user_id))
-        return self.rest.entity_factory.deserialize_user(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.USER).get(str(user_id)):
+            return self.rest.entity_factory.deserialize_user(self.load(payload))
+
+        raise errors.EntryNotFound("User not found")
 
     def iter_users(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.User]:
         # <<Inherited docstring from sake.abc.UserCache>>
@@ -838,11 +750,10 @@ class PrefixCache(ResourceClient, sake_abc.PrefixCache):
 
     async def get_prefixes(self, guild_id: hikari.Snowflakeish, /) -> typing.Sequence[str]:
         # <<Inherited docstring from sake.abc.PrefixCache>>
-        data = await self.get_connection(ResourceIndex.PREFIX).smembers(str(guild_id))
-        if not data:
-            raise errors.EntryNotFound(f"Prefix entry `{guild_id}` not found")
+        if data := await self.get_connection(ResourceIndex.PREFIX).smembers(str(guild_id)):
+            return _decode_prefixes(data)
 
-        return _decode_prefixes(data)
+        raise errors.EntryNotFound(f"Prefix entry `{guild_id}` not found")
 
     def iter_prefixes(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[typing.Sequence[str]]:
         # <<Inherited docstring from sake.abc.PrefixCache>>
@@ -943,8 +854,10 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
 
     async def get_emoji(self, emoji_id: hikari.Snowflakeish, /) -> hikari.KnownCustomEmoji:
         # <<Inherited docstring from sake.abc.EmojiCache>>
-        payload = await self.get_connection(ResourceIndex.EMOJI).get(str(emoji_id))
-        return self.__deserialize_known_custom_emoji(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.EMOJI).get(str(emoji_id)):
+            return self.__deserialize_known_custom_emoji(self.load(payload))
+
+        raise errors.EntryNotFound("Emoji not found")
 
     def __deserialize_known_custom_emoji(self, payload: ObjectT, /) -> hikari.KnownCustomEmoji:
         guild_id = hikari.Snowflake(payload["guild_id"])
@@ -1011,8 +924,10 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
 
     async def get_guild(self, guild_id: hikari.Snowflakeish, /) -> hikari.GatewayGuild:
         # <<Inherited docstring from sake.abc.GuildCache>>
-        payload = await self.get_connection(ResourceIndex.GUILD).get(str(guild_id))
-        return self.__deserialize_guild(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.GUILD).get(str(guild_id)):
+            return self.__deserialize_guild(self.load(payload))
+
+        raise errors.EntryNotFound("Guild not found")
 
     def iter_guilds(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.GatewayGuild]:
         # <<Inherited docstring from sake.abc.GuildCache>>
@@ -1121,8 +1036,10 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 
     async def get_guild_channel(self, channel_id: hikari.Snowflakeish, /) -> hikari.GuildChannel:
         # <<Inherited docstring from sake.abc.GuildChannelCache>>
-        payload = await self.get_connection(ResourceIndex.CHANNEL).get(str(channel_id))
-        return self.__deserialize_guild_channel(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.CHANNEL).get(str(channel_id)):
+            return self.__deserialize_guild_channel(self.load(payload))
+
+        raise errors.EntryNotFound("Guild channel not found")
 
     def __deserialize_guild_channel(self, payload: ObjectT, /) -> hikari.GuildChannel:
         channel = self.rest.entity_factory.deserialize_channel(payload)
@@ -1211,8 +1128,10 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
 
     async def get_integration(self, integration_id: hikari.Snowflakeish, /) -> hikari.Integration:
         # <<Inherited docstring from sake.abc.IntegrationCache>>
-        payload = await self.get_connection(ResourceIndex.INTEGRATION).get(str(integration_id))
-        return self.rest.entity_factory.deserialize_integration(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.INTEGRATION).get(str(integration_id)):
+            return self.rest.entity_factory.deserialize_integration(self.load(payload))
+
+        raise errors.EntryNotFound("Integration not found")
 
     def iter_integrations(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.Integration]:
         # <<Inherited docstring from sake.abc.IntegrationCache>>
@@ -1300,8 +1219,10 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
 
     async def get_invite(self, invite_code: str, /) -> hikari.InviteWithMetadata:
         # <<Inherited docstring from sake.abc.InviteCache>>
-        payload = await self.get_connection(ResourceIndex.INVITE).get(str(invite_code))
-        return self.rest.entity_factory.deserialize_invite_with_metadata(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.INVITE).get(str(invite_code)):
+            return self.rest.entity_factory.deserialize_invite_with_metadata(self.load(payload))
+
+        raise errors.EntryNotFound("Invite not found")
 
     def iter_invites(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.InviteWithMetadata]:
         # <<Inherited docstring from sake.abc.InviteCache>>
@@ -1464,8 +1385,10 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
 
     async def get_member(self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /) -> hikari.Member:
         # <<Inherited docstring from sake.abc.MemberCache>>
-        payload = await self.get_connection(ResourceIndex.MEMBER).hget(str(guild_id), str(user_id))
-        return self.rest.entity_factory.deserialize_member(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.MEMBER).hget(str(guild_id), str(user_id)):
+            return self.rest.entity_factory.deserialize_member(self.load(payload))
+
+        raise errors.EntryNotFound("Member not found")
 
     def iter_members(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.Member]:
         # <<Inherited docstring from sake.abc.MemberCache>>
@@ -1559,8 +1482,10 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
 
     async def get_message(self, message_id: hikari.Snowflakeish, /) -> hikari.Message:
         # <<Inherited docstring from sake.abc.MessageCache>>
-        payload = await self.get_connection(ResourceIndex.MESSAGE).get(str(message_id))
-        return self.rest.entity_factory.deserialize_message(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.MESSAGE).get(str(message_id)):
+            return self.rest.entity_factory.deserialize_message(self.load(payload))
+
+        raise errors.EntryNotFound("Message not found")
 
     def iter_messages(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.Message]:
         # <<Inherited docstring from sake.abc.MessageCache>>
@@ -1653,8 +1578,10 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
         self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /
     ) -> hikari.MemberPresence:
         # <<Inherited docstring from sake.abc.PresenceCache>>
-        payload = await self.get_connection(ResourceIndex.PRESENCE).hget(str(guild_id), str(user_id))
-        return self.rest.entity_factory.deserialize_member_presence(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.PRESENCE).hget(str(guild_id), str(user_id)):
+            return self.rest.entity_factory.deserialize_member_presence(self.load(payload))
+
+        raise errors.EntryNotFound("Presence not found")
 
     def iter_presences(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.MemberPresence]:
         # <<Inherited docstring from sake.abc.PresenceCache>>
@@ -1758,8 +1685,10 @@ class RoleCache(_Reference, sake_abc.RoleCache):
 
     async def get_role(self, role_id: hikari.Snowflakeish, /) -> hikari.Role:
         # <<Inherited docstring from sake.abc.RoleCache>>
-        payload = await self.get_connection(ResourceIndex.ROLE).get(str(role_id))
-        return self.__deserialize_role(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.ROLE).get(str(role_id)):
+            return self.__deserialize_role(self.load(payload))
+
+        raise errors.EntryNotFound("Role not found")
 
     def __deserialize_role(self, payload: ObjectT, /) -> hikari.Role:
         guild_id = hikari.Snowflake(payload["guild_id"])
@@ -1947,8 +1876,10 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /
     ) -> hikari.VoiceState:
         # <<Inherited docstring from sake.abc.VoiceStateCache>>
-        payload = await self.get_connection(ResourceIndex.VOICE_STATE).hget(str(guild_id), str(user_id))
-        return self.rest.entity_factory.deserialize_voice_state(self.load(payload))
+        if payload := await self.get_connection(ResourceIndex.VOICE_STATE).hget(str(guild_id), str(user_id)):
+            return self.rest.entity_factory.deserialize_voice_state(self.load(payload))
+
+        raise errors.EntryNotFound("Voice state not found")
 
     def iter_voice_states(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.VoiceState]:
         # <<Inherited docstring from sake.abc.VoiceStateCache>>

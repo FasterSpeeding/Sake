@@ -931,11 +931,11 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
         # <<Inherited docstring from sake.abc.EmojiCache>>
         str_emoji_id = str(emoji_id)
         if guild_id is None:
-            try:
-                payload = await self.get_connection(ResourceIndex.EMOJI).get(str_emoji_id)
-                guild_id = int(payload["guild_id"])
-            except errors.EntryNotFound:
+            payload = await self.get_connection(ResourceIndex.EMOJI).get(str_emoji_id)
+            if not payload:
                 return
+
+            guild_id = int(self.load(payload)["guild_id"])
 
         client = self.get_connection(ResourceIndex.EMOJI)
         await self._delete_ids(ResourceIndex.GUILD, str(guild_id), ResourceIndex.EMOJI, str_emoji_id)
@@ -1055,13 +1055,8 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 
     @utility.as_raw_listener("CHANNEL_PINS_UPDATE")
     async def __on_channel_pins_update(self, event: hikari.ShardPayloadEvent, /) -> None:
-        try:
-            payload = self.load(
-                await self.get_connection(ResourceIndex.CHANNEL).get(str(int(event.payload["channel_id"])))
-            )
-        except errors.EntryNotFound:
-            pass
-        else:
+        if payload := await self.get_connection(ResourceIndex.CHANNEL).get(str(int(event.payload["channel_id"]))):
+            payload = self.load(payload)
             payload["last_pin_timestamp"] = event.payload.get("last_pin_timestamp")
             await self.set_guild_channel(payload)
 
@@ -1114,11 +1109,11 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         # <<Inherited docstring from sake.abc.GuildChannelCache>>
         str_channel_id = str(channel_id)
         if guild_id is None:
-            try:
-                payload = await self.get_connection(ResourceIndex.CHANNEL).get(str_channel_id)
-                guild_id = int(payload["guild_id"])
-            except errors.EntryNotFound:
+            payload = await self.get_connection(ResourceIndex.CHANNEL).get(str_channel_id)
+            if not payload:
                 return
+
+            guild_id = int(self.load(payload)["guild_id"])
 
         client = self.get_connection(ResourceIndex.CHANNEL)
         await self._delete_ids(ResourceIndex.GUILD, str(guild_id), ResourceIndex.CHANNEL, str_channel_id)
@@ -1204,11 +1199,11 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
         # <<Inherited docstring from sake.abc.IntegrationCache>>
         str_integration_id = str(integration_id)
         if guild_id is None:
-            try:
-                payload = await self.get_connection(ResourceIndex.INTEGRATION).get(str_integration_id)
-                guild_id = int(payload["guild_id"])
-            except errors.EntryNotFound:
+            payload = await self.get_connection(ResourceIndex.INTEGRATION).get(str_integration_id)
+            if not payload:
                 return
+
+            guild_id = int(self.load(payload)["guild_id"])
 
         await self._delete_ids(ResourceIndex.GUILD, str(guild_id), ResourceIndex.INTEGRATION, str_integration_id)
         client = self.get_connection(ResourceIndex.INTEGRATION)
@@ -1409,7 +1404,9 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
         str_guild_id = str(guild_id)
         client = self.get_connection(ResourceIndex.MEMBER)
         windows = redis_iterators.chunk_values((_add_guild_id(payload, str_guild_id) for payload in members))
-        setters = (client.hset(str_guild_id, mapping=_to_map(window, _get_sub_user_id, self.dump)) for window in windows)
+        setters = (
+            client.hset(str_guild_id, mapping=_to_map(window, _get_sub_user_id, self.dump)) for window in windows
+        )
         user_setter = self._try_bulk_set_users(member["user"] for member in members)
         await asyncio.gather(*setters, user_setter)
 
@@ -1587,15 +1584,14 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
     ) -> bool:
         # <<Inherited docstring from sake.abc.MessageCache>>
         # This is a special case method for handling the partial message updates we get
-        try:
-            full_message = self.load(await self.get_connection(ResourceIndex.MESSAGE).get(str(int(payload["id"]))))
-        except errors.EntryNotFound:
-            return False
+        if full_message := await self.get_connection(ResourceIndex.MESSAGE).get(str(int(payload["id"]))):
+            # TODO: do we need to unset fields?
+            full_message = self.load(full_message)
+            full_message.update(payload)
+            await self.set_message(full_message, expire_time=expire_time)
+            return True
 
-        # TODO: do we need to unset fields?
-        full_message.update(payload)
-        await self.set_message(full_message, expire_time=expire_time)
-        return True
+        return False
 
 
 class PresenceCache(ResourceClient, sake_abc.PresenceCache):
@@ -1615,7 +1611,9 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
         str_guild_id = str(guild_id)
         client = self.get_connection(ResourceIndex.PRESENCE)
         windows = redis_iterators.chunk_values(_add_guild_id(payload, str_guild_id) for payload in presences)
-        setters = (client.hset(str_guild_id, mapping=_to_map(window, _get_sub_user_id, self.dump)) for window in windows)
+        setters = (
+            client.hset(str_guild_id, mapping=_to_map(window, _get_sub_user_id, self.dump)) for window in windows
+        )
         await asyncio.gather(*setters)
 
     @utility.as_raw_listener("GUILD_CREATE")  # Presences is not included on GUILD_UPDATE
@@ -1748,11 +1746,11 @@ class RoleCache(_Reference, sake_abc.RoleCache):
         # <<Inherited docstring from sake.abc.RoleCache>>
         str_role_id = str(role_id)
         if guild_id is None:
-            try:
-                payload = await self.get_connection(ResourceIndex.ROLE).get(str_role_id)
-                guild_id = int(payload["guild_id"])
-            except errors.EntryNotFound:
+            payload = await self.get_connection(ResourceIndex.ROLE).get(str_role_id)
+            if not payload:
                 return
+
+            guild_id = int(self.load(payload)["guild_id"])
 
         client = self.get_connection(ResourceIndex.ROLE)
         await self._delete_ids(ResourceIndex.GUILD, str(guild_id), ResourceIndex.ROLE, str_role_id)
@@ -1935,15 +1933,11 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         str_user_id = str(user_id)
         client = self.get_connection(ResourceIndex.VOICE_STATE)
 
-        try:
-            payload = await self.get_connection(ResourceIndex.VOICE_STATE).hget(str_guild_id, str_user_id)
-        except errors.EntryNotFound:
-            pass
-        else:
+        if payload := await self.get_connection(ResourceIndex.VOICE_STATE).hget(str_guild_id, str_user_id):
             await client.hdel(str_guild_id, str_user_id)
             await self._delete_ids(
                 ResourceIndex.CHANNEL,
-                str(int(payload["channel_id"])),
+                str(int(self.load(payload)["channel_id"])),
                 ResourceIndex.VOICE_STATE,
                 str_user_id,
                 reference_key=True,

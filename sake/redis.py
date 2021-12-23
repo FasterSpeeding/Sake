@@ -140,7 +140,7 @@ _KeyT = typing.TypeVar("_KeyT")
 _ValueT = typing.TypeVar("_ValueT")
 
 
-def _cast_to_map(
+def _to_map(
     iterator: typing.Iterable[_T], key_cast: typing.Callable[[_T], _KeyT], value_cast: typing.Callable[[_T], _ValueT]
 ) -> dict[_KeyT, _ValueT]:
     return {key_cast(entry): value_cast(entry) for entry in iterator}
@@ -538,7 +538,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             #     transaction.pexpire(user_id, expire_time)
             #
             # expire_setters.append(transaction.execute())
-            await client.mset(_cast_to_map(window, _get_id, self.dump))
+            await client.mset(_to_map(window, _get_id, self.dump))
             await asyncio.gather(*(client.pexpire(_get_id(payload), expire_time) for payload in window))
             #  TODO: benchmark bulk setting expire with transaction vs this
             # user_setters.append(client.mset(processed_window))
@@ -876,7 +876,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
         str_guild_id = str(guild_id)
         client = self.get_connection(ResourceIndex.EMOJI)
         windows = redis_iterators.chunk_values(_add_guild_id(emoji, str_guild_id) for emoji in emojis)
-        setters = (client.mset(_cast_to_map(window, _get_id, self.dump)) for window in windows)
+        setters = (client.mset(_to_map(window, _get_id, self.dump)) for window in windows)
         user_setter = self._try_bulk_set_users(user for payload in emojis if (user := payload.get("user")))
         reference_setter = self._add_ids(
             ResourceIndex.GUILD, str_guild_id, ResourceIndex.EMOJI, *(int(payload["id"]) for payload in emojis)
@@ -1076,7 +1076,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         setters: typing.List[typing.Awaitable[None]] = []
         raw_channels = event.payload["channels"]
         for window in redis_iterators.chunk_values(_add_guild_id(payload, str_guild_id) for payload in raw_channels):
-            setters.append(client.mset(_cast_to_map(window, _get_id, self.dump)))
+            setters.append(client.mset(_to_map(window, _get_id, self.dump)))
             channel_ids.extend(int(payload["id"]) for payload in window)
 
         id_setter = self._add_ids(ResourceIndex.GUILD, str_guild_id, ResourceIndex.CHANNEL, *channel_ids)
@@ -1409,7 +1409,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
         str_guild_id = str(guild_id)
         client = self.get_connection(ResourceIndex.MEMBER)
         windows = redis_iterators.chunk_values((_add_guild_id(payload, str_guild_id) for payload in members))
-        setters = (client.hmset(str_guild_id, _cast_to_map(window, _get_sub_user_id, self.dump)) for window in windows)
+        setters = (client.hset(str_guild_id, mapping=_to_map(window, _get_sub_user_id, self.dump)) for window in windows)
         user_setter = self._try_bulk_set_users(member["user"] for member in members)
         await asyncio.gather(*setters, user_setter)
 
@@ -1615,7 +1615,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
         str_guild_id = str(guild_id)
         client = self.get_connection(ResourceIndex.PRESENCE)
         windows = redis_iterators.chunk_values(_add_guild_id(payload, str_guild_id) for payload in presences)
-        setters = (client.hmset(str_guild_id, _cast_to_map(window, _get_sub_user_id, self.dump)) for window in windows)
+        setters = (client.hset(str_guild_id, mapping=_to_map(window, _get_sub_user_id, self.dump)) for window in windows)
         await asyncio.gather(*setters)
 
     @utility.as_raw_listener("GUILD_CREATE")  # Presences is not included on GUILD_UPDATE
@@ -1703,7 +1703,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
         roles = event.payload["roles"]
         windows = redis_iterators.chunk_values(_add_guild_id(payload, str_guild_id) for payload in roles)
         client = self.get_connection(ResourceIndex.ROLE)
-        setters = (client.mset(_cast_to_map(window, _get_id, self.dump)) for window in windows)
+        setters = (client.mset(_to_map(window, _get_id, self.dump)) for window in windows)
         id_setter = self._add_ids(
             ResourceIndex.GUILD, str_guild_id, ResourceIndex.ROLE, *(int(payload["id"]) for payload in roles)
         )
@@ -1850,7 +1850,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         windows = redis_iterators.chunk_values(
             _add_voice_fields(payload, str_guild_id, members[int(payload["user_id"])]) for payload in voice_states
         )
-        setters = (client.hmset(str_guild_id, _cast_to_map(window, _get_user_id, self.dump)) for window in windows)
+        setters = (client.hset(str_guild_id, mapping=_to_map(window, _get_user_id, self.dump)) for window in windows)
 
         references = self.__generate_references(voice_states, guild_id=str_guild_id)
         reference_setters = (

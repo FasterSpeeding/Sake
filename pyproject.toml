@@ -28,7 +28,7 @@ classifiers = [
         "Typing :: Typed",
 ]
 dependencies = [
-    "aioredis~=2.0.0",
+    "aioredis~=2.0",
     "hikari~=2.0.0.dev104",
 ]
 

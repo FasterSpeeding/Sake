@@ -631,7 +631,7 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
     async def get_me(self) -> hikari.OwnUser:
         # <<Inherited docstring from sake.abc.MeCache>>
         if payload := await self.get_connection(ResourceIndex.USER).get(self.__ME_KEY):
-            return self.rest.entity_factory.deserialize_my_user(payload)
+            return self.rest.entity_factory.deserialize_my_user(self.load(payload))
 
         raise errors.EntryNotFound("Own user not found")
 
@@ -920,6 +920,9 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
         await self.get_connection(ResourceIndex.GUILD).delete(str(guild_id))
 
     def __deserialize_guild(self, payload: ObjectT, /) -> hikari.GatewayGuild:
+        # Hikari's deserialization logic expcets these fields to be present.
+        payload["roles"] = []
+        payload["emojis"] = []
         return self.rest.entity_factory.deserialize_gateway_guild(payload).guild
 
     async def get_guild(self, guild_id: hikari.Snowflakeish, /) -> hikari.GatewayGuild:

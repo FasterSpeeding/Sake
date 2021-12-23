@@ -39,7 +39,7 @@
 
 from __future__ import annotations
 
-__all__: typing.Final[typing.Sequence[str]] = [
+__all__: typing.Sequence[str] = [
     "Cache",
     "CacheIterator",
     "PrefixCache",
@@ -75,24 +75,12 @@ __all__: typing.Final[typing.Sequence[str]] = [
 import abc
 import typing
 
-from hikari import iterators
-
-if typing.TYPE_CHECKING:
-    from hikari import channels
-    from hikari import emojis
-    from hikari import guilds
-    from hikari import invites
-    from hikari import messages
-    from hikari import presences
-    from hikari import snowflakes
-    from hikari import users
-    from hikari import voices
-
+import hikari
 
 ValueT = typing.TypeVar("ValueT")
 
 
-class CacheIterator(iterators.LazyIterator[ValueT], abc.ABC):
+class CacheIterator(hikari.LazyIterator[ValueT], abc.ABC):
     """A asynchronous iterator of entries within a defined cache store."""
 
     __slots__: typing.Sequence[str] = ()
@@ -161,7 +149,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def clear_prefixes_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_prefixes_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Clear prefixes for a specific guild.
 
         Parameters
@@ -181,7 +169,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
+    async def delete_prefixes(self, guild_id: hikari.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         """Delete prefixes from the cache.
 
         Parameters
@@ -203,7 +191,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_prefixes(self, guild_id: snowflakes.Snowflakeish, /) -> typing.Sequence[str]:
+    async def get_prefixes(self, guild_id: hikari.Snowflakeish, /) -> typing.Sequence[str]:
         """Get prefixes from the cache.
 
         Parameters
@@ -256,7 +244,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def add_prefixes(self, guild_id: snowflakes.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
+    async def add_prefixes(self, guild_id: hikari.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
         """Add prefixes to the cache.
 
         Parameters
@@ -275,7 +263,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def set_prefixes(self, guild_id: snowflakes.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
+    async def set_prefixes(self, guild_id: hikari.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
         """Set prefixes for a guild.
 
         Parameters
@@ -320,7 +308,7 @@ class EmojiCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_emoji(self, emoji_id: hikari.Snowflakeish, /) -> None:
         """Remove an emoji from the cache.
 
         Parameters
@@ -340,7 +328,7 @@ class EmojiCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_emoji(self, emoji_id: snowflakes.Snowflakeish, /) -> emojis.KnownCustomEmoji:
+    async def get_emoji(self, emoji_id: hikari.Snowflakeish, /) -> hikari.KnownCustomEmoji:
         """Get an emoji from the cache.
 
         Parameters
@@ -368,7 +356,7 @@ class EmojiCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_emojis(self) -> CacheIterator[emojis.KnownCustomEmoji]:
+    def iter_emojis(self) -> CacheIterator[hikari.KnownCustomEmoji]:
         """Iterate over the emojis stored in the cache.
 
         Returns
@@ -396,11 +384,11 @@ class EmojiCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefEmojiCache(EmojiCache, typing.Protocol):
-    """The traits of a implementation which supports a referencial emoji cache."""
+    """The traits of a implementation which supports a referential emoji cache."""
 
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_emojis_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove emojis belonging to a specific guild from the cache.
 
         !!! note
@@ -420,7 +408,7 @@ class RefEmojiCache(EmojiCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_emojis_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[emojis.KnownCustomEmoji]:
+    def iter_emojis_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.KnownCustomEmoji]:
         """Iterate over the emojis stored in the cache for a specific guild.
 
         Parameters
@@ -474,7 +462,7 @@ class GuildCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove a guild from the cache.
 
         Parameters
@@ -494,7 +482,7 @@ class GuildCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_guild(self, guild_id: snowflakes.Snowflakeish, /) -> guilds.GatewayGuild:
+    async def get_guild(self, guild_id: hikari.Snowflakeish, /) -> hikari.GatewayGuild:
         """Get a guild from the cache.
 
         Parameters
@@ -522,7 +510,7 @@ class GuildCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_guilds(self) -> CacheIterator[guilds.GatewayGuild]:
+    def iter_guilds(self) -> CacheIterator[hikari.GatewayGuild]:
         """Iterate over the guilds stored in the cache.
 
         Returns
@@ -573,7 +561,7 @@ class GuildChannelCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_guild_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
         """Remove a guild guild channel from the cache.
 
         Parameters
@@ -593,7 +581,7 @@ class GuildChannelCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_guild_channel(self, channel_id: snowflakes.Snowflakeish, /) -> channels.GuildChannel:
+    async def get_guild_channel(self, channel_id: hikari.Snowflakeish, /) -> hikari.GuildChannel:
         """Get a guild channel from the cache.
 
         Parameters
@@ -621,7 +609,7 @@ class GuildChannelCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_guild_channels(self) -> CacheIterator[channels.GuildChannel]:
+    def iter_guild_channels(self) -> CacheIterator[hikari.GuildChannel]:
         """Iterate over the guild channels stored in the cache.
 
         Returns
@@ -649,11 +637,11 @@ class GuildChannelCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
-    """The traits of a implementation which supports a referencial guild channel cache."""
+    """The traits of a implementation which supports a referential guild channel cache."""
 
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_guild_channels_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_guild_channels_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the guild channel cache store for the specified guild.
 
         Parameters
@@ -674,9 +662,7 @@ class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_guild_channels_for_guild(
-        self, guild_id: snowflakes.Snowflakeish, /
-    ) -> CacheIterator[channels.GuildChannel]:
+    def iter_guild_channels_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.GuildChannel]:
         """Iterate over the guild channels stored in the cache for a specific guild.
 
         Parameters
@@ -728,7 +714,7 @@ class IntegrationCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_integration(self, integration_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_integration(self, integration_id: hikari.Snowflakeish, /) -> None:
         """Remove an integration channel from the cache.
 
         Parameters
@@ -748,7 +734,7 @@ class IntegrationCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_integration(self, integration_id: snowflakes.Snowflakeish, /) -> guilds.Integration:
+    async def get_integration(self, integration_id: hikari.Snowflakeish, /) -> hikari.Integration:
         """Get an integration from the cache.
 
         Parameters
@@ -776,7 +762,7 @@ class IntegrationCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_integrations(self) -> CacheIterator[guilds.Integration]:
+    def iter_integrations(self) -> CacheIterator[hikari.Integration]:
         """Iterate over the integrations stored in the cache.
 
         Returns
@@ -804,9 +790,9 @@ class IntegrationCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefIntegrationCache(IntegrationCache, typing.Protocol):
-    """The traits of a implementation which supports a referencial invite cache."""
+    """The traits of a implementation which supports a referential invite cache."""
 
-    async def clear_integrations_for_application(self, application_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_integrations_for_application(self, application_id: hikari.Snowflakeish, /) -> None:
         """Remove the integrations cached for an application.
 
         Parameters
@@ -827,7 +813,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def clear_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_integrations_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the integrations cached for a guild.
 
         Parameters
@@ -849,7 +835,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
         raise NotImplementedError
 
     async def delete_integration_by_application(
-        self, guild_id: snowflakes.Snowflakeish, application_id: snowflakes.Snowflakeish, /
+        self, guild_id: hikari.Snowflakeish, application_id: hikari.Snowflakeish, /
     ) -> None:
         """Remove an integration channel from the cache by the ID of it's application.
 
@@ -873,8 +859,8 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
         raise NotImplementedError
 
     async def get_integration_by_application(
-        self, guild_id: snowflakes.Snowflakeish, application_id: snowflakes.Snowflakeish, /
-    ) -> guilds.Integration:
+        self, guild_id: hikari.Snowflakeish, application_id: hikari.Snowflakeish, /
+    ) -> hikari.Integration:
         """Get an integration from the cache by the ID of it's application.
 
         Parameters
@@ -905,8 +891,8 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
         raise NotImplementedError
 
     def iter_integrations_for_application(
-        self, application_id: snowflakes.Snowflakeish, /
-    ) -> CacheIterator[guilds.Integration]:
+        self, application_id: hikari.Snowflakeish, /
+    ) -> CacheIterator[hikari.Integration]:
         """Iterate over the integrations stored in the cache for a specific application.
 
         Parameters
@@ -937,7 +923,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_integrations_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Integration]:
+    def iter_integrations_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Integration]:
         """Iterate over the integrations stored in the cache for a specific guild.
 
         Parameters
@@ -1011,7 +997,7 @@ class InviteCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_invite(self, invite_code: str, /) -> invites.InviteWithMetadata:
+    async def get_invite(self, invite_code: str, /) -> hikari.InviteWithMetadata:
         """Get an invite from the cache.
 
         Parameters
@@ -1039,7 +1025,7 @@ class InviteCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_invites(self) -> CacheIterator[invites.InviteWithMetadata]:
+    def iter_invites(self) -> CacheIterator[hikari.InviteWithMetadata]:
         """Iterate over the invites stored in the cache.
 
         Returns
@@ -1067,11 +1053,11 @@ class InviteCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefInviteCache(InviteCache, typing.Protocol):
-    """The traits of a implementation which supports a referencial invite cache."""
+    """The traits of a implementation which supports a referential invite cache."""
 
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_invites_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_invites_for_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
         """Remove invites cached for a specific channel..
 
         Parameters
@@ -1092,7 +1078,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def clear_invites_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_invites_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove invites cached for a specific guild.
 
         Parameters
@@ -1113,9 +1099,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_invites_for_channel(
-        self, channel_id: snowflakes.Snowflakeish, /
-    ) -> CacheIterator[invites.InviteWithMetadata]:
+    def iter_invites_for_channel(self, channel_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.InviteWithMetadata]:
         """Iterate over the invites stored in the cache for a specific channel.
 
         Parameters
@@ -1146,7 +1130,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_invites_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[invites.InviteWithMetadata]:
+    def iter_invites_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.InviteWithMetadata]:
         """Iterate over the invites stored in the cache for a specific guild.
 
         Parameters
@@ -1199,7 +1183,7 @@ class MeCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_me(self) -> users.OwnUser:
+    async def get_me(self) -> hikari.OwnUser:
         """Get the own user cache entry.
 
         Returns
@@ -1248,7 +1232,7 @@ class MemberCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_member(self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /) -> None:
         """Remove a member from the cache.
 
         Parameters
@@ -1270,7 +1254,7 @@ class MemberCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_member(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> guilds.Member:
+    async def get_member(self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /) -> hikari.Member:
         """Get a member from the cache.
 
         Parameters
@@ -1302,7 +1286,7 @@ class MemberCache(Resource, typing.Protocol):
 
     def iter_members(
         self,
-    ) -> CacheIterator[guilds.Member]:
+    ) -> CacheIterator[hikari.Member]:
         """Iterate over the members stored in the cache.
 
         Returns
@@ -1330,11 +1314,11 @@ class MemberCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefMemberCache(MemberCache, typing.Protocol):
-    """The traits of a implementation which supports a referencial member cache."""
+    """The traits of a implementation which supports a referential member cache."""
 
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_members_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_members_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the members cached for a specific guild.
 
         Parameters
@@ -1355,7 +1339,7 @@ class RefMemberCache(MemberCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def clear_members_for_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_members_for_user(self, user_id: hikari.Snowflakeish, /) -> None:
         """Remove the members cached for a specific user.
 
         Parameters
@@ -1376,7 +1360,7 @@ class RefMemberCache(MemberCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_members_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Member]:
+    def iter_members_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Member]:
         """Iterate over the members stored in the cache for a specific guild.
 
         Parameters
@@ -1407,7 +1391,7 @@ class RefMemberCache(MemberCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_members_for_user(self, user_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Member]:
+    def iter_members_for_user(self, user_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Member]:
         """Iterate over the members stored in the cache for a specific user.
 
         Parameters
@@ -1461,7 +1445,7 @@ class MessageCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_message(self, message_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_message(self, message_id: hikari.Snowflakeish, /) -> None:
         """Remove a message from the cache.
 
         Parameters
@@ -1481,7 +1465,7 @@ class MessageCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_message(self, message_id: snowflakes.Snowflakeish, /) -> messages.Message:
+    async def get_message(self, message_id: hikari.Snowflakeish, /) -> hikari.Message:
         """Get a message from the cache.
 
         Parameters
@@ -1509,7 +1493,7 @@ class MessageCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_messages(self) -> CacheIterator[messages.Message]:
+    def iter_messages(self) -> CacheIterator[hikari.Message]:
         """Iterate over the messages stored in the cache.
 
         Returns
@@ -1537,11 +1521,11 @@ class MessageCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefMessageCache(MessageCache, typing.Protocol):
-    """The traits of a implementation which supports a referencial message cache."""
+    """The traits of a implementation which supports a referential message cache."""
 
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_messages_for_author(self, user_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_messages_for_author(self, user_id: hikari.Snowflakeish, /) -> None:
         """Remove the messages cached for a specific author.
 
         Parameters
@@ -1562,7 +1546,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def clear_messages_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_messages_for_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
         """Remove the messages cached for a specific channel.
 
         Parameters
@@ -1583,7 +1567,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def clear_messages_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_messages_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the messages cached for a specific guild.
 
         Parameters
@@ -1604,7 +1588,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_messages_for_author(self, user_id: snowflakes.Snowflakeish, /) -> CacheIterator[messages.Message]:
+    def iter_messages_for_author(self, user_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Message]:
         """Iterate over the messages stored in the cache for a specific author.
 
         Parameters
@@ -1635,7 +1619,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_message_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> CacheIterator[messages.Message]:
+    def iter_message_for_channel(self, channel_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Message]:
         """Iterate over the messages stored in the cache for a specific channel.
 
         Parameters
@@ -1666,7 +1650,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_messages_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[messages.Message]:
+    def iter_messages_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Message]:
         """Iterate over the messages stored in the cache for a specific guild.
 
         Parameters
@@ -1720,7 +1704,7 @@ class PresenceCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_presence(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_presence(self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /) -> None:
         """Remove a presence from the cache.
 
         Parameters
@@ -1743,8 +1727,8 @@ class PresenceCache(Resource, typing.Protocol):
         raise NotImplementedError
 
     async def get_presence(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
-    ) -> presences.MemberPresence:
+        self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /
+    ) -> hikari.MemberPresence:
         """Get a presence from the cache.
 
         Parameters
@@ -1776,7 +1760,7 @@ class PresenceCache(Resource, typing.Protocol):
 
     def iter_presences(
         self,
-    ) -> CacheIterator[presences.MemberPresence]:
+    ) -> CacheIterator[hikari.MemberPresence]:
         """Iterate over the presences stored in the cache.
 
         Returns
@@ -1804,11 +1788,11 @@ class PresenceCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefPresenceCache(PresenceCache, typing.Protocol):
-    """The traits of a implementation which supports a referencial presence cache."""
+    """The traits of a implementation which supports a referential presence cache."""
 
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_presences_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_presences_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the presences cached for a specific guild.
 
         Parameters
@@ -1829,7 +1813,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def clear_presences_for_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_presences_for_user(self, user_id: hikari.Snowflakeish, /) -> None:
         """Remove the presences cached for a specific user.
 
         Parameters
@@ -1850,7 +1834,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_presences_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[presences.MemberPresence]:
+    def iter_presences_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.MemberPresence]:
         """Iterate over the presences stored in the cache for a specific guild.
 
         Parameters
@@ -1881,7 +1865,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_presences_for_user(self, user_id: snowflakes.Snowflakeish, /) -> CacheIterator[presences.MemberPresence]:
+    def iter_presences_for_user(self, user_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.MemberPresence]:
         """Iterate over the presences stored in the cache for a specific user.
 
         Parameters
@@ -1935,7 +1919,7 @@ class RoleCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_role(self, role_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_role(self, role_id: hikari.Snowflakeish, /) -> None:
         """Remove a role from the cache.
 
         Parameters
@@ -1955,7 +1939,7 @@ class RoleCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_role(self, role_id: snowflakes.Snowflakeish, /) -> guilds.Role:
+    async def get_role(self, role_id: hikari.Snowflakeish, /) -> hikari.Role:
         """Get a role from the cache.
 
         Parameters
@@ -1983,7 +1967,7 @@ class RoleCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_roles(self) -> CacheIterator[guilds.Role]:
+    def iter_roles(self) -> CacheIterator[hikari.Role]:
         """Iterate over the roles stored in the cache.
 
         Returns
@@ -2011,11 +1995,11 @@ class RoleCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefRoleCache(RoleCache, typing.Protocol):
-    """The traits of a implementation which supports a referencial role cache."""
+    """The traits of a implementation which supports a referential role cache."""
 
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_roles_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_roles_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the roles cached for a specific guild.
 
         Parameters
@@ -2036,7 +2020,7 @@ class RefRoleCache(RoleCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_roles_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[guilds.Role]:
+    def iter_roles_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Role]:
         """Iterate over the roles stored in the cache.
 
         Parameters
@@ -2096,7 +2080,7 @@ class UserCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_user(self, user_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_user(self, user_id: hikari.Snowflakeish, /) -> None:
         """Remove a user from the cache.
 
         Parameters
@@ -2116,7 +2100,7 @@ class UserCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_user(self, user_id: snowflakes.Snowflakeish, /) -> users.User:
+    async def get_user(self, user_id: hikari.Snowflakeish, /) -> hikari.User:
         """Get a user from the cache.
 
         Parameters
@@ -2144,7 +2128,7 @@ class UserCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_users(self) -> CacheIterator[users.User]:
+    def iter_users(self) -> CacheIterator[hikari.User]:
         """Iterate over the users stored in the cache.
 
         Returns
@@ -2195,7 +2179,7 @@ class VoiceStateCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def delete_voice_state(self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /) -> None:
+    async def delete_voice_state(self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /) -> None:
         """Remove a voice state from the cache.
 
         Parameters
@@ -2218,8 +2202,8 @@ class VoiceStateCache(Resource, typing.Protocol):
         raise NotImplementedError
 
     async def get_voice_state(
-        self, guild_id: snowflakes.Snowflakeish, user_id: snowflakes.Snowflakeish, /
-    ) -> voices.VoiceState:
+        self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /
+    ) -> hikari.VoiceState:
         """Get a voice state from the cache.
 
         Parameters
@@ -2249,7 +2233,7 @@ class VoiceStateCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_voice_states(self) -> CacheIterator[voices.VoiceState]:
+    def iter_voice_states(self) -> CacheIterator[hikari.VoiceState]:
         """Iterate over the voice states stored in the cache.
 
         Returns
@@ -2277,11 +2261,11 @@ class VoiceStateCache(Resource, typing.Protocol):
 
 @typing.runtime_checkable
 class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
-    """The traits of a implementation which supports a referencial voice state cache."""
+    """The traits of a implementation which supports a referential voice state cache."""
 
     __slots__: typing.Sequence[str] = ()
 
-    async def clear_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_voice_states_for_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
         """Remove the voice states cached for a specified channel.
 
         Parameters
@@ -2302,7 +2286,7 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def clear_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> None:
+    async def clear_voice_states_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the voice states cached for a specified guild.
 
         Parameters
@@ -2323,7 +2307,7 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_voice_states_for_channel(self, channel_id: snowflakes.Snowflakeish, /) -> CacheIterator[voices.VoiceState]:
+    def iter_voice_states_for_channel(self, channel_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.VoiceState]:
         """Iterate over the voice states stored in the cache for a specific channel.
 
         Parameters
@@ -2354,7 +2338,7 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_voice_states_for_guild(self, guild_id: snowflakes.Snowflakeish, /) -> CacheIterator[voices.VoiceState]:
+    def iter_voice_states_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.VoiceState]:
         """Iterate over the voice states stored in the cache for a specific guild.
 
         Parameters

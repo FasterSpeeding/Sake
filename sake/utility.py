@@ -40,7 +40,6 @@ __all__: typing.Sequence[str] = [
     "find_raw_listeners",
     "ListenerProto",
     "RawListenerProto",
-    "try_find_type",
 ]
 
 import datetime
@@ -48,11 +47,7 @@ import inspect
 import math
 import typing
 
-from hikari import undefined
-
-if typing.TYPE_CHECKING:
-    from hikari.events import base_events
-    from hikari.events import shard_events
+import hikari
 
 ExpireT = typing.Union["datetime.timedelta", int, float, None]
 """A type hint used to represent expire times.
@@ -62,10 +57,10 @@ precision is supported) or a timedelta. `builtins.None`, float("nan") and
 float("inf") all represent no expire.
 """
 
-T = typing.TypeVar("T")
-EventT_inv = typing.TypeVar("EventT_inv", bound="base_events.Event")
-EventT_co = typing.TypeVar("EventT_co", bound="base_events.Event", covariant=True)
-CallbackT = typing.Callable[["T", EventT_co], typing.Coroutine[typing.Any, typing.Any, None]]
+_T = typing.TypeVar("_T")
+_EventT_inv = typing.TypeVar("_EventT_inv", bound=hikari.Event)
+_EventT = typing.TypeVar("_EventT", bound=hikari.Event)
+_CallbackT = typing.Callable[["_T", _EventT], typing.Coroutine[typing.Any, typing.Any, None]]
 
 
 def convert_expire_time(expire: ExpireT, /) -> typing.Optional[int]:
@@ -89,18 +84,18 @@ def convert_expire_time(expire: ExpireT, /) -> typing.Optional[int]:
 
 
 @typing.runtime_checkable
-class ListenerProto(typing.Protocol[EventT_inv]):
-    async def __call__(self, event: EventT_inv, /) -> None:
+class ListenerProto(typing.Protocol[_EventT_inv]):
+    async def __call__(self, event: _EventT_inv, /) -> None:
         raise NotImplementedError
 
     @property
-    def __sake_event_type__(self) -> typing.Type[EventT_inv]:
+    def __sake_event_type__(self) -> typing.Type[_EventT_inv]:
         raise NotImplementedError
 
 
 @typing.runtime_checkable
 class RawListenerProto(typing.Protocol):
-    async def __call__(self, event: shard_events.ShardPayloadEvent, /) -> None:
+    async def __call__(self, event: hikari.ShardPayloadEvent, /) -> None:
         raise NotImplementedError
 
     @property
@@ -109,35 +104,33 @@ class RawListenerProto(typing.Protocol):
 
 
 def as_listener(
-    event_type: typing.Type[EventT_co], /
-) -> typing.Callable[[CallbackT[T, EventT_co]], CallbackT[T, EventT_co]]:
-    def decorator(listener: CallbackT[T, EventT_co], /) -> CallbackT[T, EventT_co]:
-        listener.__sake_event_type__ = event_type  # type: ignore[attr-defined]
+    event_type: typing.Type[_EventT], /
+) -> typing.Callable[[_CallbackT[_T, _EventT]], _CallbackT[_T, _EventT]]:
+    def decorator(listener: _CallbackT[_T, _EventT], /) -> _CallbackT[_T, _EventT]:
+        listener.__sake_event_type__ = event_type
         assert isinstance(listener, ListenerProto), "Incorrect attributes set for listener"
-        return listener  # type: ignore[unreachable]
+        return listener
 
     return decorator
 
 
 def as_raw_listener(
     event_name: str, /, *event_names: str
-) -> typing.Callable[[CallbackT[T, shard_events.ShardPayloadEvent]], CallbackT[T, shard_events.ShardPayloadEvent]]:
+) -> typing.Callable[[_CallbackT[_T, hikari.ShardPayloadEvent]], _CallbackT[_T, hikari.ShardPayloadEvent]]:
     event_names = (event_name.upper(), *(name.upper() for name in event_names))
 
-    def decorator(
-        listener: CallbackT[T, shard_events.ShardPayloadEvent], /
-    ) -> CallbackT[T, shard_events.ShardPayloadEvent]:
-        listener.__sake_event_names__ = event_names  # type: ignore[attr-defined]
+    def decorator(listener: _CallbackT[_T, hikari.ShardPayloadEvent], /) -> _CallbackT[_T, hikari.ShardPayloadEvent]:
+        listener.__sake_event_names__ = event_names
         assert isinstance(listener, RawListenerProto), "Incorrect attributes set for raw listener"
-        return listener  # type: ignore[unreachable]
+        return listener
 
     return decorator
 
 
 def find_listeners(
     obj: typing.Any, /
-) -> typing.Dict[typing.Type[base_events.Event], typing.List[ListenerProto[base_events.Event]]]:
-    listeners: typing.Dict[typing.Type[base_events.Event], typing.List[ListenerProto[base_events.Event]]] = {}
+) -> typing.Dict[typing.Type[hikari.Event], typing.List[ListenerProto[hikari.Event]]]:
+    listeners: typing.Dict[typing.Type[hikari.Event], typing.List[ListenerProto[hikari.Event]]] = {}
     for _, member in inspect.getmembers(obj):
         if isinstance(member, ListenerProto):
             try:
@@ -161,11 +154,3 @@ def find_raw_listeners(obj: typing.Any, /) -> typing.Dict[str, typing.List[RawLi
                     raw_listeners[name] = [member]
 
     return raw_listeners
-
-
-def try_find_type(cls: typing.Type[T], /, *values: typing.Any) -> undefined.UndefinedOr[T]:
-    for value in values:
-        if isinstance(value, cls):
-            return value
-
-    return undefined.UNDEFINED

@@ -190,13 +190,14 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     __slots__: typing.Sequence[str] = (
         "__address",
         "__clients",
+        "__config",
         "__default_expire",
         "__dump",
         "__event_manager",
         "__index_overrides",
         "__listeners",
         "__load",
-        "__metadata",
+        "__max_connections_per_db",
         "__password",
         "__raw_listeners",
         "__rest",
@@ -205,26 +206,28 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     def __init__(
         self,
+        address: str,
         rest: traits.RESTAware,
         event_manager: typing.Optional[hikari.api.EventManager] = None,
         *,
         config: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
         default_expire: utility.ExpireT = DEFAULT_SLOW_EXPIRE,
         event_managed: bool = False,
-        address: str,
         password: typing.Optional[str] = None,
+        max_connections_per_db: int = 50,
         dumps: typing.Callable[[_ObjectT], bytes] = lambda obj: json.dumps(obj).encode(),
         loads: typing.Callable[[bytes], _ObjectT] = json.loads,
     ) -> None:
         self.__address = address
         self.__clients: typing.Dict[int, aioredis.Redis] = {}
-        self.__metadata = config or {}
+        self.__config = config or {}
         self.__default_expire = utility.convert_expire_time(default_expire)
         self.__dump = dumps
         self.__event_manager = event_manager
         self.__index_overrides: typing.Dict[ResourceIndex, int] = {}
         self.__listeners = utility.find_listeners(self)
         self.__load = loads
+        self.__max_connections_per_db = max_connections_per_db
         self.__password = password
         self.__raw_listeners = utility.find_raw_listeners(self)
         self.__rest = rest
@@ -275,6 +278,10 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             return None
 
     @property
+    def config(self) -> typing.MutableMapping[str, typing.Any]:
+        return self.__config
+
+    @property
     def default_expire(self) -> typing.Optional[int]:
         return self.__default_expire  # TODO: , pexpire=self.default_expire
 
@@ -320,10 +327,6 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     @property
     def is_alive(self) -> bool:
         return self.__started
-
-    @property
-    def metadata(self) -> typing.MutableMapping[str, typing.Any]:
-        return self.__metadata
 
     @property  # unlike here where this is 100% required for building models.
     def rest(self) -> traits.RESTAware:
@@ -447,7 +450,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         if not (client := self.__clients.get(ResourceIndex.USER)) or not (users := list(users)):
             return
 
-        expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
+        expire_time = int(self.config.get("expire_user", DEFAULT_EXPIRE))
 
         async with client.pipeline() as pipeline:
             pipeline.mset(_to_map(users, _get_id, self.dump))
@@ -460,7 +463,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         if not (client := self.__clients.get(ResourceIndex.USER)):
             return
 
-        expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
+        expire_time = int(self.config.get("expire_user", DEFAULT_EXPIRE))
         await client.set(str(int(payload["id"])), self.dump(payload), px=expire_time)
 
     async def __on_shard_payload_event(self, event: hikari.ShardPayloadEvent, /) -> None:
@@ -477,6 +480,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
                 self.__address,
                 db=int(resource),
                 password=self.__password,
+                max_connections=self.__max_connections_per_db,
             )
         )
         self.__clients[resource] = client
@@ -688,10 +692,10 @@ class UserCache(_MeCache, sake_abc.UserCache):
             The client this is being called on to enable chained calls.
         """
         if expire is not None:
-            self.metadata["expire_user"] = utility.convert_expire_time(expire)
+            self.config["expire_user"] = utility.convert_expire_time(expire)
 
-        elif "expire_user" in self.metadata:
-            del self.metadata["expire_user"]
+        elif "expire_user" in self.config:
+            del self.config["expire_user"]
 
         return self
 
@@ -720,7 +724,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
         # <<Inherited docstring from sake.abc.UserCache>>
         client = self.get_connection(ResourceIndex.USER)
         if expire_time is None:
-            expire_time = int(self.metadata.get("expire_user", DEFAULT_EXPIRE))
+            expire_time = int(self.config.get("expire_user", DEFAULT_EXPIRE))
 
         else:
             expire_time = utility.convert_expire_time(expire_time)
@@ -1216,10 +1220,10 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
             The client this is being called on to enable chained calls.
         """
         if expire is not None:
-            self.metadata["expire_invite"] = utility.convert_expire_time(expire)
+            self.config["expire_invite"] = utility.convert_expire_time(expire)
 
-        elif "expire_invite" in self.metadata:
-            del self.metadata["expire_invite"]
+        elif "expire_invite" in self.config:
+            del self.config["expire_invite"]
 
         return self
 
@@ -1262,7 +1266,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
                 expire_time = None
 
         if expire_time is None:
-            expire_time = int(self.metadata.get("expire_invite", DEFAULT_INVITE_EXPIRE))
+            expire_time = int(self.config.get("expire_invite", DEFAULT_INVITE_EXPIRE))
 
         else:
             expire_time = utility.convert_expire_time(expire_time)
@@ -1329,11 +1333,11 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
                 raise ValueError("Cannot request guild member chunks without the GUILD_MEMBERS intents declared")
 
             presences = (shard_aware.intents & hikari.Intents.GUILD_PRESENCES) == hikari.Intents.GUILD_PRESENCES
-            self.metadata["chunk_on_create"] = shard_aware
-            self.metadata["chunk_presences"] = presences and isinstance(self, sake_abc.PresenceCache)
+            self.config["chunk_on_create"] = shard_aware
+            self.config["chunk_presences"] = presences and isinstance(self, sake_abc.PresenceCache)
 
         else:
-            self.metadata.pop("chunk_on_create", None)
+            self.config.pop("chunk_on_create", None)
 
         return self
 
@@ -1354,9 +1358,9 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
         await self.clear_members_for_guild(guild_id)
         await self.__bulk_set_members(event.payload["members"], guild_id)
 
-        if shard_aware := self.metadata.get("chunk_on_create"):
+        if shard_aware := self.config.get("chunk_on_create"):
             assert isinstance(shard_aware, traits.ShardAware)
-            include_presences = bool(self.metadata.get("chunk_presences", False))
+            include_presences = bool(self.config.get("chunk_presences", False))
             await shard_aware.request_guild_members(guild_id, include_presences=include_presences)
 
     @utility.as_listener(hikari.GuildLeaveEvent)
@@ -1370,11 +1374,11 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
     @utility.as_listener(hikari.MemberDeleteEvent)
     async def __on_member_delete_event(self, event: hikari.MemberDeleteEvent, /) -> None:
         try:
-            own_id = self.metadata[_OwnIDStore.KEY]
+            own_id = self.config[_OwnIDStore.KEY]
             assert isinstance(own_id, _OwnIDStore)
 
         except KeyError:
-            own_id = self.metadata[_OwnIDStore.KEY] = _OwnIDStore(self.rest)
+            own_id = self.config[_OwnIDStore.KEY] = _OwnIDStore(self.rest)
 
         if (own_id_value := own_id.value) is None:
             own_id_value = await own_id.await_value()
@@ -1479,10 +1483,10 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
             The client this is being called on to enable chained calls.
         """
         if expire is not None:
-            self.metadata["expire_message"] = utility.convert_expire_time(expire)
+            self.config["expire_message"] = utility.convert_expire_time(expire)
 
-        elif "expire_message" in self.metadata:
-            del self.metadata["expire_message"]
+        elif "expire_message" in self.config:
+            del self.config["expire_message"]
 
         return self
 
@@ -1511,7 +1515,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
         # <<Inherited docstring from sake.abc.MessageCache>>
         client = self.get_connection(ResourceIndex.MESSAGE)
         if expire_time is None:
-            expire_time = int(self.metadata.get("expire_message", DEFAULT_FAST_EXPIRE))
+            expire_time = int(self.config.get("expire_message", DEFAULT_FAST_EXPIRE))
 
         else:
             expire_time = utility.convert_expire_time(expire_time)

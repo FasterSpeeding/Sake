@@ -55,8 +55,12 @@ _RedisKeyT = typing.Union[str, bytes]
 _ValueT = typing.TypeVar("_ValueT")
 
 
+DEFAULT_WINDOW_SIZE: typing.Final[int] = 1_000
+"""The default size used for request chunking during iteraton."""
+
+
 def _chunk_values(
-    values: typing.Iterable[_ValueT], window_size: int = redis.WINDOW_SIZE
+    values: typing.Iterable[_ValueT], window_size: int = DEFAULT_WINDOW_SIZE
 ) -> typing.Iterator[typing.Sequence[_ValueT]]:
     """Iterate over slices of the values in an iterator."""
     iterator = iter(values)
@@ -68,7 +72,7 @@ def _chunk_values(
 async def _iter_keys(
     client: aioredis.Redis,
     *,
-    window_size: int = redis.WINDOW_SIZE,
+    window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.List[bytes]]:
     """Asynchronously iterate over slices of the top level keys in a redis resource."""
@@ -87,7 +91,7 @@ async def _iter_keys(
 async def _iter_values(
     client: aioredis.Redis,
     *,
-    window_size: int = redis.WINDOW_SIZE,
+    window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.Iterator[_ObjectT]]:
     """Asynchronously iterate over slices of the values in a key to string datastore."""
@@ -99,7 +103,7 @@ async def _iter_hash_values(
     client: aioredis.Redis,
     key: _RedisKeyT,
     *,
-    window_size: int = redis.WINDOW_SIZE,
+    window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.Iterator[_ObjectT]]:
     """Asynchronously iterate over slices of the values in a redis hash."""
@@ -119,7 +123,7 @@ async def _iter_reference_keys(
     client: redis.ResourceClient,
     key: _RedisKeyT,
     *,
-    window_size: int = redis.WINDOW_SIZE,
+    window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.List[bytes]]:
     """Asynchronously iterate over slices of the keys in a REFERENCE set."""
@@ -141,7 +145,7 @@ async def _iter_reference_values(
     index: redis.ResourceIndex,
     key: _RedisKeyT,
     *,
-    window_size: int = redis.WINDOW_SIZE,
+    window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.Iterator[_ObjectT]]:
     """Asynchronously iterate over slices of the values referenced by a REFERENCE set."""
@@ -159,7 +163,7 @@ class Iterator(abc.CacheIterator[_ValueT]):
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
         *,
-        window_size: int = redis.WINDOW_SIZE,
+        window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
@@ -208,7 +212,7 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
         *,
-        window_size: int = redis.WINDOW_SIZE,
+        window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
@@ -258,7 +262,7 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
         *,
-        window_size: int = redis.WINDOW_SIZE,
+        window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
@@ -342,7 +346,7 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
         *,
-        window_size: int = redis.WINDOW_SIZE,
+        window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
@@ -402,7 +406,7 @@ class SpecificMapIterator(abc.CacheIterator[_ValueT]):
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
         *,
-        window_size: int = redis.WINDOW_SIZE,
+        window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")

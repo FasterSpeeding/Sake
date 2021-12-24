@@ -40,9 +40,9 @@ class Cache(sake.redis.MemberCache, sake.redis.UserCache):
 
 
 cache = Cache(
-    bot,
+    rest=bot,
     # The Hikari RESTAware client to be used when marshalling objects and making internal requests.
-    bot,
+    event_manager=bot,
     # The second positional argument may either be a Hikari DispatcherAware client or None.
     # When DispatcherAware is passed here the client will register it's own event listeners when started.
     address=os.environ["REDIS_ADDRESS"],

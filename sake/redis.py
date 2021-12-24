@@ -80,8 +80,6 @@ _ResourceT = typing.TypeVar("_ResourceT", bound="ResourceClient")
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.redis")
 """The logger instance used by this Sake implementation."""
 
-WINDOW_SIZE: typing.Final[int] = 1_000
-"""The default size used for "windowed" chunking in this client."""
 DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
 """The default expire time (in milliseconds) used for expiring resources of 60 minutes."""
 DEFAULT_FAST_EXPIRE: typing.Final[int] = 300_000
@@ -714,7 +712,9 @@ class UserCache(_MeCache, sake_abc.UserCache):
 
         raise errors.EntryNotFound("User not found")
 
-    def iter_users(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.User]:
+    def iter_users(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.User]:
         # <<Inherited docstring from sake.abc.UserCache>>
         return redis_iterators.Iterator(
             self, ResourceIndex.USER, self.rest.entity_factory.deserialize_user, window_size=window_size
@@ -777,7 +777,9 @@ class PrefixCache(ResourceClient, sake_abc.PrefixCache):
 
         raise errors.EntryNotFound(f"Prefix entry `{guild_id}` not found")
 
-    def iter_prefixes(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[typing.Sequence[str]]:
+    def iter_prefixes(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[typing.Sequence[str]]:
         # <<Inherited docstring from sake.abc.PrefixCache>>
         return redis_iterators.Iterator(self, ResourceIndex.PREFIX, _decode_prefixes, window_size=window_size)
 
@@ -882,14 +884,16 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
         guild_id = hikari.Snowflake(payload["guild_id"])
         return self.rest.entity_factory.deserialize_known_custom_emoji(payload, guild_id=guild_id)
 
-    def iter_emojis(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.KnownCustomEmoji]:
+    def iter_emojis(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.KnownCustomEmoji]:
         # <<Inherited docstring from sake.abc.EmojiCache>>
         return redis_iterators.Iterator(
             self, ResourceIndex.EMOJI, self.__deserialize_known_custom_emoji, window_size=window_size
         )
 
     def iter_emojis_for_guild(
-        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[hikari.KnownCustomEmoji]:
         # <<Inherited docstring from sake.abc.EmojiCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, str(guild_id), ResourceIndex.EMOJI)
@@ -952,7 +956,9 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
 
         raise errors.EntryNotFound("Guild not found")
 
-    def iter_guilds(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.GatewayGuild]:
+    def iter_guilds(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.GatewayGuild]:
         # <<Inherited docstring from sake.abc.GuildCache>>
         return redis_iterators.Iterator(self, ResourceIndex.GUILD, self.__deserialize_guild, window_size=window_size)
 
@@ -1063,14 +1069,16 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         assert isinstance(channel, hikari.GuildChannel)
         return channel
 
-    def iter_guild_channels(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.GuildChannel]:
+    def iter_guild_channels(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.GuildChannel]:
         # <<Inherited docstring from sake.abc.GuildChannelCache>>
         return redis_iterators.Iterator(
             self, ResourceIndex.CHANNEL, self.__deserialize_guild_channel, window_size=window_size
         )
 
     def iter_guild_channels_for_guild(
-        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[hikari.GuildChannel]:
         # <<Inherited docstring from sake.abc.GuildChannelCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, str(guild_id), ResourceIndex.CHANNEL)
@@ -1151,7 +1159,9 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
 
         raise errors.EntryNotFound("Integration not found")
 
-    def iter_integrations(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.Integration]:
+    def iter_integrations(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.Integration]:
         # <<Inherited docstring from sake.abc.IntegrationCache>>
         return redis_iterators.Iterator(
             self,
@@ -1161,7 +1171,7 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
         )
 
     def iter_integrations_for_guild(
-        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[hikari.Integration]:
         key = self._generate_reference_key(ResourceIndex.GUILD, str(guild_id), ResourceIndex.INTEGRATION).encode()
         return redis_iterators.ReferenceIterator(
@@ -1243,7 +1253,9 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
 
         raise errors.EntryNotFound("Invite not found")
 
-    def iter_invites(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.InviteWithMetadata]:
+    def iter_invites(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.InviteWithMetadata]:
         # <<Inherited docstring from sake.abc.InviteCache>>
         return redis_iterators.Iterator(
             self,
@@ -1411,14 +1423,16 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
 
         raise errors.EntryNotFound("Member not found")
 
-    def iter_members(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.Member]:
+    def iter_members(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.Member]:
         # <<Inherited docstring from sake.abc.MemberCache>>
         return redis_iterators.MultiMapIterator(
             self, ResourceIndex.MEMBER, self.rest.entity_factory.deserialize_member, window_size=window_size
         )
 
     def iter_members_for_guild(
-        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[hikari.Member]:
         # <<Inherited docstring from sake.abc.MemberCache>>
         return redis_iterators.SpecificMapIterator(
@@ -1505,7 +1519,9 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
 
         raise errors.EntryNotFound("Message not found")
 
-    def iter_messages(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.Message]:
+    def iter_messages(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.Message]:
         # <<Inherited docstring from sake.abc.MessageCache>>
         return redis_iterators.Iterator(
             self, ResourceIndex.MESSAGE, self.rest.entity_factory.deserialize_message, window_size=window_size
@@ -1602,14 +1618,16 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
 
         raise errors.EntryNotFound("Presence not found")
 
-    def iter_presences(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.MemberPresence]:
+    def iter_presences(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.MemberPresence]:
         # <<Inherited docstring from sake.abc.PresenceCache>>
         return redis_iterators.MultiMapIterator(
             self, ResourceIndex.PRESENCE, self.rest.entity_factory.deserialize_member_presence, window_size=window_size
         )
 
     def iter_presences_for_guild(
-        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[hikari.MemberPresence]:
         # <<Inherited docstring from sake.abc.PresenceCache>>
         return redis_iterators.SpecificMapIterator(
@@ -1708,12 +1726,14 @@ class RoleCache(_Reference, sake_abc.RoleCache):
         guild_id = hikari.Snowflake(payload["guild_id"])
         return self.rest.entity_factory.deserialize_role(payload, guild_id=guild_id)
 
-    def iter_roles(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.Role]:
+    def iter_roles(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.Role]:
         # <<Inherited docstring from sake.abc.RoleCache>>
         return redis_iterators.Iterator(self, ResourceIndex.ROLE, self.__deserialize_role, window_size=window_size)
 
     def iter_roles_for_guild(
-        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[hikari.Role]:
         # <<Inherited docstring from sake.abc.RoleCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, str(guild_id), ResourceIndex.ROLE)
@@ -1898,14 +1918,16 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
         raise errors.EntryNotFound("Voice state not found")
 
-    def iter_voice_states(self, *, window_size: int = WINDOW_SIZE) -> sake_abc.CacheIterator[hikari.VoiceState]:
+    def iter_voice_states(
+        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
+    ) -> sake_abc.CacheIterator[hikari.VoiceState]:
         # <<Inherited docstring from sake.abc.VoiceStateCache>>
         return redis_iterators.MultiMapIterator(
             self, ResourceIndex.VOICE_STATE, self.rest.entity_factory.deserialize_voice_state, window_size=window_size
         )
 
     def iter_voice_states_for_channel(
-        self, channel_id: hikari.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+        self, channel_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[hikari.VoiceState]:
         # <<Inherited docstring from sake.abc.VoiceStateCache>>
         key = self._generate_reference_key(ResourceIndex.CHANNEL, str(channel_id), ResourceIndex.VOICE_STATE)
@@ -1918,7 +1940,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         )
 
     def iter_voice_states_for_guild(
-        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = WINDOW_SIZE
+        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[hikari.VoiceState]:
         # <<Inherited docstring from sake.abc.VoiceStateCache>>
         return redis_iterators.SpecificMapIterator(

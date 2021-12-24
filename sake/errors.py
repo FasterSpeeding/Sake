@@ -40,6 +40,7 @@ from __future__ import annotations
 __all__: typing.Sequence[str] = [
     "BackendError",
     "CannotDelete",
+    "ClosedClient",
     "EntryNotFound",
     "InvalidDataFound",
     "SakeException",
@@ -49,7 +50,7 @@ import typing
 
 
 class SakeException(Exception):
-    """A base exception for the expected exceptions raised by Sake implementations.
+    """Base exception for the expected exceptions raised by Sake implementations.
 
     Parameters
     ----------
@@ -76,7 +77,7 @@ class SakeException(Exception):
 
 
 class BackendError(SakeException, ValueError):
-    """A error raised when communicating with the backend fails
+    """Error that's raised when communicating with the backend fails
 
     This may be a sign of underlying network or database issues.
     """
@@ -84,8 +85,14 @@ class BackendError(SakeException, ValueError):
     __slots__: typing.Sequence[str] = ()
 
 
+class ClosedClient(SakeException):
+    """Error that's raised when an attempt to use an inactive client is made."""
+
+    __slots__: typing.Sequence[str] = ()
+
+
 class CannotDelete(SakeException, ValueError):
-    """An error raised in response to an attempt to delete an entry which can't be deleted.
+    """Error that's raised in response to an attempt to delete an entry which can't be deleted.
 
     This most likely reason for this to be raised would be due to an attempt to
     deleted a entry that's being kept alive by references without specifying to
@@ -96,7 +103,7 @@ class CannotDelete(SakeException, ValueError):
 
 
 class InvalidDataFound(SakeException, LookupError):
-    """An error raised when the retrieved data is in an unexpected format.
+    """Error that's raised when the retrieved data is in an unexpected format.
 
     This may indicate that you are running different versions of a Sake
     implementation with the same database.
@@ -106,7 +113,7 @@ class InvalidDataFound(SakeException, LookupError):
 
 
 class EntryNotFound(SakeException, LookupError):
-    """An error raised in response to an attempt to get an entry which doesn't exist.
+    """Error that's raised in response to an attempt to get an entry which doesn't exist.
 
     !!! note
         This shouldn't ever be raised by a delete method or iter method.

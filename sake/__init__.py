@@ -46,6 +46,7 @@ __all__: typing.Sequence[str] = [
     "errors",
     "BackendError",
     "CannotDelete",
+    "ClosedClient",
     "EntryNotFound",
     "InvalidDataFound",
     "SakeException",

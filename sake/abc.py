@@ -108,6 +108,11 @@ class Resource(typing.Protocol):
 
     __slots__: typing.Sequence[str] = ()
 
+    @property
+    def is_alive(self) -> bool:
+        """Whether this client is alive."""
+        raise NotImplementedError
+
     async def open(self) -> None:
         """Startup the resource(s) and allow them to connect to their relevant backend(s).
 

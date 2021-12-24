@@ -73,9 +73,8 @@ if typing.TYPE_CHECKING:
     import collections.abc as collections
     import types
 
-ObjectT = typing.Dict[str, typing.Any]
-RedisKeyT = typing.Union[str, bytes]
-RedisValueT = typing.Union[int, str, bytes]
+_ObjectT = typing.Dict[str, typing.Any]
+_RedisValueT = typing.Union[int, str, bytes]
 _ResourceT = typing.TypeVar("_ResourceT", bound="ResourceClient")
 
 _LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.redis")
@@ -214,8 +213,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         event_managed: bool = False,
         address: str,
         password: typing.Optional[str] = None,
-        dumps: typing.Callable[[ObjectT], bytes] = lambda obj: json.dumps(obj).encode(),
-        loads: typing.Callable[[bytes], ObjectT] = json.loads,
+        dumps: typing.Callable[[_ObjectT], bytes] = lambda obj: json.dumps(obj).encode(),
+        loads: typing.Callable[[bytes], _ObjectT] = json.loads,
     ) -> None:
         self.__address = address
         self.__clients: typing.Dict[int, aioredis.Redis] = {}
@@ -377,10 +376,10 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
                         stacklevel=3,
                     )
 
-    def dump(self, data: ObjectT, /) -> bytes:
+    def dump(self, data: _ObjectT, /) -> bytes:
         return self.__dump(data)
 
-    def load(self, data: bytes, /) -> ObjectT:
+    def load(self, data: bytes, /) -> _ObjectT:
         return self.__load(data)
 
     def get_index_override(self, index: ResourceIndex, /) -> typing.Optional[int]:
@@ -444,7 +443,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         resource_ = self.__index_overrides.get(resource, resource)
         return resource_ in self.__clients and self.__clients[resource_].connection is not None
 
-    async def _try_bulk_set_users(self, users: typing.Iterable[ObjectT], /) -> None:
+    async def _try_bulk_set_users(self, users: typing.Iterable[_ObjectT], /) -> None:
         if not (client := self.__clients.get(ResourceIndex.USER)) or not (users := list(users)):
             return
 
@@ -457,7 +456,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
             await pipeline.execute()
 
-    async def _try_set_user(self, payload: ObjectT, /) -> None:
+    async def _try_set_user(self, payload: _ObjectT, /) -> None:
         if not (client := self.__clients.get(ResourceIndex.USER)):
             return
 
@@ -555,9 +554,9 @@ class _Reference(ResourceClient, abc.ABC):
         master: ResourceIndex,
         master_id: str,
         slave: ResourceIndex,
-        identifier: RedisValueT,
+        identifier: _RedisValueT,
         /,
-        *identifiers: RedisValueT,
+        *identifiers: _RedisValueT,
     ) -> None:
         client = self.get_connection(ResourceIndex.REFERENCE)
         key = self._generate_reference_key(master, master_id, slave)
@@ -569,9 +568,9 @@ class _Reference(ResourceClient, abc.ABC):
         master: ResourceIndex,
         master_id: str,
         slave: ResourceIndex,
-        identifier: RedisValueT,
+        identifier: _RedisValueT,
         /,
-        *identifiers: RedisValueT,
+        *identifiers: _RedisValueT,
         reference_key: bool = False,
     ) -> None:
         key = self._generate_reference_key(master, master_id, slave)
@@ -653,7 +652,7 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
 
         raise errors.EntryNotFound("Own user not found")
 
-    async def set_me(self, payload: ObjectT, /) -> None:
+    async def set_me(self, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.MeCache>>
         await self.get_connection(ResourceIndex.USER).set(self.__ME_KEY, self.dump(payload))
         await self._try_set_user(payload)
@@ -717,7 +716,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
             self, ResourceIndex.USER, self.rest.entity_factory.deserialize_user, window_size=window_size
         )
 
-    async def set_user(self, payload: ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
+    async def set_user(self, payload: _ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
         # <<Inherited docstring from sake.abc.UserCache>>
         client = self.get_connection(ResourceIndex.USER)
         if expire_time is None:
@@ -729,12 +728,12 @@ class UserCache(_MeCache, sake_abc.UserCache):
         await client.set(str(int(payload["id"])), self.dump(payload), px=expire_time)
 
 
-def _add_guild_id(data: ObjectT, /, guild_id: str) -> ObjectT:
+def _add_guild_id(data: _ObjectT, /, guild_id: str) -> _ObjectT:
     data["guild_id"] = guild_id
     return data
 
 
-def _get_id(data: ObjectT, /) -> str:
+def _get_id(data: _ObjectT, /) -> str:
     return str(int(data["id"]))
 
 
@@ -802,7 +801,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
         # <<Inherited docstring from ResourceClient>>
         return hikari.Intents.GUILD_EMOJIS | hikari.Intents.GUILDS
 
-    async def __bulk_add_emojis(self, emojis: typing.Iterable[ObjectT], /, guild_id: int) -> None:
+    async def __bulk_add_emojis(self, emojis: typing.Iterable[_ObjectT], /, guild_id: int) -> None:
         client = self.get_connection(ResourceIndex.EMOJI)
         str_guild_id = str(guild_id)
         user_setter = self._try_bulk_set_users(user for payload in emojis if (user := payload.get("user")))
@@ -875,7 +874,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
 
         raise errors.EntryNotFound("Emoji not found")
 
-    def __deserialize_known_custom_emoji(self, payload: ObjectT, /) -> hikari.KnownCustomEmoji:
+    def __deserialize_known_custom_emoji(self, payload: _ObjectT, /) -> hikari.KnownCustomEmoji:
         guild_id = hikari.Snowflake(payload["guild_id"])
         return self.rest.entity_factory.deserialize_known_custom_emoji(payload, guild_id=guild_id)
 
@@ -894,7 +893,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
             self, key, ResourceIndex.EMOJI, self.__deserialize_known_custom_emoji, window_size=window_size
         )
 
-    async def set_emoji(self, guild_id: hikari.Snowflakeish, payload: ObjectT, /) -> None:
+    async def set_emoji(self, guild_id: hikari.Snowflakeish, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.EmojiCache>>
         client = self.get_connection(ResourceIndex.EMOJI)
         str_guild_id = str(guild_id)
@@ -936,7 +935,7 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
         # <<Inherited docstring from sake.abc.GuildCache>>
         await self.get_connection(ResourceIndex.GUILD).delete(str(guild_id))
 
-    def __deserialize_guild(self, payload: ObjectT, /) -> hikari.GatewayGuild:
+    def __deserialize_guild(self, payload: _ObjectT, /) -> hikari.GatewayGuild:
         # Hikari's deserialization logic expcets these fields to be present.
         payload["roles"] = []
         payload["emojis"] = []
@@ -953,7 +952,7 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
         # <<Inherited docstring from sake.abc.GuildCache>>
         return redis_iterators.Iterator(self, ResourceIndex.GUILD, self.__deserialize_guild, window_size=window_size)
 
-    async def set_guild(self, payload: ObjectT, /) -> None:
+    async def set_guild(self, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.GuildCache>>
         client = self.get_connection(ResourceIndex.GUILD)
         # These entries are cached in separate stores.
@@ -1055,7 +1054,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 
         raise errors.EntryNotFound("Guild channel not found")
 
-    def __deserialize_guild_channel(self, payload: ObjectT, /) -> hikari.GuildChannel:
+    def __deserialize_guild_channel(self, payload: _ObjectT, /) -> hikari.GuildChannel:
         channel = self.rest.entity_factory.deserialize_channel(payload)
         assert isinstance(channel, hikari.GuildChannel)
         return channel
@@ -1075,7 +1074,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
             self, key, ResourceIndex.CHANNEL, self.__deserialize_guild_channel, window_size=window_size
         )
 
-    async def set_guild_channel(self, payload: ObjectT, /) -> None:
+    async def set_guild_channel(self, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.GuildChannelCache>>
         client = self.get_connection(ResourceIndex.CHANNEL)
         str_channel_id = str(int(payload["id"]))
@@ -1169,7 +1168,7 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
             window_size=window_size,
         )
 
-    async def set_integration(self, guild_id: hikari.Snowflakeish, payload: ObjectT, /) -> None:
+    async def set_integration(self, guild_id: hikari.Snowflakeish, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.IntegrationCache>>
         client = self.get_connection(ResourceIndex.INTEGRATION)
         integration_id = str(int(payload["id"]))
@@ -1249,7 +1248,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
             window_size=window_size,
         )
 
-    async def set_invite(self, payload: ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
+    async def set_invite(self, payload: _ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
         # <<Inherited docstring from sake.abc.InviteCache>>
         client = self.get_connection(ResourceIndex.INVITE)
         if expire_time is None and (raw_max_age := payload.get("max_age")):
@@ -1304,7 +1303,7 @@ class _OwnIDStore:
             return self.value
 
 
-def _get_sub_user_id(payload: ObjectT, /) -> str:
+def _get_sub_user_id(payload: _ObjectT, /) -> str:
     return str(int(payload["user"]["id"]))
 
 
@@ -1338,7 +1337,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
 
         return self
 
-    async def __bulk_set_members(self, members: typing.Iterator[ObjectT], /, guild_id: int) -> None:
+    async def __bulk_set_members(self, members: typing.Iterator[_ObjectT], /, guild_id: int) -> None:
         client = self.get_connection(ResourceIndex.MEMBER)
         str_guild_id = str(guild_id)
         members_map = _to_map(
@@ -1426,7 +1425,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
             window_size=window_size,
         )
 
-    async def set_member(self, guild_id: hikari.Snowflakeish, payload: ObjectT, /) -> None:
+    async def set_member(self, guild_id: hikari.Snowflakeish, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.MemberCache>>
         client = self.get_connection(ResourceIndex.MEMBER)
         user_data = payload["user"]
@@ -1508,7 +1507,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
             self, ResourceIndex.MESSAGE, self.rest.entity_factory.deserialize_message, window_size=window_size
         )
 
-    async def set_message(self, payload: ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
+    async def set_message(self, payload: _ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
         # <<Inherited docstring from sake.abc.MessageCache>>
         client = self.get_connection(ResourceIndex.MESSAGE)
         if expire_time is None:
@@ -1521,7 +1520,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
         await self._try_set_user(payload["author"])
 
     async def update_message(
-        self, payload: ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None
+        self, payload: _ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None
     ) -> bool:
         # <<Inherited docstring from sake.abc.MessageCache>>
         # This is a special case method for handling the partial message updates we get
@@ -1548,7 +1547,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
         # <<Inherited docstring from ResourceClient>>
         return hikari.Intents.GUILDS | hikari.Intents.GUILD_PRESENCES
 
-    async def __bulk_add_presences(self, presences: typing.Iterator[ObjectT], /, guild_id: int) -> None:
+    async def __bulk_add_presences(self, presences: typing.Iterator[_ObjectT], /, guild_id: int) -> None:
         client = self.get_connection(ResourceIndex.PRESENCE)
         str_guild_id = str(guild_id)
         presence_map = _to_map(
@@ -1617,7 +1616,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
             window_size=window_size,
         )
 
-    async def set_presence(self, payload: ObjectT, /) -> None:
+    async def set_presence(self, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.PresenceCache>>
         client = self.get_connection(ResourceIndex.PRESENCE)
         await client.hset(str(int(payload["guild_id"])), str(int(payload["user"]["id"])), self.dump(payload))
@@ -1701,7 +1700,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
 
         raise errors.EntryNotFound("Role not found")
 
-    def __deserialize_role(self, payload: ObjectT, /) -> hikari.Role:
+    def __deserialize_role(self, payload: _ObjectT, /) -> hikari.Role:
         guild_id = hikari.Snowflake(payload["guild_id"])
         return self.rest.entity_factory.deserialize_role(payload, guild_id=guild_id)
 
@@ -1718,7 +1717,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
             self, key, ResourceIndex.ROLE, self.__deserialize_role, window_size=window_size
         )
 
-    async def set_role(self, guild_id: hikari.Snowflakeish, payload: ObjectT, /) -> None:
+    async def set_role(self, guild_id: hikari.Snowflakeish, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.RoleCache>>
         client = self.get_connection(ResourceIndex.ROLE)
         str_guild_id = str(guild_id)
@@ -1728,13 +1727,13 @@ class RoleCache(_Reference, sake_abc.RoleCache):
         await self._add_ids(ResourceIndex.GUILD, str_guild_id, ResourceIndex.ROLE, role_id)
 
 
-def _add_voice_fields(payload: ObjectT, /, guild_id: str, member: ObjectT) -> ObjectT:
+def _add_voice_fields(payload: _ObjectT, /, guild_id: str, member: _ObjectT) -> _ObjectT:
     payload["guild_id"] = guild_id
     payload["member"] = member
     return payload
 
 
-def _get_user_id(payload: ObjectT, /) -> str:
+def _get_user_id(payload: _ObjectT, /) -> str:
     return str(int(payload["user_id"]))
 
 
@@ -1757,7 +1756,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
     @staticmethod
     def __generate_references(
-        voice_states: typing.Iterable[ObjectT], /, *, guild_id: typing.Optional[str] = None
+        voice_states: typing.Iterable[_ObjectT], /, *, guild_id: typing.Optional[str] = None
     ) -> typing.Dict[str, typing.Set[str]]:
         all_references: typing.Dict[str, typing.Set[str]] = {}
         for payload in voice_states:
@@ -1926,7 +1925,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
             window_size=window_size,
         )
 
-    async def set_voice_state(self, guild_id: hikari.Snowflakeish, payload: ObjectT, /) -> None:
+    async def set_voice_state(self, guild_id: hikari.Snowflakeish, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.VoiceStateCache>>
         client = self.get_connection(ResourceIndex.VOICE_STATE)
         channel_id = payload.get("channel_id")

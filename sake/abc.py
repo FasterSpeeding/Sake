@@ -31,7 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """Protocols and abstract classes for the cache resources defined by this standard.
 
-!!! note
+.. note::
     Unlike the abstract classes defined here, there is no guarantee that the
     protocols defined here will be included in the MRO of the classes which
     implement them.
@@ -89,7 +89,7 @@ class CacheIterator(hikari.LazyIterator[ValueT], abc.ABC):
     async def len(self) -> typing.Optional[int]:
         """Get the count of entries that this iterator covers.
 
-        !!! note
+        .. note::
             Unlike `hikari.iterators.LazyIterator.count`, this will not exhaust
             the iterator and may return different values as entries are added
             and removed from the cache.
@@ -116,7 +116,7 @@ class Resource(typing.Protocol):
     async def open(self) -> None:
         """Startup the resource(s) and allow them to connect to their relevant backend(s).
 
-        !!! note
+        .. note::
             This should pass without raising if called on an already opened
             resource.
         """
@@ -125,7 +125,7 @@ class Resource(typing.Protocol):
     async def close(self) -> None:
         """Close the resource(s) and allow them to disconnect from their relevant backend(s).
 
-        !!! note
+        .. note::
             This should pass without raising if called on an already closed
             resource.
         """
@@ -141,7 +141,7 @@ class PrefixCache(Resource, typing.Protocol):
     async def clear_prefixes(self) -> None:
         """Empty the prefix cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -162,7 +162,7 @@ class PrefixCache(Resource, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to clear the prefixes.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -184,7 +184,7 @@ class PrefixCache(Resource, typing.Protocol):
         prefix : str
             The first prefix to delete from the cache.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -232,7 +232,7 @@ class PrefixCache(Resource, typing.Protocol):
         CacheIterator[typing.List[str]]
             An async iterator of the prefixes stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -300,7 +300,7 @@ class EmojiCache(Resource, typing.Protocol):
     async def clear_emojis(self) -> None:
         """Empty the emoji cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -321,7 +321,7 @@ class EmojiCache(Resource, typing.Protocol):
         emoji_id : hikari.snowflakes.Snowflakeish
             The ID of the emoji to remove from the cache.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -369,7 +369,7 @@ class EmojiCache(Resource, typing.Protocol):
         CacheIterator[hikari.emojis.KnownCustomEmoji]
             An async iterator of the emojis stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -396,7 +396,7 @@ class RefEmojiCache(EmojiCache, typing.Protocol):
     async def clear_emojis_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove emojis belonging to a specific guild from the cache.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -427,7 +427,7 @@ class RefEmojiCache(EmojiCache, typing.Protocol):
             An async iterator of the emojis stored in the cache for the
             specified guild.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -454,7 +454,7 @@ class GuildCache(Resource, typing.Protocol):
     async def clear_guilds(self) -> None:
         """Empty the guild cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -475,7 +475,7 @@ class GuildCache(Resource, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to remove from the cache.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -523,7 +523,7 @@ class GuildCache(Resource, typing.Protocol):
         CacheIterator[hikari.guilds.GatewayGuild]
             An async iterator of the guilds stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -553,7 +553,7 @@ class GuildChannelCache(Resource, typing.Protocol):
     async def clear_guild_channels(self) -> None:
         """Empty the guild channel cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -574,7 +574,7 @@ class GuildChannelCache(Resource, typing.Protocol):
         channel_id : hikari.snowflakes.Snowflakeish
             The ID of the guild channel to remove from the cache.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -622,7 +622,7 @@ class GuildChannelCache(Resource, typing.Protocol):
         CacheIterator[hikari.channels.GuildChannel]
             An async iterator of the guild channels stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -654,7 +654,7 @@ class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to remove the cached channels for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -681,7 +681,7 @@ class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
             An async iterator of the guild channels stored in the cache for the
             specified guild.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -706,7 +706,7 @@ class IntegrationCache(Resource, typing.Protocol):
     async def clear_integrations(self) -> None:
         """Empty the integration cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -727,7 +727,7 @@ class IntegrationCache(Resource, typing.Protocol):
         integration_id : hikari.snowflakes.Snowflakeish
             The ID of the integration to remove from the cache.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -775,7 +775,7 @@ class IntegrationCache(Resource, typing.Protocol):
         CacheIterator[hikari.guilds.Integration]
             An async iterator of the integrations stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -805,7 +805,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
         application_id : hikari.snowflakes.Snowflakeish
             The ID of the application to remove cached integrations for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -826,7 +826,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to remove cached integrations for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -851,7 +851,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
         application_id : hikari.snowflakes.Snowflakeish
             The ID of the application to remove an integration for.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -911,7 +911,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
             An async iterator of the integrations stored in the cache for the
             specified application.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -942,7 +942,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
             An async iterator of the integrations stored in the cache for the
             specified application.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -969,7 +969,7 @@ class InviteCache(Resource, typing.Protocol):
     async def clear_invites(self) -> None:
         """Empty the invites cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -990,7 +990,7 @@ class InviteCache(Resource, typing.Protocol):
         invite_code : builtins.str
             The code of the invite to remove from the cache.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -1038,7 +1038,7 @@ class InviteCache(Resource, typing.Protocol):
         CacheIterator[hikari.invites.InviteWithMetadata]
             An async iterator of the invites stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1070,7 +1070,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
         channel_id : hikari.snowflakes.Snowflakeish
             The ID of the channel to remove the invites cached for it.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1091,7 +1091,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to remove the invites cached for it.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1118,7 +1118,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
             An async iterator of the invites stored in the cache for the
             specified channel.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1149,7 +1149,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
             An async iterator of the invites stored in the cache for the
             specified guild.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1176,7 +1176,7 @@ class MeCache(Resource, typing.Protocol):
     async def delete_me(self) -> None:
         """Remove the cached own user entry.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -1224,7 +1224,7 @@ class MemberCache(Resource, typing.Protocol):
     async def clear_members(self) -> None:
         """Empty the members cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1247,7 +1247,7 @@ class MemberCache(Resource, typing.Protocol):
         user_id : hikari.snowflakes.Snowflakeish
             The ID of the user to remove a cached member for.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -1299,7 +1299,7 @@ class MemberCache(Resource, typing.Protocol):
         CacheIterator[hikari.guilds.Member]
             An async iterator of the members stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1331,7 +1331,7 @@ class RefMemberCache(MemberCache, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to remove the cached members for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1352,7 +1352,7 @@ class RefMemberCache(MemberCache, typing.Protocol):
         user_id : hikari.snowflakes.Snowflakeish
             The ID of the user to remove the cached members for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1379,7 +1379,7 @@ class RefMemberCache(MemberCache, typing.Protocol):
             An async iterator of the members stored in the cache for the
             specified guild.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1410,7 +1410,7 @@ class RefMemberCache(MemberCache, typing.Protocol):
             An async iterator of the members stored in the cache for the
             specified user.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1437,7 +1437,7 @@ class MessageCache(Resource, typing.Protocol):
     async def clear_messages(self) -> None:
         """Empty the messages cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1458,7 +1458,7 @@ class MessageCache(Resource, typing.Protocol):
         message_id : hikari.snowflakes.Snowflakeish
             The ID of the message to remove from the cache.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -1506,7 +1506,7 @@ class MessageCache(Resource, typing.Protocol):
         CacheIterator[hikari.messages.Message]
             An async iterator of the messages stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1538,7 +1538,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         user_id : hikari.snowflakes.Snowflakeish
             The ID of the user to remove the messages cached for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1559,7 +1559,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         channel_id : hikari.snowflakes.Snowflakeish
             The ID of the channel to remove the messages cached for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1580,7 +1580,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to remove the messages cached for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1607,7 +1607,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
             An async iterator of the messages stored in the cache for the
             specified user.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1638,7 +1638,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
             An async iterator of the messages stored in the cache for the
             specified channel.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1669,7 +1669,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
             An async iterator of the messages stored in the cache for the
             specified guild.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1696,7 +1696,7 @@ class PresenceCache(Resource, typing.Protocol):
     async def clear_presences(self) -> None:
         """Empty the presences cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1719,7 +1719,7 @@ class PresenceCache(Resource, typing.Protocol):
         user_id : hikari.snowflakes.Snowflakeish
             The ID of the user to remove a cached presence for.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -1773,7 +1773,7 @@ class PresenceCache(Resource, typing.Protocol):
         CacheIterator[hikari.presences.MemberPresence]
             An async iterator of the presences stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1805,7 +1805,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to remove the cached presences for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1826,7 +1826,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
         user_id : hikari.snowflakes.Snowflakeish
             The ID of the user to remove the cached presences for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1853,7 +1853,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
             An async iterator of the presences stored in the cache for the
             specified guild.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1884,7 +1884,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
             An async iterator of the presences stored in the cache for the
             specified user.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1911,7 +1911,7 @@ class RoleCache(Resource, typing.Protocol):
     async def clear_roles(self) -> None:
         """Empty the roles cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1932,7 +1932,7 @@ class RoleCache(Resource, typing.Protocol):
         role_id : hikari.snowflakes.Snowflakeish
             The ID of the role to remove from the cache.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -1980,7 +1980,7 @@ class RoleCache(Resource, typing.Protocol):
         CacheIterator[hikari.guilds.Role]
             An async iterator of the roles stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -2012,7 +2012,7 @@ class RefRoleCache(RoleCache, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to remove the cached roles for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -2039,7 +2039,7 @@ class RefRoleCache(RoleCache, typing.Protocol):
             An async iterator of the roles stored in the cache for the
             specified guild.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -2061,7 +2061,7 @@ class RefRoleCache(RoleCache, typing.Protocol):
 class UserCache(Resource, typing.Protocol):
     """The traits of a cache implementation which supports a user cache.
 
-    !!! note
+    .. note::
         Unlike other resources, user doesn't have any events which
         directly update it and may only be updated through event
         listeners when resources which reference it are also included.
@@ -2072,7 +2072,7 @@ class UserCache(Resource, typing.Protocol):
     async def clear_users(self) -> None:
         """Empty the users cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -2093,7 +2093,7 @@ class UserCache(Resource, typing.Protocol):
         user_id : hikari.snowflakes.Snowflakeish
             The ID of the user to remove from the cache.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -2141,7 +2141,7 @@ class UserCache(Resource, typing.Protocol):
         CacheIterator[hikari.users.User]
             An async iterator of the users stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -2171,7 +2171,7 @@ class VoiceStateCache(Resource, typing.Protocol):
     async def clear_voice_states(self) -> None:
         """Empty the voice states cache store.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -2194,7 +2194,7 @@ class VoiceStateCache(Resource, typing.Protocol):
         user_id : hikari.snowflakes.Snowflakeish
             The ID of the user to remove a cached voice state for.
 
-        !!! note
+        .. note::
             Delete methods do not raise `sake.errors.EntryNotFound` when the
             targeted entity doesn't exist.
 
@@ -2246,7 +2246,7 @@ class VoiceStateCache(Resource, typing.Protocol):
         CacheIterator[hikari.voices.VoiceState]
             An async iterator of the voice states stored in the cache.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -2278,7 +2278,7 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
         channel_id : hikari.snowflakes.Snowflakeish
             The ID of the channel to remove the voice states cached for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -2299,7 +2299,7 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
         guild_id : hikari.snowflakes.Snowflakeish
             The ID of the guild to remove the voice states cached for.
 
-        !!! note
+        .. note::
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -2326,7 +2326,7 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
             An async iterator of the voice states stored in the cache for the
             specified channel.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -2357,7 +2357,7 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
             An async iterator of the voice states stored in the cache for the
             specified guild.
 
-        !!! note
+        .. note::
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 

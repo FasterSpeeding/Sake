@@ -31,7 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """The standard error bases which Sake implementations will be raising.
 
-!!! note
+.. note::
     These supplement python's builtin exceptions but do not replace them.
 """
 
@@ -115,7 +115,7 @@ class InvalidDataFound(SakeException, LookupError):
 class EntryNotFound(SakeException, LookupError):
     """Error that's raised in response to an attempt to get an entry which doesn't exist.
 
-    !!! note
+    .. note::
         This shouldn't ever be raised by a delete method or iter method.
     """
 

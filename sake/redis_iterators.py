@@ -55,66 +55,23 @@ WINDOW_SIZE: typing.Final[int] = 1_000
 """The default size used for "windowed" chunking in this client."""
 
 
-def chunk_values(
+def _chunk_values(
     values: typing.Iterable[_ValueT], window_size: int = WINDOW_SIZE
 ) -> typing.Iterator[typing.Sequence[_ValueT]]:
-    """Iterate over slices of the values in an iterator.
-
-    Parameters
-    ----------
-    values : typing.Iterable[ValueT]
-        The iterator to iterate over slices of.
-    window_size : int
-        The maximum amount of values that should be yielded per chunk.
-        Defaults to `WINDOW_SIZE`.
-
-    Yields
-    ------
-    typing.Sequence[ValueT]
-        Slices of the values within the provided `values` iterable.
-
-    Raises
-    ------
-    ValueError
-        If an invalid `window_size` is passed (e.g. negative) or if
-        `values` isn't iterable.
-    """
+    """Iterate over slices of the values in an iterator."""
     iterator = iter(values)
 
     while result := list(itertools.islice(iterator, window_size)):
         yield result
 
 
-async def iter_keys(
+async def _iter_keys(
     client: aioredis.Redis,
     *,
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.List[bytes]]:
-    """Asynchronously iterate over slices of the top level keys in a redis resource.
-
-    Parameters
-    ----------
-    client : aioredis.Redis
-        The redis implementation resource client to use.
-    window_size : int
-        The maximum amount of values that should be yielded per chunk.
-        Defaults to `WINDOW_SIZE`.
-    match : typing.Optional[str]
-        A pattern to match keys by or `builtins.None` to yield all the keys.
-        Defaults to `builtins.None`.
-        See https://redis.io/commands/keys for more information.
-
-    Yields
-    ------
-    typing.MutableSequence[redis.RedisKeyT]
-        Slices of the top level keys in a redis resource.
-
-    Raises
-    ------
-    ValueError
-        If any of the values provided are invalid.
-    """
+    """Asynchronously iterate over slices of the top level keys in a redis resource."""
     cursor = 0
 
     while True:
@@ -127,73 +84,25 @@ async def iter_keys(
             break
 
 
-async def iter_values(
+async def _iter_values(
     client: aioredis.Redis,
     *,
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.Iterator[redis.ObjectT]]:
-    """Asynchronously iterate over slices of the values in a key to string datastore.
-
-    Parameters
-    ----------
-    client : aioredis.Redis
-        The redis implementation resource client to use.
-    window_size : int
-        The maximum amount of values that should be yielded per chunk.
-        Defaults to `WINDOW_SIZE`.
-    match : typing.Optional[str]
-        A pattern to match keys by or `builtins.None` to yield all the keys.
-        Defaults to `builtins.None`.
-        See https://redis.io/commands/keys for more information.
-
-    Yields
-    ------
-    typing.AsyncIterator[typing.Iterator[sake.redis.ObjectT]]
-        Slices of the object values in a redis resource.
-
-    Raises
-    ------
-    ValueError
-        If any of the values provided are invalid.
-    """
-    async for window in iter_keys(client, window_size=window_size, match=match):
+    """Asynchronously iterate over slices of the values in a key to string datastore."""
+    async for window in _iter_keys(client, window_size=window_size, match=match):
         yield await client.mget(*window)
 
 
-async def iter_hash_values(
+async def _iter_hash_values(
     client: aioredis.Redis,
     key: redis.RedisKeyT,
     *,
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.Iterator[redis.ObjectT]]:
-    """Asynchronously iterate over slices of the values in a redis hash.
-
-    Parameters
-    ----------
-    client : aioredis.Redis
-        The redis implementation resource client to use.
-    key : sake.redis.RedisKeyT
-        The top level key of the hash map to iterate over it's keys.
-    window_size : int
-        Defaults to `WINDOW_SIZE`.
-        The maximum amount of values that should be yielded per chunk.
-    match : typing.Optional[str]
-        A pattern to match keys by or `builtins.None` to yield all the keys.
-        Defaults to `builtins.None`.
-        See https://redis.io/commands/keys for more information.
-
-    Yields
-    ------
-    typing.AsyncIterator[typing.Iterator[sake.redis.ObjectT]]
-        Slices of the byte values in a hash map.
-
-    Raises
-    ------
-    ValueError
-        If any of the values provided are invalid.
-    """
+    """Asynchronously iterate over slices of the values in a redis hash."""
     cursor = 0
 
     while True:
@@ -206,40 +115,14 @@ async def iter_hash_values(
             break
 
 
-async def iter_reference_keys(
+async def _iter_reference_keys(
     client: redis.ResourceClient,
     key: redis.RedisKeyT,
     *,
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.List[bytes]]:
-    """Asynchronously iterate over slices of the keys in a REFERENCE set.
-
-    Parameters
-    ----------
-    client : sake.redis.ResourceClient
-        The redis implementation resource client to use.
-    key : sake.redis.RedisKeyT
-        The reference resource key to get the relevant keys from.
-        This defaults to `WINDOW_SIZE`.
-    window_size : int
-        The maximum amount of values that should be yielded per chunk.
-        Defaults to `WINDOW_SIZE`.
-    match : typing.Optional[str]
-        A pattern to match keys by or `builtins.None` to yield all the keys.
-        Defaults to `builtins.None`.
-        See https://redis.io/commands/keys for more information.
-
-    Yields
-    ------
-    typing.MutableSequence[bytes]
-        Slices of the keys in a redis resource.
-
-    Raises
-    ------
-    ValueError
-        If any of the values provided are invalid.
-    """
+    """Asynchronously iterate over slices of the keys in a REFERENCE set."""
     reference_client = client.get_connection(redis.ResourceIndex.REFERENCE)
     cursor = 0
 
@@ -253,7 +136,7 @@ async def iter_reference_keys(
             break
 
 
-async def iter_reference_values(
+async def _iter_reference_values(
     client: redis.ResourceClient,
     index: redis.ResourceIndex,
     key: redis.RedisKeyT,
@@ -261,36 +144,9 @@ async def iter_reference_values(
     window_size: int = WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.Iterator[redis.ObjectT]]:
-    """Asynchronously iterate over slices of the values referenced by a REFERENCE set.
-
-     Parameters
-     ----------
-     client : sake.redis.ResourceClient
-         The redis implementation resource client to use.
-     index : sake.redis.ResourceIndex
-         The resource to get referenced values from.
-     key : sake.redis.RedisKeyT
-         The reference resource key to get the relevant keys from.
-     window_size : int
-         The maximum amount of values that should be yielded per chunk.
-         Defaults to `WINDOW_SIZE`.
-     match : typing.Optional[str]
-         A pattern to match keys by or `builtins.None` to yield all the keys.
-         Defaults to `builtins.None`.
-         See https://redis.io/commands/keys for more information.
-
-     Yields
-     ------
-    typing.AsyncIterator[typing.Iterator[sake.redis.ObjectT]]
-         Slices of the referenced bytes in the `index` reference store.
-
-     Raises
-     ------
-     ValueError
-         If any of the values provided are invalid.
-    """
+    """Asynchronously iterate over slices of the values referenced by a REFERENCE set."""
     connection = client.get_connection(index)
-    async for window in iter_reference_keys(client, key, window_size=window_size, match=match):
+    async for window in _iter_reference_keys(client, key, window_size=window_size, match=match):
         yield await connection.mget(*window)
 
 
@@ -321,7 +177,7 @@ class Iterator(abc.CacheIterator[_ValueT]):
 
     async def __anext__(self) -> _ValueT:
         if self._windows is None:
-            self._windows = iter_values(self._client.get_connection(self._index), window_size=self._window_size)
+            self._windows = _iter_values(self._client.get_connection(self._index), window_size=self._window_size)
 
         # A window might be empty due to none of the requested keys being found, hence the while not self._buffer
         while not self._buffer:
@@ -371,7 +227,7 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
 
     async def __anext__(self) -> _ValueT:
         if not self._windows:
-            self._windows = iter_reference_values(self._client, self._index, self._key, window_size=self._window_size)
+            self._windows = _iter_reference_values(self._client, self._index, self._key, window_size=self._window_size)
 
         # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
         while not self._buffer:
@@ -439,7 +295,7 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
 
             client = self._client.get_connection(self._index)
             windows = (
-                await client.hmget(hash_key, *window) for window in chunk_values(keys, window_size=self._window_size)
+                await client.hmget(hash_key, *window) for window in _chunk_values(keys, window_size=self._window_size)
             )
             self._windows = windows
 
@@ -517,7 +373,7 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
             else:
                 async for key in self._top_level_keys:
                     assert isinstance(key, bytes)
-                    self._windows = iter_hash_values(client, key, window_size=self._window_size)
+                    self._windows = _iter_hash_values(client, key, window_size=self._window_size)
                     break
 
                 else:
@@ -566,7 +422,7 @@ class SpecificMapIterator(abc.CacheIterator[_ValueT]):
     async def __anext__(self) -> _ValueT:
         if not self._windows:
             client = self._client.get_connection(self._index)
-            self._windows = iter_hash_values(client, self._key, window_size=self._window_size)
+            self._windows = _iter_hash_values(client, self._key, window_size=self._window_size)
 
         while not self._buffer:
             async for window in self._windows:

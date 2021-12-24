@@ -212,7 +212,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         default_expire: utility.ExpireT = DEFAULT_SLOW_EXPIRE,
         event_managed: bool = False,
         password: typing.Optional[str] = None,
-        max_connections_per_db: int = 50,
+        max_connections_per_db: int = 5,
         dumps: typing.Callable[[_ObjectT], bytes] = lambda obj: json.dumps(obj).encode(),
         loads: typing.Callable[[bytes], _ObjectT] = json.loads,
     ) -> None:

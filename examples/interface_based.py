@@ -32,9 +32,9 @@ def register(
     events: hikari.EventManagerAware,
     *,
     prefix: str = "!",
-    channel_cache: sake.traits.GuildChannelCache,
-    guild_cache: sake.traits.GuildCache,
-    member_cache: sake.traits.RefMemberCache,
+    channel_cache: sake.abc.GuildChannelCache,
+    guild_cache: sake.abc.GuildCache,
+    member_cache: sake.abc.RefMemberCache,
     # While we could make a specific Protocol which implements all these resources,
     # for the sake of being more compatible with services which use multiple
     # implementations we will take in each resources as a separate argument.
@@ -42,19 +42,23 @@ def register(
     # This listener simply deletes a message if it's updated to NSFW content.
     @events.event_manager.listen()
     async def on_message_update(event: hikari.MessageUpdateEvent) -> None:
-        if event.message.content is hikari.undefined.UNDEFINED:
+        if event.message.content is hikari.UNDEFINED or event.message.content is None:
             return
 
         if nsfw_check(event.message.content):
             channel = await channel_cache.get_guild_channel(event.message.channel_id)
             if not channel.is_nsfw:
                 await event.message.delete()
-                await event.message.reply(content=f"Deleted NSFW message by {event.message.author}")
+                await event.message.respond(content=f"Deleted NSFW message by {event.message.author}")
 
     # This listener handles both a "member count" command which performs a database lookup and
     # the deletion of messages created with nsfw content.
     @events.event_manager.listen()
     async def on_message_create(event: hikari.MessageCreateEvent) -> None:
+        # We don't care about messages where content is None
+        if not event.message.content:
+            return
+
         # Delete nsfw content
         if nsfw_check(event.message.content):
             channel = await channel_cache.get_guild_channel(event.message.channel_id)
@@ -68,9 +72,13 @@ def register(
         arguments = event.message.content[len(prefix) :].split()
 
         if arguments[0] == "member" and arguments[1] == "count":
+            if not event.message.guild_id:
+                await event.message.respond("DMs do not have members")
+                return
+
             guild = await guild_cache.get_guild(event.message.guild_id)
             count = await member_cache.iter_members_for_guild(event.message.guild_id).len()
-            await event.message.reply(content=f"{count} members known for guild {guild}.")
+            await event.message.respond(content=f"{count} members known for guild {guild}.")
             return
 
     def unsubscribe() -> None:

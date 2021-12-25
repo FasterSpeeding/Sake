@@ -106,7 +106,7 @@ profile = "black"
 force_single_line = true
 
 [tool.pyright]
-include = ["sake", "noxfile.py", "tests"]
+include = ["examples", "sake", "noxfile.py", "tests"]
 
 pythonVersion = "3.9"
 reportCallInDefaultInitializer = "none"

@@ -57,6 +57,7 @@ def _try_find_option(session: nox.Session, name: str, *other_names: str, when_em
 
 @nox.session(name="check-versions")
 def check_versions(session: nox.Session) -> None:
+    """Check that the version numbers declared for this project all match up."""
     import httpx
 
     # Note: this can be linked to a specific hash by adding it between raw and {file.name} as another route segment.
@@ -91,21 +92,20 @@ def check_versions(session: nox.Session) -> None:
 
 @nox.session(venv_backend="none")
 def cleanup(session: nox.Session) -> None:
+    """Cleanup any temporary files made in this project by its nox tasks."""
     import shutil
 
     # Remove directories
-    from nox.logger import logger
-
     for raw_path in ["./dist", "./docs", "./.nox", "./.pytest_cache", "./hikari_sake.egg-info", "./coverage_html"]:
         path = pathlib.Path(raw_path)
         try:
             shutil.rmtree(str(path.absolute()))
 
         except Exception as exc:
-            logger.error(f"[ FAIL ] Failed to remove '{raw_path}': {exc!s}")  # type: ignore
+            session.warn(f"[ FAIL ] Failed to remove '{raw_path}': {exc!s}")
 
         else:
-            logger.info(f"[  OK  ] Removed '{raw_path}'")  # type: ignore
+            session.log(f"[  OK  ] Removed '{raw_path}'")
 
     # Remove individual files
     for raw_path in ["./.coverage", "./coverage_html.xml"]:
@@ -114,14 +114,15 @@ def cleanup(session: nox.Session) -> None:
             path.unlink()
 
         except Exception as exc:
-            logger.error(f"[ FAIL ] Failed to remove '{raw_path}': {exc!s}")  # type: ignore
+            session.warn(f"[ FAIL ] Failed to remove '{raw_path}': {exc!s}")
 
         else:
-            logger.info(f"[  OK  ] Removed '{raw_path}'")  # type: ignore
+            session.log(f"[  OK  ] Removed '{raw_path}'")
 
 
 @nox.session(name="generate-docs", reuse_venv=True)
 def generate_docs(session: nox.Session) -> None:
+    """Generate docs for this project using Pdoc."""
     install_requirements(session, ".[docs]")
     session.log("Building docs into ./docs")
     output_directory = _try_find_option(session, "-o", "--output") or "./docs"
@@ -155,12 +156,14 @@ def generate_docs(session: nox.Session) -> None:
 
 @nox.session(reuse_venv=True)
 def lint(session: nox.Session) -> None:
+    """Run this project's modules against the pre-defined flake8 linters."""
     install_requirements(session, ".[flake8]")
     session.run("flake8", *GENERAL_TARGETS)
 
 
 @nox.session(reuse_venv=True, name="spell-check")
 def spell_check(session: nox.Session) -> None:
+    """Check this project's text-like files for common spelling mistakes."""
     install_requirements(session, ".[lint]")  # include_standard_requirements=False
     session.run(
         "codespell",
@@ -169,14 +172,17 @@ def spell_check(session: nox.Session) -> None:
         ".gitignore",
         "LICENSE",
         "pyproject.toml",
-        "README.md",
         "CHANGELOG.md",
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+        "README.md",
         "./github",
     )
 
 
 @nox.session(reuse_venv=True)
 def build(session: nox.Session) -> None:
+    """Build this project using flit."""
     session.install("flit")
     session.log("Starting build")
     session.run("flit", "build")
@@ -184,6 +190,7 @@ def build(session: nox.Session) -> None:
 
 @nox.session(reuse_venv=True)
 def publish(session: nox.Session, test: bool = False) -> None:
+    """Publish this project to pypi."""
     if not _try_find_option(session, "--skip-version-check", when_empty="true"):
         check_versions(session)
 
@@ -212,11 +219,13 @@ def publish(session: nox.Session, test: bool = False) -> None:
 
 @nox.session(name="test-publish", reuse_venv=True)
 def test_publish(session: nox.Session) -> None:
+    """Publish this project to test pypi."""
     publish(session, test=True)
 
 
 @nox.session(reuse_venv=True)
 def reformat(session: nox.Session) -> None:
+    """Reformat this project's modules to fit the standard style."""
     install_requirements(session, ".[reformat]")  # include_standard_requirements=False
     session.run("black", *GENERAL_TARGETS)
     session.run("isort", *GENERAL_TARGETS)
@@ -224,6 +233,7 @@ def reformat(session: nox.Session) -> None:
 
 @nox.session(reuse_venv=True)
 def test(session: nox.Session) -> None:
+    """Run this project's tests using pytest."""
     install_requirements(session, ".[tests]")
     # TODO: can import-mode be specified in the config.
     session.run("pytest", "--import-mode", "importlib")
@@ -231,6 +241,7 @@ def test(session: nox.Session) -> None:
 
 @nox.session(name="test-coverage", reuse_venv=True)
 def test_coverage(session: nox.Session) -> None:
+    """Run this project's tests while recording test coverage."""
     install_requirements(session, ".[tests]")
     # TODO: can import-mode be specified in the config.
     # https://github.com/nedbat/coveragepy/issues/1002
@@ -264,6 +275,7 @@ def verify_types(session: nox.Session) -> None:
 
 @nox.session(name="check-dependencies")
 def check_dependencies(session: nox.Session) -> None:
+    """Verify that all the dependencies declared in pyproject.toml are up to date."""
     import httpx
 
     # Note: this can be linked to a specific hash by adding it between raw and {file.name} as another route segment.
@@ -287,7 +299,7 @@ def check_dependencies(session: nox.Session) -> None:
         with file:
             file.write(code)
 
-        session.run("python", file.name, "--ignore", "pdoc")
+        session.run("python", file.name)
 
     finally:
         pathlib.Path(file.name).unlink(missing_ok=False)

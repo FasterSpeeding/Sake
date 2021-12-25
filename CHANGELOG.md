@@ -45,5 +45,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `window_size` parameter from `RedisClient.clear_*` methods as these are no-longer
   chunked.
 
-[Unreleased]: https://github.com/FasterSpeeding/Tanjun/compare/v1.0.0a1...HEAD
-[1.0.0a1]: https://github.com/FasterSpeeding/Tanjun/compare/0.0.1...v1.0.0a1
+[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.0a1...HEAD
+[1.0.0a1]: https://github.com/FasterSpeeding/Sake/compare/0.0.1...v1.0.0a1

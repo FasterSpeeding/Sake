@@ -54,7 +54,6 @@ import datetime
 import enum
 import itertools
 import json
-import logging
 import typing
 import warnings
 
@@ -74,9 +73,6 @@ if typing.TYPE_CHECKING:
 _ObjectT = typing.Dict[str, typing.Any]
 _RedisValueT = typing.Union[int, str, bytes]
 _ResourceT = typing.TypeVar("_ResourceT", bound="ResourceClient")
-
-_LOGGER: typing.Final[logging.Logger] = logging.getLogger("hikari.sake.redis")
-"""The logger instance used by this Sake implementation."""
 
 DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
 """The default expire time (in milliseconds) used for expiring resources of 60 minutes."""

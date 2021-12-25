@@ -36,7 +36,7 @@ import tempfile
 
 import nox
 
-nox.options.sessions = ["reformat", "lint", "spell-check", "type-check", "test"]  # type: ignore
+nox.options.sessions = ["reformat", "lint", "spell-check", "type-check", "test", "verify-types"]  # type: ignore
 GENERAL_TARGETS = ["./examples", "./noxfile.py", "./sake", "./tests"]
 PYTHON_VERSIONS = ["3.9", "3.10"]  # TODO: @nox.session(python=["3.6", "3.7", "3.8"])?
 
@@ -237,10 +237,7 @@ def test_coverage(session: nox.Session) -> None:
     session.run("pytest", "--cov=sake", "--cov-report", "html:coverage_html", "--cov-report", "xml:coverage.xml")
 
 
-@nox.session(name="type-check", reuse_venv=True)
-def type_check(session: nox.Session) -> None:
-    install_requirements(session, ".[tests, type_checking]", "-r", "nox-requirements.txt")
-
+def _run_pyright(session: nox.Session, *args: str) -> None:
     if _try_find_option(session, "--force-env", when_empty="True"):
         session.env["PYRIGHT_PYTHON_GLOBAL_NODE"] = "off"
 
@@ -248,7 +245,21 @@ def type_check(session: nox.Session) -> None:
         session.env["PYRIGHT_PYTHON_FORCE_VERSION"] = version
 
     session.run("python", "-m", "pyright", "--version")
-    session.run("python", "-m", "pyright")
+    session.run("python", "-m", "pyright", *args)
+
+
+@nox.session(name="type-check", reuse_venv=True)
+def type_check(session: nox.Session) -> None:
+    """Statically analyse and veirfy this project using Pyright."""
+    install_requirements(session, ".[tests, type_checking]", "-r", "nox-requirements.txt")
+    _run_pyright(session)
+
+
+@nox.session(name="verify-types", reuse_venv=True)
+def verify_types(session: nox.Session) -> None:
+    """Verify the "type completeness" of types exported by the library using Pyright."""
+    install_requirements(session, ".[type_checking]")
+    _run_pyright(session, "--verifytypes", "sake", "--ignoreexternal")
 
 
 @nox.session(name="check-dependencies")

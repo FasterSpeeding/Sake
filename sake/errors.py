@@ -56,7 +56,7 @@ class SakeException(Exception):
     ----------
     message : str
         The exception's message.
-    base : typing.Optional[BaseException]
+    base : typing.Optional[Exception]
         The exception which caused this exception if applicable else `builtins.None`.
     """
 
@@ -65,12 +65,12 @@ class SakeException(Exception):
     message: str
     """The exception's message, this may be an empty string if there is no message."""
 
-    base: typing.Optional[BaseException]
+    base: typing.Optional[Exception]
     """The exception which caused this exception if applicable else `builtins.None`."""
 
-    def __init__(self, message: str, *, exception: typing.Optional[BaseException] = None) -> None:
-        self.message = message
-        self.base_exception = exception
+    def __init__(self, message: str, *, exception: typing.Optional[Exception] = None) -> None:
+        self.message: str = message
+        self.base_exception: typing.Optional[Exception] = exception
 
     def __repr__(self) -> str:
         return f"{type.__name__}({self.message!r})"

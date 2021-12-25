@@ -224,7 +224,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_prefixes(self) -> CacheIterator[typing.Tuple[hikari.Snowflake, typing.AbstractSet[str]]]:
+    def iter_prefixes(self) -> CacheIterator[typing.AbstractSet[str]]:
         """Iterate over the prefixes stored in the cache.
 
         Returns

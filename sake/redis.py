@@ -276,18 +276,18 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         return self.__config
 
     @property
-    def default_expire(self) -> typing.Optional[datetime.timedelta]:
+    def default_expire(self) -> typing.Optional[int]:
         """The default expire time used for fields with no actual lifetime.
 
         Returns
         -------
-        typing.Optional[datetime.timedelta]
+        typing.Optional[int]
             The default expire time used for all fields with no immedieatly
-            obvious lifetime (e.g. invite expire_at).
+            obvious lifetime (e.g. invite expire_at) in milliseconds.
 
             If this is `None` then these cases will have no set expire after.
         """
-        return datetime.timedelta(milliseconds=self.__default_expire)  # TODO: , pexpire=self.default_expire
+        return self.__default_expire  # TODO: , pexpire=self.default_expire
 
     @property
     def event_manager(self) -> typing.Optional[hikari.api.EventManager]:
@@ -801,9 +801,9 @@ def _get_id(data: _ObjectT, /) -> str:
     return str(int(data["id"]))
 
 
-def _decode_prefixes(data: typing.Any, /) -> typing.List[str]:
+def _decode_prefixes(data: typing.Any, /) -> typing.Set[str]:
     assert isinstance(data, set)
-    return [v.decode() for v in data]
+    return {v.decode() for v in data}
 
 
 class PrefixCache(ResourceClient, sake_abc.PrefixCache):
@@ -840,7 +840,7 @@ class PrefixCache(ResourceClient, sake_abc.PrefixCache):
 
     def iter_prefixes(
         self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
-    ) -> sake_abc.CacheIterator[typing.Tuple[hikari.Snowflake, typing.AbstractSet[str]]]:
+    ) -> sake_abc.CacheIterator[typing.AbstractSet[str]]:
         # <<Inherited docstring from sake.abc.PrefixCache>>
         return redis_iterators.Iterator(
             self, ResourceIndex.PREFIX, _decode_prefixes, lambda v: v, window_size=window_size
@@ -1382,7 +1382,7 @@ class _OwnIDStore:
 
         self._lock = asyncio.Lock()
         async with self._lock:
-            user = await self._app.app.fetch_my_user()
+            user = await self._app.rest.fetch_my_user()
             self.value = user.id
             return self.value
 

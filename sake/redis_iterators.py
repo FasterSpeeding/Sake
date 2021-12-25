@@ -50,7 +50,7 @@ if typing.TYPE_CHECKING:
     import aioredis
 
 
-_ObjectT = typing.Dict[str, typing.Any]
+_ObjectT = typing.TypeVar("_ObjectT")
 _RedisKeyT = typing.Union[str, bytes]
 _ValueT = typing.TypeVar("_ValueT")
 
@@ -93,7 +93,7 @@ async def _iter_values(
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
-) -> typing.AsyncIterator[typing.Iterator[_ObjectT]]:
+) -> typing.AsyncIterator[typing.Iterator[typing.Optional[bytes]]]:
     """Asynchronously iterate over slices of the values in a key to string datastore."""
     async for window in _iter_keys(client, window_size=window_size, match=match):
         yield await client.mget(*window)
@@ -105,7 +105,7 @@ async def _iter_hash_values(
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
-) -> typing.AsyncIterator[typing.Iterator[_ObjectT]]:
+) -> typing.AsyncIterator[typing.Iterator[bytes]]:
     """Asynchronously iterate over slices of the values in a redis hash."""
     cursor = 0
 
@@ -113,7 +113,7 @@ async def _iter_hash_values(
         cursor, window = await client.hscan(key, cursor=cursor, count=window_size, match=match)
 
         if window:
-            yield (value for _, value in window)
+            yield window.values()
 
         if not cursor:
             break
@@ -147,7 +147,7 @@ async def _iter_reference_values(
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
-) -> typing.AsyncIterator[typing.Iterator[_ObjectT]]:
+) -> typing.AsyncIterator[typing.Iterator[typing.Optional[bytes]]]:
     """Asynchronously iterate over slices of the values referenced by a REFERENCE set."""
     connection = client.get_connection(index)
     async for window in _iter_reference_keys(client, key, window_size=window_size, match=match):
@@ -155,25 +155,36 @@ async def _iter_reference_values(
 
 
 class Iterator(abc.CacheIterator[_ValueT]):
-    __slots__: typing.Sequence[str] = ("_buffer", "_builder", "_client", "_index", "_len", "_windows", "_window_size")
+    __slots__: typing.Sequence[str] = (
+        "_buffer",
+        "_builder",
+        "_client",
+        "_index",
+        "_len",
+        "_load",
+        "_windows",
+        "_window_size",
+    )
 
     def __init__(
         self,
         client: redis.ResourceClient,
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
+        load: typing.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[_ObjectT] = []
+        self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
         self._index = index
         self._len: typing.Optional[int] = None
-        self._windows: typing.Optional[typing.AsyncIterator[typing.Iterator[_ObjectT]]] = None
+        self._load = load
+        self._windows: typing.Optional[typing.AsyncIterator[typing.Iterator[typing.Optional[bytes]]]] = None
         self._window_size = int(window_size)
 
     def __aiter__(self) -> Iterator[_ValueT]:
@@ -186,13 +197,13 @@ class Iterator(abc.CacheIterator[_ValueT]):
         # A window might be empty due to none of the requested keys being found, hence the while not self._buffer
         while not self._buffer:
             async for window in self._windows:
-                self._buffer.extend(window)
+                self._buffer.extend(filter(None, window))
                 break
 
             else:
                 raise StopAsyncIteration from None
 
-        return self._builder(self._buffer.pop(0))
+        return self._builder(self._load(self._buffer.pop(0)))
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
@@ -203,7 +214,7 @@ class Iterator(abc.CacheIterator[_ValueT]):
 
 
 class ReferenceIterator(abc.CacheIterator[_ValueT]):
-    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
+    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_load", "_windows", "_window_size")
 
     def __init__(
         self,
@@ -211,19 +222,21 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
         key: _RedisKeyT,
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
+        load: typing.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[_ObjectT] = []
+        self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
         self._index = index
         self._key = key
         self._len: typing.Optional[int] = None
-        self._windows: typing.Optional[typing.AsyncIterator[typing.Iterator[_ObjectT]]] = None
+        self._load = load
+        self._windows: typing.Optional[typing.AsyncIterator[typing.Iterator[typing.Optional[bytes]]]] = None
         self._window_size = int(window_size)
 
     def __aiter__(self) -> ReferenceIterator[_ValueT]:
@@ -236,13 +249,13 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
         # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
         while not self._buffer:
             async for window in self._windows:
-                self._buffer.extend(window)
+                self._buffer.extend(filter(None, window))
                 break
 
             else:
                 raise StopAsyncIteration from None
 
-        return self._builder(self._buffer.pop(0))
+        return self._builder(self._load(self._buffer.pop(0)))
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
@@ -253,7 +266,7 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
 
 
 class HashReferenceIterator(abc.CacheIterator[_ValueT]):
-    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
+    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_load", "_windows", "_window_size")
 
     def __init__(
         self,
@@ -261,19 +274,21 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
         key: _RedisKeyT,
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
+        load: typing.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[_ObjectT] = []
+        self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
         self._index = index
         self._key = key
         self._len: typing.Optional[int] = None
-        self._windows: typing.Optional[typing.AsyncIterator[typing.Iterator[_ObjectT]]] = None
+        self._load = load
+        self._windows: typing.Optional[typing.AsyncIterator[typing.Iterator[bytes]]] = None
         self._window_size = int(window_size)
 
     @staticmethod
@@ -312,7 +327,7 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
             else:
                 raise StopAsyncIteration from None
 
-        return self._builder(self._buffer.pop(0))
+        return self._builder(self._load(self._buffer.pop(0)))
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
@@ -335,6 +350,7 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
         "_client",
         "_index",
         "_len",
+        "_load",
         "_top_level_keys",
         "_windows",
         "_window_size",
@@ -345,19 +361,21 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
         client: redis.ResourceClient,
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
+        load: typing.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[_ObjectT] = []
+        self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
         self._index = index
         self._len: typing.Optional[int] = None
+        self._load = load
         self._top_level_keys: typing.Optional[typing.AsyncIterator[bytes]] = None
-        self._windows: typing.AsyncIterator[typing.Iterator[_ObjectT]] = _empty_async_iterator()
+        self._windows: typing.AsyncIterator[typing.Iterator[bytes]] = _empty_async_iterator()
         self._window_size = int(window_size)
 
     def __aiter__(self) -> MultiMapIterator[_ValueT]:
@@ -383,7 +401,7 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
                 else:
                     raise StopAsyncIteration from None
 
-        return self._builder(self._buffer.pop(0))
+        return self._builder(self._load(self._buffer.pop(0)))
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
@@ -397,7 +415,7 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
 
 
 class SpecificMapIterator(abc.CacheIterator[_ValueT]):
-    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_windows", "_window_size")
+    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_load", "_windows", "_window_size")
 
     def __init__(
         self,
@@ -405,19 +423,21 @@ class SpecificMapIterator(abc.CacheIterator[_ValueT]):
         key: _RedisKeyT,
         index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
+        load: typing.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[_ObjectT] = []
+        self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
         self._index = index
         self._key = key
         self._len: typing.Optional[int] = None
-        self._windows: typing.Optional[typing.AsyncIterator[typing.Iterator[_ObjectT]]] = None
+        self._load = load
+        self._windows: typing.Optional[typing.AsyncIterator[typing.Iterator[bytes]]] = None
         self._window_size = window_size
 
     def __aiter__(self) -> SpecificMapIterator[_ValueT]:
@@ -437,7 +457,7 @@ class SpecificMapIterator(abc.CacheIterator[_ValueT]):
             else:
                 raise StopAsyncIteration from None
 
-        return self._builder(self._buffer.pop(0))
+        return self._builder(self._load(self._buffer.pop(0)))
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>

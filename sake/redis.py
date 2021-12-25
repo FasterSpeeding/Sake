@@ -101,7 +101,7 @@ class ResourceIndex(enum.IntEnum):
     USER = 7
     VOICE_STATE = 8
     REFERENCE = 9
-    #  REFERENCE is a special case database solely used for linking other entries to other master entities.
+    # REFERENCE is a special case database solely used for linking other entries to other master entities.
     MESSAGE = 10
     INTEGRATION = 11
     PREFIX = 12

@@ -128,8 +128,9 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     Parameters
     ----------
-    rest : hikari.traits.RESTAware
-        The REST aware Hikari client to bind this resource client to.
+    app : hikari.traits.RESTAware
+        The Hikari client all the models returned by this client should be
+        bound to.
     address : str
         The address to use to connect to the Redis backend server this
         resource is linked to.
@@ -162,6 +163,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     __slots__: typing.Sequence[str] = (
         "__address",
+        "__app",
         "__clients",
         "__config",
         "__default_expire",
@@ -173,14 +175,13 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         "__max_connections_per_db",
         "__password",
         "__raw_listeners",
-        "__rest",
         "__started",
     )
 
     def __init__(
         self,
         address: str,
-        rest: traits.RESTAware,
+        app: traits.RESTAware,
         event_manager: typing.Optional[hikari.api.EventManager] = None,
         *,
         config: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
@@ -192,6 +193,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         loads: typing.Callable[[bytes], _ObjectT] = json.loads,
     ) -> None:
         self.__address = address
+        self.__app = app
         self.__clients: typing.Dict[int, aioredis.Redis] = {}
         self.__config = config or {}
         self.__default_expire = utility.convert_expire_time(default_expire)
@@ -203,7 +205,6 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         self.__max_connections_per_db = max_connections_per_db
         self.__password = password
         self.__raw_listeners = utility.find_raw_listeners(self)
-        self.__rest = rest
         self.__started = False
 
         if event_manager:
@@ -251,15 +252,54 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             return None
 
     @property
+    def app(self) -> traits.RESTAware:
+        """The Hikari client this resource client is tied to.
+
+        This is used to build models with a `app` attribute.
+
+        Returns
+        -------
+        hikari.traits.RESTAware
+            The Hikari client this resource is tied to.
+        """
+        return self.__app
+
+    @property
     def config(self) -> typing.MutableMapping[str, typing.Any]:
+        """This client's settings.
+
+        Returns
+        -------
+        typing.MutableMapping[str, typing.Any]
+            The settings for this client.
+        """
         return self.__config
 
     @property
-    def default_expire(self) -> typing.Optional[int]:
-        return self.__default_expire  # TODO: , pexpire=self.default_expire
+    def default_expire(self) -> typing.Optional[datetime.timedelta]:
+        """The default expire time used for fields with no actual lifetime.
+
+        Returns
+        -------
+        typing.Optional[datetime.timedelta]
+            The default expire time used for all fields with no immedieatly
+            obvious lifetime (e.g. invite expire_at).
+
+            If this is `None` then these cases will have no set expire after.
+        """
+        return datetime.timedelta(milliseconds=self.__default_expire)  # TODO: , pexpire=self.default_expire
 
     @property
     def event_manager(self) -> typing.Optional[hikari.api.EventManager]:
+        """The event manager this resource client is using for managing state.
+
+        Returns
+        -------
+        hikari.api.EventManager
+            The event manager this resource client is using for managing state.
+
+            This will be `None` if
+        """
         return self.__event_manager
 
     @classmethod
@@ -299,20 +339,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     @property
     def is_alive(self) -> bool:
+        # <<Inherited docstring from sake.abc.Resource>>
         return self.__started
-
-    @property  # unlike here where this is 100% required for building models.
-    def rest(self) -> traits.RESTAware:
-        """The REST aware client this resource client is tied to.
-
-        This is used to build models with a `app` attribute.
-
-        Returns
-        -------
-        hikari.traits.RESTAware
-            The REST aware client this resource is tied to.
-        """
-        return self.__rest
 
     def all_indexes(self) -> typing.MutableSet[typing.Union[ResourceIndex, int]]:
         """Get a set of all the Redis client indexes this is using.
@@ -334,6 +362,12 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     @classmethod
     def all_intents(cls) -> hikari.Intents:
+        """The intents required for a client to be sufficient event managed.
+
+        If not all these intents are present in the linked event manager
+        then this client won't be able to reliably fill and manage the
+        linked redis database(s).
+        """
         result = hikari.Intents.NONE
         for sub_class in cls.mro():
             if issubclass(sub_class, ResourceClient):
@@ -353,17 +387,68 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
                     )
 
     def dump(self, data: _ObjectT, /) -> bytes:
+        """Serialize a dict object representation into the form to be stored.
+
+        Parameters
+        ----------
+        data : dict[str, typing.Any]
+            The dict object to serialize.
+
+        Returns
+        -------
+        bytes
+            The object serialized as bytes.
+        """
         return self.__dump(data)
 
     def load(self, data: bytes, /) -> _ObjectT:
+        """Deserialize a bytes representation to a dict object.
+
+        Parameters
+        ----------
+        data : dict[str, typing.Any]
+            The bytes representation from the database to a dict object.
+
+        Returns
+        -------
+        dict[str, typing.Any]
+            The deserialized dict object.
+        """
         return self.__load(data)
 
     def get_index_override(self, index: ResourceIndex, /) -> typing.Optional[int]:
+        """Get the override set for an index.
+
+        Parameters
+        ----------
+        index : ResourceIndex
+            The index to get the override for.
+
+        Returns
+        -------
+        typing.Optional[int]
+            The found override if set, else `None`.
+        """
         return self.__index_overrides.get(index)
 
     def with_index_override(
-        self: _ResourceT, index: ResourceIndex, override: typing.Optional[int] = None, /
+        self: _ResourceT, index: ResourceIndex, /, *, override: typing.Optional[int] = None
     ) -> _ResourceT:
+        """Add an index override.
+
+        Parameters
+        ----------
+        index : ResourceIndex
+            The index to override.
+
+        Other Parameters
+        ----------------
+        override : typing.Optional[int]
+            The override to set.
+
+            If this is left at `None` then any previous override is unset.
+            This will decide which Redis database is targeted for a resource.
+        """
         if self.__started:
             raise ValueError("Cannot set an index override while the client is active")
 
@@ -625,7 +710,7 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
     async def get_me(self) -> hikari.OwnUser:
         # <<Inherited docstring from sake.abc.MeCache>>
         if payload := await self.get_connection(ResourceIndex.USER).get(self.__ME_KEY):
-            return self.rest.entity_factory.deserialize_my_user(self.load(payload))
+            return self.app.entity_factory.deserialize_my_user(self.load(payload))
 
         raise errors.EntryNotFound("Own user not found")
 
@@ -653,8 +738,8 @@ class UserCache(_MeCache, sake_abc.UserCache):
 
         Parameters
         ----------
-        expire : typing.Union[datetime.timedelta, builtins.int, builtins.float]
-            The default expire time to add for users in this cache or `builtins.None`
+        expire : typing.Union[datetime.timedelta, int, float]
+            The default expire time to add for users in this cache or `None`
             to set back to the default behaviour.
             This may either be the number of seconds as an int or float (where
             millisecond precision is supported) or a timedelta.
@@ -683,7 +768,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
     async def get_user(self, user_id: hikari.Snowflakeish, /) -> hikari.User:
         # <<Inherited docstring from sake.abc.UserCache>>
         if payload := await self.get_connection(ResourceIndex.USER).get(str(user_id)):
-            return self.rest.entity_factory.deserialize_user(self.load(payload))
+            return self.app.entity_factory.deserialize_user(self.load(payload))
 
         raise errors.EntryNotFound("User not found")
 
@@ -692,7 +777,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
     ) -> sake_abc.CacheIterator[hikari.User]:
         # <<Inherited docstring from sake.abc.UserCache>>
         return redis_iterators.Iterator(
-            self, ResourceIndex.USER, self.rest.entity_factory.deserialize_user, self.load, window_size=window_size
+            self, ResourceIndex.USER, self.app.entity_factory.deserialize_user, self.load, window_size=window_size
         )
 
     async def set_user(self, payload: _ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
@@ -746,7 +831,7 @@ class PrefixCache(ResourceClient, sake_abc.PrefixCache):
         # <<Inherited docstring from sake.abc.PrefixCache>>
         await self.get_connection(ResourceIndex.PREFIX).srem(str(guild_id), prefix, *prefixes)
 
-    async def get_prefixes(self, guild_id: hikari.Snowflakeish, /) -> typing.Sequence[str]:
+    async def get_prefixes(self, guild_id: hikari.Snowflakeish, /) -> typing.AbstractSet[str]:
         # <<Inherited docstring from sake.abc.PrefixCache>>
         if data := await self.get_connection(ResourceIndex.PREFIX).smembers(str(guild_id)):
             return _decode_prefixes(data)
@@ -755,7 +840,7 @@ class PrefixCache(ResourceClient, sake_abc.PrefixCache):
 
     def iter_prefixes(
         self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
-    ) -> sake_abc.CacheIterator[typing.Sequence[str]]:
+    ) -> sake_abc.CacheIterator[typing.Tuple[hikari.Snowflake, typing.AbstractSet[str]]]:
         # <<Inherited docstring from sake.abc.PrefixCache>>
         return redis_iterators.Iterator(
             self, ResourceIndex.PREFIX, _decode_prefixes, lambda v: v, window_size=window_size
@@ -860,7 +945,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
 
     def __deserialize_known_custom_emoji(self, payload: _ObjectT, /) -> hikari.KnownCustomEmoji:
         guild_id = hikari.Snowflake(payload["guild_id"])
-        return self.rest.entity_factory.deserialize_known_custom_emoji(payload, guild_id=guild_id)
+        return self.app.entity_factory.deserialize_known_custom_emoji(payload, guild_id=guild_id)
 
     def iter_emojis(
         self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
@@ -925,7 +1010,7 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
         # Hikari's deserialization logic expcets these fields to be present.
         payload["roles"] = []
         payload["emojis"] = []
-        return self.rest.entity_factory.deserialize_gateway_guild(payload).guild
+        return self.app.entity_factory.deserialize_gateway_guild(payload).guild
 
     async def get_guild(self, guild_id: hikari.Snowflakeish, /) -> hikari.GatewayGuild:
         # <<Inherited docstring from sake.abc.GuildCache>>
@@ -1045,7 +1130,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         raise errors.EntryNotFound("Guild channel not found")
 
     def __deserialize_guild_channel(self, payload: _ObjectT, /) -> hikari.GuildChannel:
-        channel = self.rest.entity_factory.deserialize_channel(payload)
+        channel = self.app.entity_factory.deserialize_channel(payload)
         assert isinstance(channel, hikari.GuildChannel)
         return channel
 
@@ -1135,7 +1220,7 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
     async def get_integration(self, integration_id: hikari.Snowflakeish, /) -> hikari.Integration:
         # <<Inherited docstring from sake.abc.IntegrationCache>>
         if payload := await self.get_connection(ResourceIndex.INTEGRATION).get(str(integration_id)):
-            return self.rest.entity_factory.deserialize_integration(self.load(payload))
+            return self.app.entity_factory.deserialize_integration(self.load(payload))
 
         raise errors.EntryNotFound("Integration not found")
 
@@ -1146,7 +1231,7 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
         return redis_iterators.Iterator(
             self,
             ResourceIndex.INTEGRATION,
-            self.rest.entity_factory.deserialize_integration,
+            self.app.entity_factory.deserialize_integration,
             self.load,
             window_size=window_size,
         )
@@ -1159,7 +1244,7 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
             self,
             key,
             ResourceIndex.INTEGRATION,
-            self.rest.entity_factory.deserialize_integration,
+            self.app.entity_factory.deserialize_integration,
             self.load,
             window_size=window_size,
         )
@@ -1200,8 +1285,8 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
 
         Parameters
         ----------
-        expire : typing.Union[datetime.timedelta, builtins.int, builtins.float]
-            The default expire time to add for invites in this cache or `builtins.None`
+        expire : typing.Union[datetime.timedelta, int, float]
+            The default expire time to add for invites in this cache or `None`
             to set back to the default behaviour.
             This may either be the number of seconds as an int or float (where
             millisecond precision is supported) or a timedelta.
@@ -1231,7 +1316,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
     async def get_invite(self, invite_code: str, /) -> hikari.InviteWithMetadata:
         # <<Inherited docstring from sake.abc.InviteCache>>
         if payload := await self.get_connection(ResourceIndex.INVITE).get(str(invite_code)):
-            return self.rest.entity_factory.deserialize_invite_with_metadata(self.load(payload))
+            return self.app.entity_factory.deserialize_invite_with_metadata(self.load(payload))
 
         raise errors.EntryNotFound("Invite not found")
 
@@ -1242,7 +1327,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
         return redis_iterators.Iterator(
             self,
             ResourceIndex.INVITE,
-            self.rest.entity_factory.deserialize_invite_with_metadata,
+            self.app.entity_factory.deserialize_invite_with_metadata,
             self.load,
             window_size=window_size,
         )
@@ -1278,14 +1363,14 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
 
 
 class _OwnIDStore:
-    __slots__: typing.Sequence[str] = ("_event", "_is_waiting", "_lock", "_rest", "value")
+    __slots__: typing.Sequence[str] = ("_event", "_is_waiting", "_lock", "_app", "value")
 
     KEY: typing.Final[str] = "OWN_ID"
 
-    def __init__(self, rest: traits.RESTAware, /) -> None:
+    def __init__(self, app: traits.RESTAware, /) -> None:
         self._lock: typing.Optional[asyncio.Lock] = None
         self._is_waiting = False
-        self._rest = rest
+        self._app = app
         self.value: typing.Optional[hikari.Snowflake] = None
 
     async def await_value(self) -> int:
@@ -1297,7 +1382,7 @@ class _OwnIDStore:
 
         self._lock = asyncio.Lock()
         async with self._lock:
-            user = await self._rest.rest.fetch_my_user()
+            user = await self._app.app.fetch_my_user()
             self.value = user.id
             return self.value
 
@@ -1373,7 +1458,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
             assert isinstance(own_id, _OwnIDStore)
 
         except KeyError:
-            own_id = self.config[_OwnIDStore.KEY] = _OwnIDStore(self.rest)
+            own_id = self.config[_OwnIDStore.KEY] = _OwnIDStore(self.app)
 
         if (own_id_value := own_id.value) is None:
             own_id_value = await own_id.await_value()
@@ -1402,7 +1487,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
     async def get_member(self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /) -> hikari.Member:
         # <<Inherited docstring from sake.abc.MemberCache>>
         if payload := await self.get_connection(ResourceIndex.MEMBER).hget(str(guild_id), str(user_id)):
-            return self.rest.entity_factory.deserialize_member(self.load(payload))
+            return self.app.entity_factory.deserialize_member(self.load(payload))
 
         raise errors.EntryNotFound("Member not found")
 
@@ -1411,7 +1496,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
     ) -> sake_abc.CacheIterator[hikari.Member]:
         # <<Inherited docstring from sake.abc.MemberCache>>
         return redis_iterators.MultiMapIterator(
-            self, ResourceIndex.MEMBER, self.rest.entity_factory.deserialize_member, self.load, window_size=window_size
+            self, ResourceIndex.MEMBER, self.app.entity_factory.deserialize_member, self.load, window_size=window_size
         )
 
     def iter_members_for_guild(
@@ -1422,7 +1507,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
             self,
             str(guild_id),
             ResourceIndex.MEMBER,
-            self.rest.entity_factory.deserialize_member,
+            self.app.entity_factory.deserialize_member,
             self.load,
             window_size=window_size,
         )
@@ -1469,8 +1554,8 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
 
         Parameters
         ----------
-        expire : typing.Union[datetime.timedelta, builtins.int, builtins.float]
-            The default expire time to add for messages in this cache or `builtins.None`
+        expire : typing.Union[datetime.timedelta, int, float]
+            The default expire time to add for messages in this cache or `None`
             to set back to the default behaviour.
             This may either be the number of seconds as an int or float (where
             millisecond precision is supported) or a timedelta.
@@ -1499,7 +1584,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
     async def get_message(self, message_id: hikari.Snowflakeish, /) -> hikari.Message:
         # <<Inherited docstring from sake.abc.MessageCache>>
         if payload := await self.get_connection(ResourceIndex.MESSAGE).get(str(message_id)):
-            return self.rest.entity_factory.deserialize_message(self.load(payload))
+            return self.app.entity_factory.deserialize_message(self.load(payload))
 
         raise errors.EntryNotFound("Message not found")
 
@@ -1510,7 +1595,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
         return redis_iterators.Iterator(
             self,
             ResourceIndex.MESSAGE,
-            self.rest.entity_factory.deserialize_message,
+            self.app.entity_factory.deserialize_message,
             self.load,
             window_size=window_size,
         )
@@ -1602,7 +1687,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
     ) -> hikari.MemberPresence:
         # <<Inherited docstring from sake.abc.PresenceCache>>
         if payload := await self.get_connection(ResourceIndex.PRESENCE).hget(str(guild_id), str(user_id)):
-            return self.rest.entity_factory.deserialize_member_presence(self.load(payload))
+            return self.app.entity_factory.deserialize_member_presence(self.load(payload))
 
         raise errors.EntryNotFound("Presence not found")
 
@@ -1613,7 +1698,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
         return redis_iterators.MultiMapIterator(
             self,
             ResourceIndex.PRESENCE,
-            self.rest.entity_factory.deserialize_member_presence,
+            self.app.entity_factory.deserialize_member_presence,
             self.load,
             window_size=window_size,
         )
@@ -1626,7 +1711,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
             self,
             str(guild_id),
             ResourceIndex.PRESENCE,
-            self.rest.entity_factory.deserialize_member_presence,
+            self.app.entity_factory.deserialize_member_presence,
             self.load,
             window_size=window_size,
         )
@@ -1717,7 +1802,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
 
     def __deserialize_role(self, payload: _ObjectT, /) -> hikari.Role:
         guild_id = hikari.Snowflake(payload["guild_id"])
-        return self.rest.entity_factory.deserialize_role(payload, guild_id=guild_id)
+        return self.app.entity_factory.deserialize_role(payload, guild_id=guild_id)
 
     def iter_roles(
         self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
@@ -1909,7 +1994,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
     ) -> hikari.VoiceState:
         # <<Inherited docstring from sake.abc.VoiceStateCache>>
         if payload := await self.get_connection(ResourceIndex.VOICE_STATE).hget(str(guild_id), str(user_id)):
-            return self.rest.entity_factory.deserialize_voice_state(self.load(payload))
+            return self.app.entity_factory.deserialize_voice_state(self.load(payload))
 
         raise errors.EntryNotFound("Voice state not found")
 
@@ -1920,7 +2005,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         return redis_iterators.MultiMapIterator(
             self,
             ResourceIndex.VOICE_STATE,
-            self.rest.entity_factory.deserialize_voice_state,
+            self.app.entity_factory.deserialize_voice_state,
             self.load,
             window_size=window_size,
         )
@@ -1934,7 +2019,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
             self,
             key,
             ResourceIndex.VOICE_STATE,
-            self.rest.entity_factory.deserialize_voice_state,
+            self.app.entity_factory.deserialize_voice_state,
             self.load,
             window_size=window_size,
         )
@@ -1947,7 +2032,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
             self,
             str(guild_id),
             ResourceIndex.VOICE_STATE,
-            self.rest.entity_factory.deserialize_voice_state,
+            self.app.entity_factory.deserialize_voice_state,
             self.load,
             window_size=window_size,
         )

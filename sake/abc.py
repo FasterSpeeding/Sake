@@ -196,7 +196,7 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    async def get_prefixes(self, guild_id: hikari.Snowflakeish, /) -> typing.Sequence[str]:
+    async def get_prefixes(self, guild_id: hikari.Snowflakeish, /) -> typing.AbstractSet[str]:
         """Get prefixes from the cache.
 
         Parameters
@@ -206,8 +206,8 @@ class PrefixCache(Resource, typing.Protocol):
 
         Returns
         -------
-        typing.Sequence[str]
-            The sequences of prefixes fetched from the cache.
+        typing.AbstractSet[str]
+            Set of the prefixes fetched from the cache.
 
         Raises
         ------
@@ -224,13 +224,14 @@ class PrefixCache(Resource, typing.Protocol):
         """
         raise NotImplementedError
 
-    def iter_prefixes(self) -> CacheIterator[typing.Sequence[str]]:
+    def iter_prefixes(self) -> CacheIterator[typing.Tuple[hikari.Snowflake, typing.AbstractSet[str]]]:
         """Iterate over the prefixes stored in the cache.
 
         Returns
         -------
-        CacheIterator[typing.List[str]]
-            An async iterator of the prefixes stored in the cache.
+        CacheIterator[typing.Tuple[hikari.Snowflake, typing.AbstractSet[str]]]
+            An async iterator of tuples of guild IDs to a set of the prefixes
+            stored for said guild.
 
         .. note::
             Errors won't be raised by the initial call to this method but rather
@@ -987,7 +988,7 @@ class InviteCache(Resource, typing.Protocol):
 
         Parameters
         ----------
-        invite_code : builtins.str
+        invite_code : str
             The code of the invite to remove from the cache.
 
         .. note::
@@ -1007,7 +1008,7 @@ class InviteCache(Resource, typing.Protocol):
 
         Parameters
         ----------
-        invite_code : builtins.str
+        invite_code : str
             The code of the invite to get from the cache.
 
         Returns

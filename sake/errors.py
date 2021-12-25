@@ -2,7 +2,7 @@
 # cython: language_level=3
 # BSD 3-Clause License
 #
-# Copyright (c) 2020, Faster Speeding
+# Copyright (c) 2020-2021, Faster Speeding
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,15 +31,16 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """The standard error bases which Sake implementations will be raising.
 
-!!! note
+.. note::
     These supplement python's builtin exceptions but do not replace them.
 """
 
 from __future__ import annotations
 
-__all__: typing.Final[typing.Sequence[str]] = [
+__all__: typing.Sequence[str] = [
     "BackendError",
     "CannotDelete",
+    "ClosedClient",
     "EntryNotFound",
     "InvalidDataFound",
     "SakeException",
@@ -49,13 +50,13 @@ import typing
 
 
 class SakeException(Exception):
-    """A base exception for the expected exceptions raised by Sake implementations.
+    """Base exception for the expected exceptions raised by Sake implementations.
 
     Parameters
     ----------
     message : str
         The exception's message.
-    base : typing.Optional[BaseException]
+    base : typing.Optional[Exception]
         The exception which caused this exception if applicable else `builtins.None`.
     """
 
@@ -64,19 +65,19 @@ class SakeException(Exception):
     message: str
     """The exception's message, this may be an empty string if there is no message."""
 
-    base: typing.Optional[BaseException]
+    base: typing.Optional[Exception]
     """The exception which caused this exception if applicable else `builtins.None`."""
 
-    def __init__(self, message: str, *, exception: typing.Optional[BaseException] = None) -> None:
-        self.message = message
-        self.base_exception = exception
+    def __init__(self, message: str, *, exception: typing.Optional[Exception] = None) -> None:
+        self.message: str = message
+        self.base_exception: typing.Optional[Exception] = exception
 
     def __repr__(self) -> str:
         return f"{type.__name__}({self.message!r})"
 
 
 class BackendError(SakeException, ValueError):
-    """A error raised when communicating with the backend fails
+    """Error that's raised when communicating with the backend fails
 
     This may be a sign of underlying network or database issues.
     """
@@ -84,8 +85,14 @@ class BackendError(SakeException, ValueError):
     __slots__: typing.Sequence[str] = ()
 
 
-class CannotDelete(SakeException, ValueError):  # TODO: implement and document cascading handling?
-    """An error raised in response to an attempt to delete an entry which can't be deleted.
+class ClosedClient(SakeException):
+    """Error that's raised when an attempt to use an inactive client is made."""
+
+    __slots__: typing.Sequence[str] = ()
+
+
+class CannotDelete(SakeException, ValueError):
+    """Error that's raised in response to an attempt to delete an entry which can't be deleted.
 
     This most likely reason for this to be raised would be due to an attempt to
     deleted a entry that's being kept alive by references without specifying to
@@ -96,7 +103,7 @@ class CannotDelete(SakeException, ValueError):  # TODO: implement and document c
 
 
 class InvalidDataFound(SakeException, LookupError):
-    """An error raised when the retrieved data is in an unexpected format.
+    """Error that's raised when the retrieved data is in an unexpected format.
 
     This may indicate that you are running different versions of a Sake
     implementation with the same database.
@@ -106,9 +113,9 @@ class InvalidDataFound(SakeException, LookupError):
 
 
 class EntryNotFound(SakeException, LookupError):
-    """An error raised in response to an attempt to get an entry which doesn't exist.
+    """Error that's raised in response to an attempt to get an entry which doesn't exist.
 
-    !!! note
+    .. note::
         This shouldn't ever be raised by a delete method or iter method.
     """
 

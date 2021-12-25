@@ -2,7 +2,7 @@
 # cython: language_level=3
 # BSD 3-Clause License
 #
-# Copyright (c) 2020, Faster Speeding
+# Copyright (c) 2020-2021, Faster Speeding
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,9 +29,9 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-"""A distributed asynchronous cache standard designed to be hikari with Hikari.
+"""A distributed asynchronous cache standard designed for Hikari.
 
-For the interfaces defined by this standard see `sake.traits`
+For the interfaces defined by this standard see `sake.abc`
 
 For standard implementation(s) see:
 
@@ -39,16 +39,19 @@ For standard implementation(s) see:
 """
 from __future__ import annotations
 
-__all__: typing.Final[typing.Sequence[str]] = [
+__all__: typing.Sequence[str] = [
+    # __init__.py
+    "__author__",
     # errors.py
     "errors",
     "BackendError",
     "CannotDelete",
+    "ClosedClient",
     "EntryNotFound",
     "InvalidDataFound",
     "SakeException",
     # traits.py
-    "traits",
+    "abc",
     # redis.py
     "redis",
     "RedisCache",
@@ -56,7 +59,18 @@ __all__: typing.Final[typing.Sequence[str]] = [
 
 import typing
 
-from sake import redis
-from sake import traits
-from sake.errors import *
-from sake.redis import RedisCache
+from . import abc
+from . import redis
+from .errors import *
+from .redis import RedisCache
+
+__author__: typing.Final[str] = "Faster Speeding"
+__ci__: typing.Final[str] = "https://github.com/FasterSpeeding/sake/actions"
+__copyright__: typing.Final[str] = "© 2020 Faster Speeding"
+__coverage__: typing.Final[str] = "https://codeclimate.com/github/FasterSpeeding/Sake/"
+__docs__: typing.Final[str] = "https://fasterspeeding.github.io/Sake/"
+__email__: typing.Final[str] = "lucina@lmbyrne.dev"
+__issue_tracker__: typing.Final[str] = "https://github.com/FasterSpeeding/Sake/issues"
+__license__: typing.Final[str] = "BSD"
+__url__: typing.Final[str] = "https://github.com/FasterSpeeding/Sake"
+__version__: typing.Final[str] = "1.0.0a1"

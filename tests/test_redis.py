@@ -2,7 +2,7 @@
 # cython: language_level=3
 # BSD 3-Clause License
 #
-# Copyright (c) 2020, Faster Speeding
+# Copyright (c) 2020-2021, Faster Speeding
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,16 +29,5 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-"""Package metadata."""
-
-__author__ = "Faster Speeding"
-__ci__ = ""
-__copyright__ = "© 2020 Faster Speeding"
-__coverage__ = ""
-__docs__ = "https://fasterspeeding.github.io/Sake/"
-__email__ = "luke@lmbyrne.dev"
-__issue_tracker__ = "https://github.com/FasterSpeeding/Sake/issues"
-__license__ = "BSD"
-__url__ = "https://github.com/FasterSpeeding/Sake"
-__version__ = "1.0.0a1"
-__git_sha1__ = "HEAD"
+def test_pass():
+    pass

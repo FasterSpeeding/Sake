@@ -2,7 +2,7 @@
 
 A distributed asynchronous cache interface (plus several implementations) designed for use with Hikari.
 
-# Instillation
+# Installation
 
 You can install Sake from PyPI using the following command.
 

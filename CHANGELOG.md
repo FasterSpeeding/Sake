@@ -5,9 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `RedisResource.add_to_tanjun` method for easier integration with Tanjun.
+  This both registers dependencies for the resource abcs and impls but also
+  registers adapters which make Sake compatible with Tanjun's AsyncCache
+  interfaces for the relevant resources.
+
 ### Changed
 - `abc.ABC` is now used as the base class for the abstract interfaces in
   `sake.abc` instead of `typing.Protocol`.
+- `abc.CacheIterator.len` is now guaranteed to always returns `int`.
 
 ## [1.0.0a1] - 2021-12-25
 ### Added

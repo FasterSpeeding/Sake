@@ -820,8 +820,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">Resource</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">Resource</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The basic interface which all cache resources should implement.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -850,8 +849,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">PrefixCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">PrefixCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a prefix cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -1010,8 +1008,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="n">RefPrefixCache</span> <span class="o">=</span> <span class="n">PrefixCache</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">EmojiCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">EmojiCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a emoji cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -1106,8 +1103,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RefEmojiCache</span><span class="p">(</span><span class="n">EmojiCache</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RefEmojiCache</span><span class="p">(</span><span class="n">EmojiCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential emoji cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -1164,8 +1160,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">GuildCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">GuildCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a guild cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -1263,8 +1258,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="n">RefGuildCache</span> <span class="o">=</span> <span class="n">GuildCache</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">GuildChannelCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">GuildChannelCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a guild channel cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -1359,8 +1353,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RefGuildChannelCache</span><span class="p">(</span><span class="n">GuildChannelCache</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RefGuildChannelCache</span><span class="p">(</span><span class="n">GuildChannelCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential guild channel cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -1418,8 +1411,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">IntegrationCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">IntegrationCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a integration cache.&quot;&quot;&quot;</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -1512,8 +1504,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RefIntegrationCache</span><span class="p">(</span><span class="n">IntegrationCache</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RefIntegrationCache</span><span class="p">(</span><span class="n">IntegrationCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential invite cache.&quot;&quot;&quot;</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations_for_application</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">application_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -1679,8 +1670,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">InviteCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">InviteCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a invite cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -1775,8 +1765,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RefInviteCache</span><span class="p">(</span><span class="n">InviteCache</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RefInviteCache</span><span class="p">(</span><span class="n">InviteCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential invite cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -1886,8 +1875,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">MeCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">MeCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a own user cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -1934,8 +1922,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="n">RefMeCache</span> <span class="o">=</span> <span class="n">MeCache</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">MemberCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">MemberCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a member cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -2036,8 +2023,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RefMemberCache</span><span class="p">(</span><span class="n">MemberCache</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RefMemberCache</span><span class="p">(</span><span class="n">MemberCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential member cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -2147,8 +2133,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">MessageCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">MessageCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a message cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -2243,8 +2228,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RefMessageCache</span><span class="p">(</span><span class="n">MessageCache</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RefMessageCache</span><span class="p">(</span><span class="n">MessageCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential message cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -2406,8 +2390,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">PresenceCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">PresenceCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a presence cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -2510,8 +2493,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RefPresenceCache</span><span class="p">(</span><span class="n">PresenceCache</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RefPresenceCache</span><span class="p">(</span><span class="n">PresenceCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential presence cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -2621,8 +2603,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RoleCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RoleCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a role cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -2717,8 +2698,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RefRoleCache</span><span class="p">(</span><span class="n">RoleCache</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RefRoleCache</span><span class="p">(</span><span class="n">RoleCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential role cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -2776,8 +2756,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">UserCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">UserCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a cache implementation which supports a user cache.</span>
 
 <span class="sd">    .. note::</span>
@@ -2881,8 +2860,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="n">RefUserCache</span> <span class="o">=</span> <span class="n">UserCache</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">VoiceStateCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">VoiceStateCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a voice state cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -2983,8 +2961,7 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
-<span class="k">class</span> <span class="nc">RefVoiceStateCache</span><span class="p">(</span><span class="n">VoiceStateCache</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RefVoiceStateCache</span><span class="p">(</span><span class="n">VoiceStateCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential voice state cache.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
@@ -3094,7 +3071,6 @@ The exception which caused this exception if applicable else <code>builtins.None
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
 <span class="k">class</span> <span class="nc">Cache</span><span class="p">(</span>
     <span class="n">GuildCache</span><span class="p">,</span>
     <span class="n">EmojiCache</span><span class="p">,</span>
@@ -3108,14 +3084,13 @@ The exception which caused this exception if applicable else <code>builtins.None
     <span class="n">RoleCache</span><span class="p">,</span>
     <span class="n">UserCache</span><span class="p">,</span>
     <span class="n">VoiceStateCache</span><span class="p">,</span>
-    <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">,</span>
+    <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Protocol of a cache which implements all the defined resources.&quot;&quot;&quot;</span>
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
 
-<span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
 <span class="k">class</span> <span class="nc">RefCache</span><span class="p">(</span>
     <span class="n">Cache</span><span class="p">,</span>
     <span class="n">RefGuildCache</span><span class="p">,</span>
@@ -3130,7 +3105,7 @@ The exception which caused this exception if applicable else <code>builtins.None
     <span class="n">RefRoleCache</span><span class="p">,</span>
     <span class="n">RefUserCache</span><span class="p">,</span>
     <span class="n">RefVoiceStateCache</span><span class="p">,</span>
-    <span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">,</span>
+    <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Protocol of a cache which implements all the defined reference resources.&quot;&quot;&quot;</span>
 

@@ -32,11 +32,11 @@
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = [
-    "AsyncCacheAdaptor",
-    "CacheIteratorAdaptor",
-    "GuildAndGlobalCacheAdaptor",
-    "GuildBoundCacheAdaptor",
-    "SingleStoreAdaptor",
+    "AsyncCacheAdapter",
+    "CacheIteratorAdapter",
+    "GuildAndGlobalCacheAdapter",
+    "GuildBoundCacheAdapter",
+    "SingleStoreAdapter",
 ]
 
 import typing
@@ -51,7 +51,7 @@ _KeyT = typing.TypeVar("_KeyT")
 _ValueT = typing.TypeVar("_ValueT")
 
 
-class CacheIteratorAdaptor(tanjun.dependencies.CacheIterator[_ValueT]):
+class CacheIteratorAdapter(tanjun.dependencies.CacheIterator[_ValueT]):
     __slots__ = ("_iterator",)
 
     def __init__(self, iterator: abc.CacheIterator[_ValueT], /) -> None:
@@ -64,7 +64,7 @@ class CacheIteratorAdaptor(tanjun.dependencies.CacheIterator[_ValueT]):
         return self._iterator.len()
 
 
-class SingleStoreAdaptor(tanjun.dependencies.SingleStoreCache[_ValueT]):
+class SingleStoreAdapter(tanjun.dependencies.SingleStoreCache[_ValueT]):
     __slots__ = ("_get", "_trust_get")
 
     def __init__(self, get: typing.Callable[[], typing.Awaitable[_ValueT]], trust_get: bool):
@@ -82,7 +82,7 @@ class SingleStoreAdaptor(tanjun.dependencies.SingleStoreCache[_ValueT]):
             raise tanjun.dependencies.CacheMissError from None
 
 
-class AsyncCacheAdaptor(tanjun.dependencies.AsyncCache[_KeyT, _ValueT]):
+class AsyncCacheAdapter(tanjun.dependencies.AsyncCache[_KeyT, _ValueT]):
     __slots__ = ("_get", "_iterate_all", "_trust_get")
 
     def __init__(
@@ -106,10 +106,10 @@ class AsyncCacheAdaptor(tanjun.dependencies.AsyncCache[_KeyT, _ValueT]):
             raise tanjun.dependencies.CacheMissError from None
 
     def iter_all(self) -> tanjun.dependencies.CacheIterator[_ValueT]:
-        return CacheIteratorAdaptor(self._iterate_all())
+        return CacheIteratorAdapter(self._iterate_all())
 
 
-class GuildBoundCacheAdaptor(AsyncCacheAdaptor, tanjun.dependencies.GuildBoundCache[_KeyT, _ValueT]):
+class GuildBoundCacheAdapter(AsyncCacheAdapter, tanjun.dependencies.GuildBoundCache[_KeyT, _ValueT]):
     __slots__ = ("_get_from_guild", "_iterate_all", "_iterate_for_guild")
 
     async def __init__(
@@ -135,14 +135,14 @@ class GuildBoundCacheAdaptor(AsyncCacheAdaptor, tanjun.dependencies.GuildBoundCa
             raise tanjun.dependencies.CacheMissError from None
 
     def iter_all(self) -> tanjun.dependencies.CacheIterator[_ValueT]:
-        return CacheIteratorAdaptor(self._iterate_all())
+        return CacheIteratorAdapter(self._iterate_all())
 
     def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> tanjun.dependencies.CacheIterator[_ValueT]:
-        return CacheIteratorAdaptor(self._iterate_for_guild(guild_id))
+        return CacheIteratorAdapter(self._iterate_for_guild(guild_id))
 
 
-class GuildAndGlobalCacheAdaptor(
-    AsyncCacheAdaptor[_KeyT, _ValueT], tanjun.dependencies.GuildBoundCache[_KeyT, _ValueT]
+class GuildAndGlobalCacheAdapter(
+    AsyncCacheAdapter[_KeyT, _ValueT], tanjun.dependencies.GuildBoundCache[_KeyT, _ValueT]
 ):
     __slots__ = ("_iterate_for_guild", "_verify_guild")
 
@@ -166,4 +166,4 @@ class GuildAndGlobalCacheAdaptor(
         raise tanjun.dependencies.EntryNotFound
 
     def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> tanjun.dependencies.CacheIterator[_ValueT]:
-        return CacheIteratorAdaptor(self._iterate_for_guild(guild_id))
+        return CacheIteratorAdapter(self._iterate_for_guild(guild_id))

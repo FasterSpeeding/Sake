@@ -721,10 +721,10 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.SingleStoreAdaptor(self.get_me, trust_get=UserCache in trust_get_for)
-        client.set_type_dependency(async_cache.SingleStoreCache[hikari.User], adaptor)
+        adapter = _tanjun_adapter.SingleStoreAdapter(self.get_me, trust_get=UserCache in trust_get_for)
+        client.set_type_dependency(async_cache.SingleStoreCache[hikari.User], adapter)
 
     @utility.as_raw_listener("USER_UPDATE")
     async def __on_own_user_update(self, event: hikari.ShardPayloadEvent, /) -> None:
@@ -770,12 +770,12 @@ class UserCache(_MeCache, sake_abc.UserCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.AsyncCacheAdaptor(
+        adapter = _tanjun_adapter.AsyncCacheAdapter(
             self.get_user, self.iter_users, trust_get=UserCache in trust_get_for
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.User], adaptor)
+        client.set_type_dependency(async_cache.SfCache[hikari.User], adapter)
 
     def with_user_expire(self: _ResourceT, expire: typing.Optional[utility.ExpireT], /) -> _ResourceT:
         """Set the default expire time for user entries added with this client.
@@ -932,17 +932,17 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.GuildAndGlobalCacheAdaptor(
+        adapter = _tanjun_adapter.GuildAndGlobalCacheAdapter(
             self.get_emoji,
             self.iter_emojis,
             self.iter_emojis_for_guild,
             lambda guild_id, e: e.guild_id == guild_id,
             trust_get=EmojiCache in trust_get_for,
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.KnownCustomEmoji], adaptor).set_type_dependency(
-            async_cache.SfGuildBound[hikari.KnownCustomEmoji], adaptor
+        client.set_type_dependency(async_cache.SfCache[hikari.KnownCustomEmoji], adapter).set_type_dependency(
+            async_cache.SfGuildBound[hikari.KnownCustomEmoji], adapter
         )
 
     @utility.as_raw_listener("GUILD_EMOJIS_UPDATE")
@@ -1059,13 +1059,13 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.AsyncCacheAdaptor(
+        adapter = _tanjun_adapter.AsyncCacheAdapter(
             self.get_guild, self.iter_guilds, trust_get=GuildCache in trust_get_for
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.Guild], adaptor).set_type_dependency(
-            async_cache.SfCache[hikari.GatewayGuild], adaptor
+        client.set_type_dependency(async_cache.SfCache[hikari.Guild], adapter).set_type_dependency(
+            async_cache.SfCache[hikari.GatewayGuild], adapter
         )
 
     @utility.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
@@ -1139,17 +1139,17 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.GuildAndGlobalCacheAdaptor(
+        adapter = _tanjun_adapter.GuildAndGlobalCacheAdapter(
             self.get_guild_channel,
             self.iter_guild_channels,
             self.iter_guild_channels_for_guild,
             lambda guild_id, c: c.guild_id == guild_id,
             trust_get=GuildChannelCache in trust_get_for,
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.GuildChannel], adaptor).set_type_dependency(
-            async_cache.SfGuildBound[hikari.GuildChannel], adaptor
+        client.set_type_dependency(async_cache.SfCache[hikari.GuildChannel], adapter).set_type_dependency(
+            async_cache.SfGuildBound[hikari.GuildChannel], adapter
         )
 
     @utility.as_raw_listener("CHANNEL_CREATE", "CHANNEL_UPDATE")
@@ -1276,17 +1276,17 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.GuildAndGlobalCacheAdaptor(
+        adapter = _tanjun_adapter.GuildAndGlobalCacheAdapter(
             self.get_integration,
             self.iter_integrations,
             self.iter_integrations_for_guild,
             lambda guild_id, i: i.guild_id == guild_id,
             trust_get=IntegrationCache in trust_get_for,
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.Integration], adaptor).set_type_dependency(
-            async_cache.SfGuildBound[hikari.Integration], adaptor
+        client.set_type_dependency(async_cache.SfCache[hikari.Integration], adapter).set_type_dependency(
+            async_cache.SfGuildBound[hikari.Integration], adapter
         )
 
     @utility.as_listener(hikari.GuildLeaveEvent)
@@ -1394,13 +1394,13 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.AsyncCacheAdaptor(
+        adapter = _tanjun_adapter.AsyncCacheAdapter(
             self.get_invite, self.iter_invites, trust_get=InviteCache in trust_get_for
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.InviteWithMetadata], adaptor).set_type_dependency(
-            async_cache.SfCache[hikari.Invite], adaptor
+        client.set_type_dependency(async_cache.SfCache[hikari.InviteWithMetadata], adapter).set_type_dependency(
+            async_cache.SfCache[hikari.Invite], adapter
         )
 
     @utility.as_raw_listener("INVITE_CREATE")
@@ -1541,12 +1541,12 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.GuildBoundCacheAdaptor(
+        adapter = _tanjun_adapter.GuildBoundCacheAdapter(
             self.get_member, self.iter_members, self.iter_members_for_guild, trust_get=MemberCache in trust_get_for
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.Member], adaptor)
+        client.set_type_dependency(async_cache.SfCache[hikari.Member], adapter)
 
     @utility.as_raw_listener("GUILD_CREATE")  # members aren't included in GUILD_UPDATE
     async def __on_guild_create(self, event: hikari.ShardPayloadEvent, /) -> None:
@@ -1683,12 +1683,12 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.AsyncCacheAdaptor(
+        adapter = _tanjun_adapter.AsyncCacheAdapter(
             self.get_message, self.iter_messages, trust_get=MessageCache in trust_get_for
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.Message], adaptor)
+        client.set_type_dependency(async_cache.SfCache[hikari.Message], adapter)
 
     @utility.as_raw_listener("MESSAGE_CREATE")
     async def __on_message_create(self, event: hikari.ShardPayloadEvent, /) -> None:
@@ -1812,15 +1812,15 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.GuildBoundCacheAdaptor(
+        adapter = _tanjun_adapter.GuildBoundCacheAdapter(
             self.get_presence,
             self.iter_presences,
             self.iter_presences_for_guild,
             trust_get=PresenceCache in trust_get_for,
         )
-        client.set_type_dependency(async_cache.SfChannelBound[hikari.MemberPresence], adaptor)
+        client.set_type_dependency(async_cache.SfChannelBound[hikari.MemberPresence], adapter)
 
     @utility.as_raw_listener("GUILD_CREATE")  # Presences is not included on GUILD_UPDATE
     async def __on_guild_create(self, event: hikari.ShardPayloadEvent, /) -> None:
@@ -1914,17 +1914,17 @@ class RoleCache(_Reference, sake_abc.RoleCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.GuildAndGlobalCacheAdaptor(
+        adapter = _tanjun_adapter.GuildAndGlobalCacheAdapter(
             self.get_role,
             self.iter_roles,
             self.iter_roles_for_guild,
             lambda guild_id, r: r.guild_id == guild_id,
             trust_get=RoleCache in trust_get_for,
         )
-        client.set_type_dependency(async_cache.SfGuildBound[hikari.Role], adaptor).set_type_dependency(
-            async_cache.SfCache[hikari.Role], adaptor
+        client.set_type_dependency(async_cache.SfGuildBound[hikari.Role], adapter).set_type_dependency(
+            async_cache.SfCache[hikari.Role], adapter
         )
 
     @utility.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
@@ -2077,15 +2077,15 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
     ) -> None:
         from tanjun.dependencies import async_cache
 
-        from . import _tanjun_adaptor
+        from . import _tanjun_adapter
 
-        adaptor = _tanjun_adaptor.GuildBoundCacheAdaptor(
+        adapter = _tanjun_adapter.GuildBoundCacheAdapter(
             self.get_voice_state,
             self.iter_voice_states,
             self.iter_voice_states_for_guild,
             trust_get=VoiceStateCache in trust_get_for,
         )
-        client.set_type_dependency(async_cache.SfGuildBound[hikari.VoiceState], adaptor)
+        client.set_type_dependency(async_cache.SfGuildBound[hikari.VoiceState], adapter)
 
     @utility.as_raw_listener("GUILD_CREATE")  # voice states aren't included in GUILD_UPDATE
     async def __on_guild_create(self, event: hikari.ShardPayloadEvent, /) -> None:

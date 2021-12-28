@@ -724,7 +724,7 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
         from . import _tanjun_adapter
 
         adapter = _tanjun_adapter.SingleStoreAdapter(self.get_me, trust_get=UserCache in trust_get_for)
-        client.set_type_dependency(async_cache.SingleStoreCache[hikari.User], adapter)
+        client.set_type_dependency(async_cache.SingleStoreCache[hikari.OwnUser], adapter)
 
     @utility.as_raw_listener("USER_UPDATE")
     async def __on_own_user_update(self, event: hikari.ShardPayloadEvent, /) -> None:

@@ -102,8 +102,7 @@ class CacheIterator(hikari.LazyIterator[ValueT], abc.ABC):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class Resource(typing.Protocol):
+class Resource(abc.ABC):
     """The basic interface which all cache resources should implement."""
 
     __slots__: typing.Sequence[str] = ()
@@ -132,8 +131,7 @@ class Resource(typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class PrefixCache(Resource, typing.Protocol):
+class PrefixCache(Resource, abc.ABC):
     """The traits of a implementation which supports a prefix cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -292,8 +290,7 @@ class PrefixCache(Resource, typing.Protocol):
 RefPrefixCache = PrefixCache
 
 
-@typing.runtime_checkable
-class EmojiCache(Resource, typing.Protocol):
+class EmojiCache(Resource, abc.ABC):
     """The traits of a implementation which supports a emoji cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -388,8 +385,7 @@ class EmojiCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RefEmojiCache(EmojiCache, typing.Protocol):
+class RefEmojiCache(EmojiCache, abc.ABC):
     """The traits of a implementation which supports a referential emoji cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -446,8 +442,7 @@ class RefEmojiCache(EmojiCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class GuildCache(Resource, typing.Protocol):
+class GuildCache(Resource, abc.ABC):
     """The traits of a implementation which supports a guild cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -545,8 +540,7 @@ class GuildCache(Resource, typing.Protocol):
 RefGuildCache = GuildCache
 
 
-@typing.runtime_checkable
-class GuildChannelCache(Resource, typing.Protocol):
+class GuildChannelCache(Resource, abc.ABC):
     """The traits of a implementation which supports a guild channel cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -641,8 +635,7 @@ class GuildChannelCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
+class RefGuildChannelCache(GuildChannelCache, abc.ABC):
     """The traits of a implementation which supports a referential guild channel cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -700,8 +693,7 @@ class RefGuildChannelCache(GuildChannelCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class IntegrationCache(Resource, typing.Protocol):
+class IntegrationCache(Resource, abc.ABC):
     """The traits of a implementation which supports a integration cache."""
 
     async def clear_integrations(self) -> None:
@@ -794,8 +786,7 @@ class IntegrationCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RefIntegrationCache(IntegrationCache, typing.Protocol):
+class RefIntegrationCache(IntegrationCache, abc.ABC):
     """The traits of a implementation which supports a referential invite cache."""
 
     async def clear_integrations_for_application(self, application_id: hikari.Snowflakeish, /) -> None:
@@ -961,8 +952,7 @@ class RefIntegrationCache(IntegrationCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class InviteCache(Resource, typing.Protocol):
+class InviteCache(Resource, abc.ABC):
     """The traits of a implementation which supports a invite cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1057,8 +1047,7 @@ class InviteCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RefInviteCache(InviteCache, typing.Protocol):
+class RefInviteCache(InviteCache, abc.ABC):
     """The traits of a implementation which supports a referential invite cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1168,8 +1157,7 @@ class RefInviteCache(InviteCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class MeCache(Resource, typing.Protocol):
+class MeCache(Resource, abc.ABC):
     """The traits of a implementation which supports a own user cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1216,8 +1204,7 @@ class MeCache(Resource, typing.Protocol):
 RefMeCache = MeCache
 
 
-@typing.runtime_checkable
-class MemberCache(Resource, typing.Protocol):
+class MemberCache(Resource, abc.ABC):
     """The traits of a implementation which supports a member cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1318,8 +1305,7 @@ class MemberCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RefMemberCache(MemberCache, typing.Protocol):
+class RefMemberCache(MemberCache, abc.ABC):
     """The traits of a implementation which supports a referential member cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1429,8 +1415,7 @@ class RefMemberCache(MemberCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class MessageCache(Resource, typing.Protocol):
+class MessageCache(Resource, abc.ABC):
     """The traits of a implementation which supports a message cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1525,8 +1510,7 @@ class MessageCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RefMessageCache(MessageCache, typing.Protocol):
+class RefMessageCache(MessageCache, abc.ABC):
     """The traits of a implementation which supports a referential message cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1688,8 +1672,7 @@ class RefMessageCache(MessageCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class PresenceCache(Resource, typing.Protocol):
+class PresenceCache(Resource, abc.ABC):
     """The traits of a implementation which supports a presence cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1792,8 +1775,7 @@ class PresenceCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RefPresenceCache(PresenceCache, typing.Protocol):
+class RefPresenceCache(PresenceCache, abc.ABC):
     """The traits of a implementation which supports a referential presence cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1903,8 +1885,7 @@ class RefPresenceCache(PresenceCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RoleCache(Resource, typing.Protocol):
+class RoleCache(Resource, abc.ABC):
     """The traits of a implementation which supports a role cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -1999,8 +1980,7 @@ class RoleCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RefRoleCache(RoleCache, typing.Protocol):
+class RefRoleCache(RoleCache, abc.ABC):
     """The traits of a implementation which supports a referential role cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -2058,8 +2038,7 @@ class RefRoleCache(RoleCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class UserCache(Resource, typing.Protocol):
+class UserCache(Resource, abc.ABC):
     """The traits of a cache implementation which supports a user cache.
 
     .. note::
@@ -2163,8 +2142,7 @@ class UserCache(Resource, typing.Protocol):
 RefUserCache = UserCache
 
 
-@typing.runtime_checkable
-class VoiceStateCache(Resource, typing.Protocol):
+class VoiceStateCache(Resource, abc.ABC):
     """The traits of a implementation which supports a voice state cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -2265,8 +2243,7 @@ class VoiceStateCache(Resource, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
+class RefVoiceStateCache(VoiceStateCache, abc.ABC):
     """The traits of a implementation which supports a referential voice state cache."""
 
     __slots__: typing.Sequence[str] = ()
@@ -2376,7 +2353,6 @@ class RefVoiceStateCache(VoiceStateCache, typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
 class Cache(
     GuildCache,
     EmojiCache,
@@ -2390,14 +2366,13 @@ class Cache(
     RoleCache,
     UserCache,
     VoiceStateCache,
-    typing.Protocol,
+    abc.ABC,
 ):
     """Protocol of a cache which implements all the defined resources."""
 
     __slots__: typing.Sequence[str] = ()
 
 
-@typing.runtime_checkable
 class RefCache(
     Cache,
     RefGuildCache,
@@ -2412,7 +2387,7 @@ class RefCache(
     RefRoleCache,
     RefUserCache,
     RefVoiceStateCache,
-    typing.Protocol,
+    abc.ABC,
 ):
     """Protocol of a cache which implements all the defined reference resources."""
 

@@ -47,6 +47,7 @@ from tanjun.dependencies import async_cache
 from . import abc
 from . import errors
 
+_DefaultT = typing.TypeVar("_DefaultT")
 _KeyT = typing.TypeVar("_KeyT")
 _ValueT = typing.TypeVar("_ValueT")
 
@@ -71,11 +72,14 @@ class SingleStoreAdapter(async_cache.SingleStoreCache[_ValueT]):
         self._get = get
         self._trust_get = trust_get
 
-    async def get(self) -> _ValueT:
+    async def get(self, *, default: _DefaultT = ...) -> typing.Union[_ValueT, _DefaultT]:
         try:
             return await self._get()
 
         except errors.EntryNotFound:
+            if default is not ...:
+                return default
+
             if self._trust_get:
                 raise async_cache.EntryNotFound from None
 
@@ -95,11 +99,14 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
         self._iterate_all = iterate_all
         self._trust_get = trust_get
 
-    async def get(self, key: _KeyT, /) -> _ValueT:
+    async def get(self, key: _KeyT, /, *, default: _DefaultT = ...) -> typing.Union[_ValueT, _DefaultT]:
         try:
             return await self._get(key)
 
         except errors.EntryNotFound:
+            if default is not ...:
+                return default
+
             if self._trust_get:
                 raise async_cache.EntryNotFound from None
 
@@ -124,11 +131,16 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter, async_cache.GuildBoundCache[_Key
         self._iterate_for_guild = iterate_for_guild
         self._trust_get = trust_get
 
-    async def get_from_guild(self, guild_id: hikari.Snowflakeish, key: _KeyT, /) -> _ValueT:
+    async def get_from_guild(
+        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: _DefaultT = ...
+    ) -> typing.Union[_ValueT, _DefaultT]:
         try:
             return await self._get_from_guild(guild_id, key)
 
         except errors.EntryNotFound:
+            if default is not ...:
+                return default
+
             if self._trust_get:
                 raise async_cache.EntryNotFound from None
 
@@ -156,10 +168,15 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.
         self._iterate_for_guild = iterate_for_guild
         self._verify_guild = verify_guild
 
-    async def get_from_guild(self, guild_id: hikari.Snowflakeish, key: _KeyT, /) -> _ValueT:
-        result = await self.get(key)
-        if self._verify_guild(guild_id, result):
+    async def get_from_guild(
+        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: _DefaultT = ...
+    ) -> typing.Union[_ValueT, _DefaultT]:
+        result = await self.get(key, default=default)
+        if result is default or self._verify_guild(guild_id, typing.cast(_ValueT, result)):
             return result
+
+        if default is not ...:
+            return default
 
         raise async_cache.EntryNotFound
 

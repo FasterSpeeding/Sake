@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- `abc.ABC` is now used as the base class for the abstract interfaces in
+  `sake.abc` instead of `typing.Protocol`.
 
 ## [1.0.0a1] - 2021-12-25
 ### Added

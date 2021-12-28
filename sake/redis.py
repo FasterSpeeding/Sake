@@ -119,14 +119,14 @@ def _to_map(
 
 _TanjunLoaderSigT = typing.TypeVar(
     "_TanjunLoaderSigT",
-    bound="typing.Callable[[typing.Any, tanjun.injecting.InjectorClient, typing.Collection[typing.Type[ResourceClient]]], None]",
+    bound="typing.Callable[[typing.Any, tanjun.InjectorClient, typing.Collection[typing.Type[ResourceClient]]], None]",
 )
 
 
 @typing.runtime_checkable
 class _TanjunLoader(typing.Protocol):
     def __call__(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         raise NotImplementedError
 
@@ -386,7 +386,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     def add_to_tanjun(
         self,
-        client: tanjun.injecting.InjectorClient,
+        client: tanjun.InjectorClient,
         /,
         *,
         trust_get_for: typing.Optional[typing.Collection[typing.Type[ResourceClient]]] = None,
@@ -717,7 +717,7 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -766,7 +766,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -928,7 +928,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1055,7 +1055,7 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1135,7 +1135,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1272,7 +1272,7 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1390,7 +1390,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1537,7 +1537,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1679,7 +1679,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1808,7 +1808,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1910,7 +1910,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -2073,7 +2073,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.injecting.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 

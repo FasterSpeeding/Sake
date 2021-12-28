@@ -42,7 +42,7 @@ __all__: typing.Sequence[str] = [
 import typing
 
 import hikari
-import tanjun
+from tanjun.dependencies import async_cache
 
 from . import abc
 from . import errors
@@ -51,7 +51,7 @@ _KeyT = typing.TypeVar("_KeyT")
 _ValueT = typing.TypeVar("_ValueT")
 
 
-class CacheIteratorAdapter(tanjun.dependencies.CacheIterator[_ValueT]):
+class CacheIteratorAdapter(async_cache.CacheIterator[_ValueT]):
     __slots__ = ("_iterator",)
 
     def __init__(self, iterator: abc.CacheIterator[_ValueT], /) -> None:
@@ -64,7 +64,7 @@ class CacheIteratorAdapter(tanjun.dependencies.CacheIterator[_ValueT]):
         return self._iterator.len()
 
 
-class SingleStoreAdapter(tanjun.dependencies.SingleStoreCache[_ValueT]):
+class SingleStoreAdapter(async_cache.SingleStoreCache[_ValueT]):
     __slots__ = ("_get", "_trust_get")
 
     def __init__(self, get: typing.Callable[[], typing.Awaitable[_ValueT]], trust_get: bool):
@@ -77,12 +77,12 @@ class SingleStoreAdapter(tanjun.dependencies.SingleStoreCache[_ValueT]):
 
         except errors.EntryNotFound:
             if self._trust_get:
-                raise tanjun.dependencies.EntryNotFound from None
+                raise async_cache.EntryNotFound from None
 
-            raise tanjun.dependencies.CacheMissError from None
+            raise async_cache.CacheMissError from None
 
 
-class AsyncCacheAdapter(tanjun.dependencies.AsyncCache[_KeyT, _ValueT]):
+class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
     __slots__ = ("_get", "_iterate_all", "_trust_get")
 
     def __init__(
@@ -101,15 +101,15 @@ class AsyncCacheAdapter(tanjun.dependencies.AsyncCache[_KeyT, _ValueT]):
 
         except errors.EntryNotFound:
             if self._trust_get:
-                raise tanjun.dependencies.EntryNotFound from None
+                raise async_cache.EntryNotFound from None
 
-            raise tanjun.dependencies.CacheMissError from None
+            raise async_cache.CacheMissError from None
 
-    def iter_all(self) -> tanjun.dependencies.CacheIterator[_ValueT]:
+    def iter_all(self) -> async_cache.CacheIterator[_ValueT]:
         return CacheIteratorAdapter(self._iterate_all())
 
 
-class GuildBoundCacheAdapter(AsyncCacheAdapter, tanjun.dependencies.GuildBoundCache[_KeyT, _ValueT]):
+class GuildBoundCacheAdapter(AsyncCacheAdapter, async_cache.GuildBoundCache[_KeyT, _ValueT]):
     __slots__ = ("_get_from_guild", "_iterate_all", "_iterate_for_guild")
 
     async def __init__(
@@ -130,20 +130,18 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter, tanjun.dependencies.GuildBoundCa
 
         except errors.EntryNotFound:
             if self._trust_get:
-                raise tanjun.dependencies.EntryNotFound from None
+                raise async_cache.EntryNotFound from None
 
-            raise tanjun.dependencies.CacheMissError from None
+            raise async_cache.CacheMissError from None
 
-    def iter_all(self) -> tanjun.dependencies.CacheIterator[_ValueT]:
+    def iter_all(self) -> async_cache.CacheIterator[_ValueT]:
         return CacheIteratorAdapter(self._iterate_all())
 
-    def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> tanjun.dependencies.CacheIterator[_ValueT]:
+    def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> async_cache.CacheIterator[_ValueT]:
         return CacheIteratorAdapter(self._iterate_for_guild(guild_id))
 
 
-class GuildAndGlobalCacheAdapter(
-    AsyncCacheAdapter[_KeyT, _ValueT], tanjun.dependencies.GuildBoundCache[_KeyT, _ValueT]
-):
+class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.GuildBoundCache[_KeyT, _ValueT]):
     __slots__ = ("_iterate_for_guild", "_verify_guild")
 
     async def __init__(
@@ -163,7 +161,7 @@ class GuildAndGlobalCacheAdapter(
         if self._verify_guild(guild_id, result):
             return result
 
-        raise tanjun.dependencies.EntryNotFound
+        raise async_cache.EntryNotFound
 
-    def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> tanjun.dependencies.CacheIterator[_ValueT]:
+    def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> async_cache.CacheIterator[_ValueT]:
         return CacheIteratorAdapter(self._iterate_for_guild(guild_id))

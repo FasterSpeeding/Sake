@@ -223,11 +223,10 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         self.__dump = dumps
         self.__event_manager = event_manager
         self.__index_overrides: typing.Dict[ResourceIndex, int] = {}
-        self.__listeners = utility.find_listeners(self)
+        self.__listeners, self.__raw_listeners = utility.find_listeners(self)
         self.__load = loads
         self.__max_connections_per_db = max_connections_per_db
         self.__password = password
-        self.__raw_listeners = utility.find_raw_listeners(self)
         self.__started = False
 
         if event_manager:

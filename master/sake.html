@@ -817,7 +817,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">        int</span>
 <span class="sd">            The count of entries that this iterator covers as of the call.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">Resource</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -826,10 +825,11 @@ The exception which caused this exception if applicable else <code>builtins.None
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
     <span class="nd">@property</span>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">is_alive</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Whether this client is alive.&quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Startup the resource(s) and allow them to connect to their relevant backend(s).</span>
 
@@ -837,8 +837,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This should pass without raising if called on an already opened</span>
 <span class="sd">            resource.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Close the resource(s) and allow them to disconnect from their relevant backend(s).</span>
 
@@ -846,7 +846,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This should pass without raising if called on an already closed</span>
 <span class="sd">            resource.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">PrefixCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -854,6 +853,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the prefix cache store.</span>
 
@@ -868,19 +868,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_prefixes_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Clear prefixes for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to clear the prefixes.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -888,10 +888,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="n">prefixes</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Delete prefixes from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -900,18 +904,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">        prefix : str</span>
 <span class="sd">            The first prefix to delete from the cache.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">AbstractSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Get prefixes from the cache.</span>
 
@@ -938,20 +938,20 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">AbstractSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the prefixes stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[typing.Tuple[hikari.Snowflake, typing.AbstractSet[str]]]</span>
 <span class="sd">            An async iterator of tuples of guild IDs to a set of the prefixes</span>
 <span class="sd">            stored for said guild.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -964,8 +964,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">add_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="n">prefixes</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Add prefixes to the cache.</span>
 
@@ -983,8 +983,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">set_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">prefixes</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Set prefixes for a guild.</span>
 
@@ -1002,7 +1002,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="n">RefPrefixCache</span> <span class="o">=</span> <span class="n">PrefixCache</span>
@@ -1013,6 +1012,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_emojis</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the emoji cache store.</span>
 
@@ -1027,19 +1027,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_emoji</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">emoji_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove an emoji from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        emoji_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the emoji to remove from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1047,8 +1047,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_emoji</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">emoji_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">KnownCustomEmoji</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get an emoji from the cache.</span>
 
@@ -1075,19 +1075,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_emojis</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">KnownCustomEmoji</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the emojis stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.emojis.KnownCustomEmoji]</span>
 <span class="sd">            An async iterator of the emojis stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1100,7 +1100,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RefEmojiCache</span><span class="p">(</span><span class="n">EmojiCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -1108,6 +1107,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_emojis_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove emojis belonging to a specific guild from the cache.</span>
 
@@ -1126,10 +1126,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_emojis_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">KnownCustomEmoji</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the emojis stored in the cache for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1142,10 +1146,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the emojis stored in the cache for the</span>
 <span class="sd">            specified guild.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1157,7 +1157,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">GuildCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -1165,6 +1164,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_guilds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the guild cache store.</span>
 
@@ -1179,19 +1179,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove a guild from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to remove from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1199,8 +1199,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">GatewayGuild</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get a guild from the cache.</span>
 
@@ -1227,19 +1227,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_guilds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">GatewayGuild</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the guilds stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.guilds.GatewayGuild]</span>
 <span class="sd">            An async iterator of the guilds stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1252,7 +1252,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="n">RefGuildCache</span> <span class="o">=</span> <span class="n">GuildCache</span>
@@ -1263,6 +1262,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_guild_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the guild channel cache store.</span>
 
@@ -1277,19 +1277,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_guild_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove a guild guild channel from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        channel_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild channel to remove from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1297,8 +1297,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_guild_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">GuildChannel</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get a guild channel from the cache.</span>
 
@@ -1325,19 +1325,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_guild_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">GuildChannel</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the guild channels stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.channels.GuildChannel]</span>
 <span class="sd">            An async iterator of the guild channels stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1350,7 +1350,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RefGuildChannelCache</span><span class="p">(</span><span class="n">GuildChannelCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -1358,17 +1357,18 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_guild_channels_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the guild channel cache store for the specified guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to remove the cached channels for.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1377,10 +1377,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_guild_channels_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">GuildChannel</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the guild channels stored in the cache for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1393,10 +1397,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the guild channels stored in the cache for the</span>
 <span class="sd">            specified guild.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1408,12 +1408,12 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">IntegrationCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a integration cache.&quot;&quot;&quot;</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the integration cache store.</span>
 
@@ -1428,19 +1428,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_integration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">integration_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove an integration channel from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        integration_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the integration to remove from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1448,8 +1448,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_integration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">integration_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get an integration from the cache.</span>
 
@@ -1476,19 +1476,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_integrations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the integrations stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.guilds.Integration]</span>
 <span class="sd">            An async iterator of the integrations stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1501,24 +1501,24 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RefIntegrationCache</span><span class="p">(</span><span class="n">IntegrationCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential invite cache.&quot;&quot;&quot;</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations_for_application</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">application_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the integrations cached for an application.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        application_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the application to remove cached integrations for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1526,20 +1526,20 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the integrations cached for a guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to remove cached integrations for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1547,12 +1547,16 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_integration_by_application</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">application_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove an integration channel from the cache by the ID of it&#39;s application.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1561,18 +1565,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">        application_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the application to remove an integration for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_integration_by_application</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">application_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">:</span>
@@ -1603,12 +1603,16 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_integrations_for_application</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">application_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the integrations stored in the cache for a specific application.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1621,10 +1625,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the integrations stored in the cache for the</span>
 <span class="sd">            specified application.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1636,10 +1636,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_integrations_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the integrations stored in the cache for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1652,10 +1656,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the integrations stored in the cache for the</span>
 <span class="sd">            specified application.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1667,7 +1667,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">InviteCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -1675,6 +1674,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_invites</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the invites cache store.</span>
 
@@ -1689,19 +1689,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_invite</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">invite_code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove an invite channel from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        invite_code : str</span>
 <span class="sd">            The code of the invite to remove from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1709,8 +1709,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_invite</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">invite_code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">InviteWithMetadata</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get an invite from the cache.</span>
 
@@ -1737,19 +1737,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_invites</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">InviteWithMetadata</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the invites stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.invites.InviteWithMetadata]</span>
 <span class="sd">            An async iterator of the invites stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1762,7 +1762,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RefInviteCache</span><span class="p">(</span><span class="n">InviteCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -1770,18 +1769,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_invites_for_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove invites cached for a specific channel..</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        channel_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the channel to remove the invites cached for it.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1789,20 +1789,20 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_invites_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove invites cached for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to remove the invites cached for it.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1810,10 +1810,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_invites_for_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">InviteWithMetadata</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the invites stored in the cache for a specific channel.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1826,10 +1830,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the invites stored in the cache for the</span>
 <span class="sd">            specified channel.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1841,10 +1841,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_invites_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">InviteWithMetadata</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the invites stored in the cache for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1857,10 +1861,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the invites stored in the cache for the</span>
 <span class="sd">            specified guild.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -1872,7 +1872,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">MeCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -1880,11 +1879,12 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_me</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the cached own user entry.</span>
 
 <span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
 <span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
@@ -1893,8 +1893,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_me</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">OwnUser</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get the own user cache entry.</span>
 
@@ -1916,7 +1916,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="n">RefMeCache</span> <span class="o">=</span> <span class="n">MeCache</span>
@@ -1927,6 +1926,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_members</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the members cache store.</span>
 
@@ -1941,10 +1941,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove a member from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1953,18 +1957,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">        user_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the user to remove a cached member for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Member</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get a member from the cache.</span>
 
@@ -1993,21 +1993,21 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_members</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Member</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the members stored in the cache.</span>
 
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.guilds.Member]</span>
 <span class="sd">            An async iterator of the members stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2020,7 +2020,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RefMemberCache</span><span class="p">(</span><span class="n">MemberCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -2028,18 +2027,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_members_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the members cached for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to remove the cached members for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2047,20 +2047,20 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_members_for_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the members cached for a specific user.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        user_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the user to remove the cached members for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2068,10 +2068,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_members_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Member</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the members stored in the cache for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2084,10 +2088,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the members stored in the cache for the</span>
 <span class="sd">            specified guild.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2099,10 +2099,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_members_for_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Member</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the members stored in the cache for a specific user.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2115,10 +2119,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the members stored in the cache for the</span>
 <span class="sd">            specified user.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2130,7 +2130,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">MessageCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -2138,6 +2137,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the messages cache store.</span>
 
@@ -2152,19 +2152,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove a message from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        message_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the message to remove from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2172,8 +2172,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Message</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get a message from the cache.</span>
 
@@ -2200,19 +2200,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Message</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the messages stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.messages.Message]</span>
 <span class="sd">            An async iterator of the messages stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2225,7 +2225,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RefMessageCache</span><span class="p">(</span><span class="n">MessageCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -2233,18 +2232,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_messages_for_author</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the messages cached for a specific author.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        user_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the user to remove the messages cached for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2252,20 +2252,20 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_messages_for_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the messages cached for a specific channel.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        channel_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the channel to remove the messages cached for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2273,20 +2273,20 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_messages_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the messages cached for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to remove the messages cached for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2294,10 +2294,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_messages_for_author</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Message</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the messages stored in the cache for a specific author.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2310,10 +2314,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the messages stored in the cache for the</span>
 <span class="sd">            specified user.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2325,10 +2325,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_message_for_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Message</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the messages stored in the cache for a specific channel.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2341,10 +2345,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the messages stored in the cache for the</span>
 <span class="sd">            specified channel.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2356,10 +2356,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_messages_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Message</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the messages stored in the cache for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2372,10 +2376,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the messages stored in the cache for the</span>
 <span class="sd">            specified guild.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2387,7 +2387,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">PresenceCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -2395,6 +2394,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_presences</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the presences cache store.</span>
 
@@ -2409,10 +2409,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_presence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove a presence from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2421,18 +2425,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">        user_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the user to remove a cached presence for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_presence</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">MemberPresence</span><span class="p">:</span>
@@ -2463,21 +2463,21 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_presences</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">MemberPresence</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the presences stored in the cache.</span>
 
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.presences.MemberPresence]</span>
 <span class="sd">            An async iterator of the presences stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2490,7 +2490,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RefPresenceCache</span><span class="p">(</span><span class="n">PresenceCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -2498,18 +2497,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_presences_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the presences cached for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to remove the cached presences for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2517,20 +2517,20 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_presences_for_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the presences cached for a specific user.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        user_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the user to remove the cached presences for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2538,10 +2538,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_presences_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">MemberPresence</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the presences stored in the cache for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2554,10 +2558,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the presences stored in the cache for the</span>
 <span class="sd">            specified guild.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2569,10 +2569,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_presences_for_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">MemberPresence</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the presences stored in the cache for a specific user.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2585,10 +2589,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the presences stored in the cache for the</span>
 <span class="sd">            specified user.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2600,7 +2600,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RoleCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -2608,6 +2607,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_roles</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the roles cache store.</span>
 
@@ -2622,19 +2622,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_role</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">role_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove a role from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        role_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the role to remove from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2642,8 +2642,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_role</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">role_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Role</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get a role from the cache.</span>
 
@@ -2670,19 +2670,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_roles</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Role</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the roles stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.guilds.Role]</span>
 <span class="sd">            An async iterator of the roles stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2695,7 +2695,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RefRoleCache</span><span class="p">(</span><span class="n">RoleCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -2703,17 +2702,18 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_roles_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the roles cached for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to remove the cached roles for.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2722,10 +2722,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_roles_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Role</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the roles stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2738,10 +2742,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the roles stored in the cache for the</span>
 <span class="sd">            specified guild.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2753,7 +2753,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">UserCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -2767,6 +2766,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_users</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the users cache store.</span>
 
@@ -2781,19 +2781,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove a user from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        user_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the user to remove from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2801,8 +2801,8 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">User</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Get a user from the cache.</span>
 
@@ -2829,19 +2829,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_users</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">User</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the users stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.users.User]</span>
 <span class="sd">            An async iterator of the users stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2854,7 +2854,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="n">RefUserCache</span> <span class="o">=</span> <span class="n">UserCache</span>
@@ -2865,6 +2864,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_voice_states</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Empty the voice states cache store.</span>
 
@@ -2879,10 +2879,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_voice_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove a voice state from the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
+<span class="sd">            targeted entity doesn&#39;t exist.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -2891,18 +2895,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">        user_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the user to remove a cached voice state for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.EntryNotFound` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
 <span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
 <span class="sd">            This may be a sign of underlying network or database issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">get_voice_state</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">VoiceState</span><span class="p">:</span>
@@ -2933,19 +2933,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_voice_states</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">VoiceState</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the voice states stored in the cache.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        CacheIterator[hikari.voices.VoiceState]</span>
 <span class="sd">            An async iterator of the voice states stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2958,7 +2958,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">RefVoiceStateCache</span><span class="p">(</span><span class="n">VoiceStateCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -2966,18 +2965,19 @@ The exception which caused this exception if applicable else <code>builtins.None
 
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_voice_states_for_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the voice states cached for a specified channel.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        channel_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the channel to remove the voice states cached for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -2985,20 +2985,20 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_voice_states_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Remove the voice states cached for a specified guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            There is no guarantee that this operation will be complete before</span>
+<span class="sd">            the returned coroutine finishes.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
 <span class="sd">            The ID of the guild to remove the voice states cached for.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -3006,10 +3006,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            backend. This may be a sign of underlying network or database</span>
 <span class="sd">            issues.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_voice_states_for_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">VoiceState</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the voice states stored in the cache for a specific channel.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -3022,10 +3026,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the voice states stored in the cache for the</span>
 <span class="sd">            specified channel.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -3037,10 +3037,14 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
     <span class="k">def</span> <span class="nf">iter_voice_states_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">VoiceState</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Iterate over the voice states stored in the cache for a specific guild.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
+<span class="sd">            while iterating over the returned asynchronous iterator.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -3053,10 +3057,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            An async iterator of the voice states stored in the cache for the</span>
 <span class="sd">            specified guild.</span>
 
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
 <span class="sd">        sake.errors.BackendError</span>
@@ -3068,7 +3068,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This may be a sign of multiple sake versions or implementations</span>
 <span class="sd">            being used with the same backend store.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
 
 <span class="k">class</span> <span class="nc">Cache</span><span class="p">(</span>
@@ -3384,50 +3383,25 @@ implement them.</p>
         <span class="sd">&quot;&quot;&quot;The Hikari client this resource client is tied to.</span>
 
 <span class="sd">        This is used to build models with a `app` attribute.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        hikari.traits.RESTAware</span>
-<span class="sd">            The Hikari client this resource is tied to.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__app</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">MutableMapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;This client&#39;s settings.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        typing.MutableMapping[str, typing.Any]</span>
-<span class="sd">            The settings for this client.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;This client&#39;s settings.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__config</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">default_expire</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;The default expire time used for fields with no actual lifetime.</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        typing.Optional[int]</span>
-<span class="sd">            The default expire time used for all fields with no immedieatly</span>
-<span class="sd">            obvious lifetime (e.g. invite expire_at) in milliseconds.</span>
-
-<span class="sd">            If this is `None` then these cases will have no set expire after.</span>
+<span class="sd">        If this is `None` then these cases will have no set expire after.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__default_expire</span>  <span class="c1"># TODO: , pexpire=self.default_expire</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">event_manager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">EventManager</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;The event manager this resource client is using for managing state.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        hikari.api.EventManager</span>
-<span class="sd">            The event manager this resource client is using for managing state.</span>
-
-<span class="sd">            This will be `None` if</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;The event manager this resource client is using for managing state.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__event_manager</span>
 
     <span class="nd">@classmethod</span>
@@ -3439,7 +3413,7 @@ implement them.</p>
 <span class="sd">            This should be called on specific base classes and will not be</span>
 <span class="sd">            accurate after inheritance.</span>
 
-<span class="sd">        !! warning</span>
+<span class="sd">        .. warning::</span>
 <span class="sd">            This doesn&#39;t account for overrides.</span>
 
 <span class="sd">        Returns</span>

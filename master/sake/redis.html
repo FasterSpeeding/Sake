@@ -759,50 +759,25 @@
         <span class="sd">&quot;&quot;&quot;The Hikari client this resource client is tied to.</span>
 
 <span class="sd">        This is used to build models with a `app` attribute.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        hikari.traits.RESTAware</span>
-<span class="sd">            The Hikari client this resource is tied to.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__app</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">MutableMapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;This client&#39;s settings.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        typing.MutableMapping[str, typing.Any]</span>
-<span class="sd">            The settings for this client.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;This client&#39;s settings.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__config</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">default_expire</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;The default expire time used for fields with no actual lifetime.</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        typing.Optional[int]</span>
-<span class="sd">            The default expire time used for all fields with no immedieatly</span>
-<span class="sd">            obvious lifetime (e.g. invite expire_at) in milliseconds.</span>
-
-<span class="sd">            If this is `None` then these cases will have no set expire after.</span>
+<span class="sd">        If this is `None` then these cases will have no set expire after.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__default_expire</span>  <span class="c1"># TODO: , pexpire=self.default_expire</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">event_manager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">EventManager</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;The event manager this resource client is using for managing state.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        hikari.api.EventManager</span>
-<span class="sd">            The event manager this resource client is using for managing state.</span>
-
-<span class="sd">            This will be `None` if</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;The event manager this resource client is using for managing state.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__event_manager</span>
 
     <span class="nd">@classmethod</span>
@@ -814,7 +789,7 @@
 <span class="sd">            This should be called on specific base classes and will not be</span>
 <span class="sd">            accurate after inheritance.</span>
 
-<span class="sd">        !! warning</span>
+<span class="sd">        .. warning::</span>
 <span class="sd">            This doesn&#39;t account for overrides.</span>
 
 <span class="sd">        Returns</span>
@@ -2733,50 +2708,25 @@
         <span class="sd">&quot;&quot;&quot;The Hikari client this resource client is tied to.</span>
 
 <span class="sd">        This is used to build models with a `app` attribute.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        hikari.traits.RESTAware</span>
-<span class="sd">            The Hikari client this resource is tied to.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__app</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">MutableMapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;This client&#39;s settings.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        typing.MutableMapping[str, typing.Any]</span>
-<span class="sd">            The settings for this client.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;This client&#39;s settings.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__config</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">default_expire</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;The default expire time used for fields with no actual lifetime.</span>
 
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        typing.Optional[int]</span>
-<span class="sd">            The default expire time used for all fields with no immedieatly</span>
-<span class="sd">            obvious lifetime (e.g. invite expire_at) in milliseconds.</span>
-
-<span class="sd">            If this is `None` then these cases will have no set expire after.</span>
+<span class="sd">        If this is `None` then these cases will have no set expire after.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__default_expire</span>  <span class="c1"># TODO: , pexpire=self.default_expire</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">event_manager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">EventManager</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;The event manager this resource client is using for managing state.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        hikari.api.EventManager</span>
-<span class="sd">            The event manager this resource client is using for managing state.</span>
-
-<span class="sd">            This will be `None` if</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;The event manager this resource client is using for managing state.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__event_manager</span>
 
     <span class="nd">@classmethod</span>
@@ -2788,7 +2738,7 @@
 <span class="sd">            This should be called on specific base classes and will not be</span>
 <span class="sd">            accurate after inheritance.</span>
 
-<span class="sd">        !! warning</span>
+<span class="sd">        .. warning::</span>
 <span class="sd">            This doesn&#39;t account for overrides.</span>
 
 <span class="sd">        Returns</span>
@@ -3137,12 +3087,6 @@ The password to use to connect to the backend Redis server.</li>
             <div class="docstring"><p>The Hikari client this resource client is tied to.</p>
 
 <p>This is used to build models with a <code><a href="#ResourceClient.app">app</a></code> attribute.</p>
-
-<h6 id="returns">Returns</h6>
-
-<ul>
-<li><strong>hikari.traits.RESTAware</strong>: The Hikari client this resource is tied to.</li>
-</ul>
 </div>
 
 
@@ -3154,12 +3098,6 @@ The password to use to connect to the backend Redis server.</li>
     </div>
 
             <div class="docstring"><p>This client's settings.</p>
-
-<h6 id="returns">Returns</h6>
-
-<ul>
-<li><strong>typing.MutableMapping[str, typing.Any]</strong>: The settings for this client.</li>
-</ul>
 </div>
 
 
@@ -3171,13 +3109,6 @@ The password to use to connect to the backend Redis server.</li>
     </div>
 
             <div class="docstring"><p>The default expire time used for fields with no actual lifetime.</p>
-
-<h6 id="returns">Returns</h6>
-
-<ul>
-<li><strong>typing.Optional[int]</strong>: The default expire time used for all fields with no immedieatly
-obvious lifetime (e.g. invite expire_at) in milliseconds.</li>
-</ul>
 
 <p>If this is <code>None</code> then these cases will have no set expire after.</p>
 </div>
@@ -3191,14 +3122,6 @@ obvious lifetime (e.g. invite expire_at) in milliseconds.</li>
     </div>
 
             <div class="docstring"><p>The event manager this resource client is using for managing state.</p>
-
-<h6 id="returns">Returns</h6>
-
-<ul>
-<li><strong>hikari.api.EventManager</strong>: The event manager this resource client is using for managing state.</li>
-</ul>
-
-<p>This will be <code>None</code> if</p>
 </div>
 
 
@@ -3224,7 +3147,7 @@ obvious lifetime (e.g. invite expire_at) in milliseconds.</li>
 <span class="sd">            This should be called on specific base classes and will not be</span>
 <span class="sd">            accurate after inheritance.</span>
 
-<span class="sd">        !! warning</span>
+<span class="sd">        .. warning::</span>
 <span class="sd">            This doesn&#39;t account for overrides.</span>
 
 <span class="sd">        Returns</span>
@@ -3243,8 +3166,8 @@ obvious lifetime (e.g. invite expire_at) in milliseconds.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -3955,8 +3878,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -4054,14 +3977,15 @@ issues.</li>
 
             <div class="docstring"><p>Clear prefixes for a specific guild.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>guild_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the guild to clear the prefixes.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -4099,6 +4023,10 @@ This may be a sign of underlying network or database issues.</li>
 
             <div class="docstring"><p>Delete prefixes from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
@@ -4106,9 +4034,6 @@ This may be a sign of underlying network or database issues.</li>
 The ID of the guild to clear the prefixes.</li>
 <li><strong>prefix</strong> (str):
 The first prefix to delete from the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -4202,14 +4127,15 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the prefixes stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[typing.Tuple[hikari.Snowflake, typing.AbstractSet[str]]]</strong>: An async iterator of tuples of guild IDs to a set of the prefixes
 stored for said guild.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -4551,8 +4477,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -4717,14 +4643,15 @@ This may be a sign of underlying network or database issues.</li>
 
             <div class="docstring"><p>Remove an emoji from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>emoji_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the emoji to remove from the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -4818,13 +4745,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the emojis stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.emojis.KnownCustomEmoji]</strong>: An async iterator of the emojis stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -4871,6 +4799,10 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the emojis stored in the cache for a specific guild.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
@@ -4883,9 +4815,6 @@ The ID of the guild to iterate over the emojis cached for.</li>
 <ul>
 <li><strong>CacheIterator[hikari.emojis.KnownCustomEmoji]</strong>: An async iterator of the emojis stored in the cache for the
 specified guild.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -5113,8 +5042,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -5212,14 +5141,15 @@ issues.</li>
 
             <div class="docstring"><p>Remove a guild from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>guild_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the guild to remove from the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -5313,13 +5243,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the guilds stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.guilds.GatewayGuild]</strong>: An async iterator of the guilds stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -5597,8 +5528,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -5705,14 +5636,15 @@ issues.</li>
 
             <div class="docstring"><p>Remove the guild channel cache store for the specified guild.</p>
 
+<p><em>Note:</em>
+There is no guarantee that this operation will be complete before
+the returned coroutine finishes.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>guild_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the guild to remove the cached channels for.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>There is no guarantee that this operation will be complete before</strong></p></li>
-<li><strong>the returned coroutine finishes.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -5763,14 +5695,15 @@ issues.</li>
 
             <div class="docstring"><p>Remove a guild guild channel from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>channel_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the guild channel to remove from the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -5864,13 +5797,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the guild channels stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.channels.GuildChannel]</strong>: An async iterator of the guild channels stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -5917,6 +5851,10 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the guild channels stored in the cache for a specific guild.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
@@ -5929,9 +5867,6 @@ The ID of the guild to iterate over the guild channels cached for it.</li>
 <ul>
 <li><strong>CacheIterator[hikari.channels.GuildChannel]</strong>: An async iterator of the guild channels stored in the cache for the
 specified guild.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -6185,8 +6120,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -6330,14 +6265,15 @@ issues.</li>
 
             <div class="docstring"><p>Remove an integration channel from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>integration_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the integration to remove from the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -6435,13 +6371,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the integrations stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.guilds.Integration]</strong>: An async iterator of the integrations stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -6740,8 +6677,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -6902,14 +6839,15 @@ issues.</li>
 
             <div class="docstring"><p>Remove an invite channel from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>invite_code</strong> (str):
 The code of the invite to remove from the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -7003,13 +6941,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the invites stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.invites.InviteWithMetadata]</strong>: An async iterator of the invites stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -7320,8 +7259,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -7481,6 +7420,10 @@ issues.</li>
 
             <div class="docstring"><p>Remove a member from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
@@ -7488,9 +7431,6 @@ issues.</li>
 The ID of the guild to remove a cached member for.</li>
 <li><strong>user_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the user to remove a cached member for.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -7587,13 +7527,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the members stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.guilds.Member]</strong>: An async iterator of the members stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -7894,8 +7835,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -8055,14 +7996,15 @@ issues.</li>
 
             <div class="docstring"><p>Remove a message from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>message_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the message to remove from the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -8160,13 +8102,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the messages stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.messages.Message]</strong>: An async iterator of the messages stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -8462,8 +8405,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -8586,6 +8529,10 @@ issues.</li>
 
             <div class="docstring"><p>Remove a presence from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
@@ -8593,9 +8540,6 @@ issues.</li>
 The ID of the guild to remove a cached presence for.</li>
 <li><strong>user_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the user to remove a cached presence for.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -8698,13 +8642,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the presences stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.presences.MemberPresence]</strong>: An async iterator of the presences stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -9178,8 +9123,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -9324,14 +9269,15 @@ issues.</li>
 
             <div class="docstring"><p>Remove a role from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>role_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the role to remove from the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -9425,13 +9371,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the roles stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.guilds.Role]</strong>: An async iterator of the roles stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -9695,8 +9642,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -9856,14 +9803,15 @@ issues.</li>
 
             <div class="docstring"><p>Remove a user from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
 <li><strong>user_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the user to remove from the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -9957,13 +9905,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the users stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.users.User]</strong>: An async iterator of the users stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -10353,8 +10302,8 @@ The password to use to connect to the backend Redis server.</li>
 This should be called on specific base classes and will not be
 accurate after inheritance.</p>
 
-<p>!! warning
-    This doesn't account for overrides.</p>
+<p><em>Warning:</em>
+This doesn't account for overrides.</p>
 
 <h6 id="returns">Returns</h6>
 
@@ -10541,6 +10490,10 @@ issues.</li>
 
             <div class="docstring"><p>Remove a voice state from the cache.</p>
 
+<p><em>Note:</em>
+Delete methods do not raise <code><a href="errors.html#CacheMissError">sake.errors.CacheMissError</a></code> when the
+targeted entity doesn't exist.</p>
+
 <h6 id="parameters">Parameters</h6>
 
 <ul>
@@ -10548,9 +10501,6 @@ issues.</li>
 The ID of the guild to remove a cached voice state for.</li>
 <li><strong>user_id</strong> (hikari.snowflakes.Snowflakeish):
 The ID of the user to remove a cached voice state for.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Delete methods do not raise <code><a href="errors.html#EntryNotFound">sake.errors.EntryNotFound</a></code> when the</strong></p></li>
-<li><strong>targeted entity doesn't exist.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>
@@ -10653,13 +10603,14 @@ being used with the same backend store.</li>
 
             <div class="docstring"><p>Iterate over the voice states stored in the cache.</p>
 
+<p><em>Note:</em>
+Errors won't be raised by the initial call to this method but rather
+while iterating over the returned asynchronous iterator.</p>
+
 <h6 id="returns">Returns</h6>
 
 <ul>
 <li><strong>CacheIterator[hikari.voices.VoiceState]</strong>: An async iterator of the voice states stored in the cache.</li>
-<li><p><strong><em>Note</strong> (</em>):</p></li>
-<li><p><strong>Errors won't be raised by the initial call to this method but rather</strong></p></li>
-<li><strong>while iterating over the returned asynchronous iterator.</strong></li>
 </ul>
 
 <h6 id="raises">Raises</h6>

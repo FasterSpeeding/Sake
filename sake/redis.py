@@ -446,8 +446,10 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             - `tanjun.dependencies.async_cache.SfCache[hikari.Role]`
             - `tanjun.dependencies.async_cache.SfGuildBound[hikari.Role]`
         * `UserCache`
+            - `sake.abc.MeCache`
             - `sake.abc.UserCache`
             - `sake.redis.UserCache`
+            - `tanjun.dependencies.async_cache.SingleStoreCache[hikari.OwnUser]`
             - `tanjun.dependencies.async_cache.SfCache[hikari.User]`
         * `VoiceStateCache`
             - `sake.abc.VoiceStateCache`

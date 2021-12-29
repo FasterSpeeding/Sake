@@ -252,50 +252,25 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         """The Hikari client this resource client is tied to.
 
         This is used to build models with a `app` attribute.
-
-        Returns
-        -------
-        hikari.traits.RESTAware
-            The Hikari client this resource is tied to.
         """
         return self.__app
 
     @property
     def config(self) -> typing.MutableMapping[str, typing.Any]:
-        """This client's settings.
-
-        Returns
-        -------
-        typing.MutableMapping[str, typing.Any]
-            The settings for this client.
-        """
+        """This client's settings."""
         return self.__config
 
     @property
     def default_expire(self) -> typing.Optional[int]:
         """The default expire time used for fields with no actual lifetime.
 
-        Returns
-        -------
-        typing.Optional[int]
-            The default expire time used for all fields with no immedieatly
-            obvious lifetime (e.g. invite expire_at) in milliseconds.
-
-            If this is `None` then these cases will have no set expire after.
+        If this is `None` then these cases will have no set expire after.
         """
         return self.__default_expire  # TODO: , pexpire=self.default_expire
 
     @property
     def event_manager(self) -> typing.Optional[hikari.api.EventManager]:
-        """The event manager this resource client is using for managing state.
-
-        Returns
-        -------
-        hikari.api.EventManager
-            The event manager this resource client is using for managing state.
-
-            This will be `None` if
-        """
+        """The event manager this resource client is using for managing state."""
         return self.__event_manager
 
     @classmethod
@@ -307,7 +282,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             This should be called on specific base classes and will not be
             accurate after inheritance.
 
-        !! warning
+        .. warning::
             This doesn't account for overrides.
 
         Returns

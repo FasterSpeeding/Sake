@@ -119,14 +119,14 @@ def _to_map(
 
 _TanjunLoaderSigT = typing.TypeVar(
     "_TanjunLoaderSigT",
-    bound="typing.Callable[[typing.Any, tanjun.InjectorClient, typing.Collection[typing.Type[ResourceClient]]], None]",
+    bound="typing.Callable[[typing.Any, tanjun.InjectorClient, typing.Set[typing.Type[sake_abc.Resource]]], None]",
 )
 
 
 @typing.runtime_checkable
 class _TanjunLoader(typing.Protocol):
     def __call__(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         raise NotImplementedError
 
@@ -385,25 +385,162 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     def add_to_tanjun(
         self,
-        client: tanjun.InjectorClient,
+        client: tanjun.abc.Client,
         /,
         *,
-        trust_get_for: typing.Optional[typing.Collection[typing.Type[ResourceClient]]] = None,
+        trust_get_for: typing.Optional[typing.Collection[typing.Type[sake_abc.Resource]]] = None,
+        tanjun_managed: bool = False,
     ) -> None:
+        """Add this Redis client to a Tanjun client.
+
+        This method will register type dependencies for the resources
+        implemented by it (including `tanjun.dependencies.async_cache` compatible
+        adapters which will allow Tanjun extensions and standard utilitiy such as
+        converters to be aware of this cache).
+
+        The type dependencies this will register depend on which resources are
+        implemented but are as follows for each standard resource implementation:
+
+        * `EmojiCache`
+            - `sake.abc.EmojiCache`
+            - `sake.abc.RefEmojiCache`
+            - `sake.redis.EmojiCache`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.KnownCustomEmoji]`
+            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.KnownCustomEmoji]`
+        * `GuildCache`
+            - `sake.abc.GuildCache`
+            - `sake.redis.RedisCache`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.Guild]`
+            - `tanjun.depepdencies.async_cache.SfCache[hikari.GatewayGuild]`
+        * `GuildChannelCache`
+            - `sake.abc.GuildChannelCache`
+            - `sake.abc.RefGuildChannelCache`
+            - `sake.redis.GuildChannelCache`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.GuildChannel]`
+            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.GuildChannel]`
+        * `IntegrationCache`
+            - `sake.abc.IntegrationCache`
+            - `sake.redis.IntegrationCache`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.Integration]`
+            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.Integration]`
+        * `InviteCache`
+            - `sake.abc.InviteCache`
+            - `sake.redis.InviteCache`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.Invite]`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.InviteWithMetadata]`
+        * `MemberCache`
+            - `sake.abc.MemberCache`
+            - `sake.redis.MemberCache`
+            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.Member]`
+        * `MessageCache`
+            - `sake.abc.MessageCache`
+            - `sake.redis.MessageCache`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.Message]`
+        * `PresenceCache`
+            - `sake.abc.PresenceCache`
+            - `sake.redis.PresenceCache`
+            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.MemberPresence]`
+        * `RoleCache`
+            - `sake.abc.RoleCache`
+            - `sake.redis.RoleCache`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.Role]`
+            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.Role]`
+        * `UserCache`
+            - `sake.abc.UserCache`
+            - `sake.redis.UserCache`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.User]`
+        * `VoiceStateCache`
+            - `sake.abc.VoiceStateCache`
+            - `sake.redis.VoiceStateCache`
+            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.VoiceState]`
+        * `RedisCache`
+            - All of the previously listed types
+            - `sake.abc.Cache`
+            - `sake.redis.RedisCache`
+
+        Parameters
+        ----------
+        client : tanjun.abc.Client
+            The Tanjun client to add this client to.
+        trust_get_for : typing.Optional[typing.Collection[type[sake_abc.Resource]]]
+            A collection of resource types which the `tanjun.dependencies.async_cache`
+            adapter "get" methods should raise `tanjun.dependencies.async_cache.EntryNotFound`
+            if the entry isn't found rather than just `tanjun.dependencies.async_cache.CacheMissError`.
+
+            .. note::
+                `EntryNotFound` is a specialisation of `CacheMissError` which indicates
+                that the entry doesn't exist rather than just that it wasn't cached
+                and is used to avoid falling back to a REST request in places where this
+                would be applicable.
+
+            If not passed then this will default to the following resources:
+
+            - `sake.abc.EmojiCache`
+            - `sake.abc.GuildCache`
+            - `sake.abc.GuildChannelCache`
+            - `sake.abc.MemberCache`
+            - `sake.abc.PresenceCache`
+            - `sake.abc.RoleCache`
+            - `sake.abc.VoiceStateCache`
+            - `sake.abc.UserCache` (if `sake.abc.MemberCache` is also implemented).
+
+        tanjun_managed : bool
+            Whether the client should be started and stopped based on the tanjun
+            client's lifecycle.
+
+            This is useful if the client isn't being event managed.
+
+            Defaults to `False`.
+
+        Raises
+        ------
+        RuntimeError
+            If this is called in an environment without Tanjun.
+        """
         if trust_get_for is None:
-            trust_get_for = {cls for cls in type(self).mro() if issubclass(cls, ResourceClient)}
+            trust_get_for_: typing.Set[typing.Type[sake_abc.Resource]] = {
+                sake_abc.EmojiCache,
+                sake_abc.GuildCache,
+                sake_abc.GuildChannelCache,
+                sake_abc.MemberCache,
+                sake_abc.PresenceCache,
+                sake_abc.RoleCache,
+                sake_abc.VoiceStateCache,
+            }
+            if isinstance(self, sake_abc.MemberCache):
+                trust_get_for_.add(sake_abc.UserCache)
+
+            trust_get_for = trust_get_for_
+
+        else:
+            trust_get_for = set(trust_get_for)
 
         try:
-            for member in inspect.getmembers(self):
-                if isinstance(member, _TanjunLoader):
-                    member(client, trust_get_for)
+            import tanjun
 
         except ImportError as exc:
             raise RuntimeError("This can only be called in an environment with Tanjun") from exc
 
+        # This is gonna be upgraded to the standard interface for tanjun.abc.Client
+        assert isinstance(client, tanjun.InjectorClient)
+
+        for member in inspect.getmembers(self):
+            if isinstance(member, _TanjunLoader):
+                member(client, trust_get_for)
+
         for cls in type(self).mro():
             if not cls.__name__.startswith("_") and issubclass(cls, sake_abc.Resource):
                 client.set_type_dependency(cls, self)
+
+        if tanjun_managed:
+            (
+                client.add_client_callback(tanjun.ClientCallbackNames.STARTING, self.open).add_client_callback(
+                    tanjun.ClientCallbackNames.CLOSED, self.close
+                )
+            )
+
+            if client.is_alive and client.loop:
+                client.loop.create_task(self.open())
 
     def dump(self, data: _ObjectT, /) -> bytes:
         """Serialize a dict object representation into the form to be stored.
@@ -716,13 +853,13 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
 
-        adapter = _tanjun_adapter.SingleStoreAdapter(self.get_me, trust_get=UserCache in trust_get_for)
+        adapter = _tanjun_adapter.SingleStoreAdapter(self.get_me, trust_get=sake_abc.MeCache in trust_get_for)
         client.set_type_dependency(async_cache.SingleStoreCache[hikari.OwnUser], adapter)
 
     @utility.as_raw_listener("USER_UPDATE")
@@ -765,14 +902,14 @@ class UserCache(_MeCache, sake_abc.UserCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
 
         adapter = _tanjun_adapter.AsyncCacheAdapter(
-            self.get_user, self.iter_users, trust_get=UserCache in trust_get_for
+            self.get_user, self.iter_users, trust_get=bool(trust_get_for.union((UserCache, sake_abc.UserCache)))
         )
         client.set_type_dependency(async_cache.SfCache[hikari.User], adapter)
 
@@ -927,7 +1064,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -938,7 +1075,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
             self.iter_emojis,
             self.iter_emojis_for_guild,
             lambda guild_id, e: e.guild_id == guild_id,
-            trust_get=EmojiCache in trust_get_for,
+            trust_get=bool(trust_get_for.union((EmojiCache, sake_abc.EmojiCache))),
         )
         client.set_type_dependency(async_cache.SfCache[hikari.KnownCustomEmoji], adapter).set_type_dependency(
             async_cache.SfGuildBound[hikari.KnownCustomEmoji], adapter
@@ -1054,14 +1191,14 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
 
         adapter = _tanjun_adapter.AsyncCacheAdapter(
-            self.get_guild, self.iter_guilds, trust_get=GuildCache in trust_get_for
+            self.get_guild, self.iter_guilds, trust_get=bool(trust_get_for.union((GuildCache, sake_abc.GuildCache)))
         )
         client.set_type_dependency(async_cache.SfCache[hikari.Guild], adapter).set_type_dependency(
             async_cache.SfCache[hikari.GatewayGuild], adapter
@@ -1134,7 +1271,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1145,7 +1282,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
             self.iter_guild_channels,
             self.iter_guild_channels_for_guild,
             lambda guild_id, c: c.guild_id == guild_id,
-            trust_get=GuildChannelCache in trust_get_for,
+            trust_get=bool(trust_get_for.union((GuildChannelCache, sake_abc.GuildChannelCache))),
         )
         client.set_type_dependency(async_cache.SfCache[hikari.GuildChannel], adapter).set_type_dependency(
             async_cache.SfGuildBound[hikari.GuildChannel], adapter
@@ -1271,7 +1408,7 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1282,7 +1419,7 @@ class IntegrationCache(_Reference, sake_abc.IntegrationCache):
             self.iter_integrations,
             self.iter_integrations_for_guild,
             lambda guild_id, i: i.guild_id == guild_id,
-            trust_get=IntegrationCache in trust_get_for,
+            trust_get=bool(trust_get_for.union((IntegrationCache, sake_abc.IntegrationCache))),
         )
         client.set_type_dependency(async_cache.SfCache[hikari.Integration], adapter).set_type_dependency(
             async_cache.SfGuildBound[hikari.Integration], adapter
@@ -1389,14 +1526,14 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
 
         adapter = _tanjun_adapter.AsyncCacheAdapter(
-            self.get_invite, self.iter_invites, trust_get=InviteCache in trust_get_for
+            self.get_invite, self.iter_invites, trust_get=bool(trust_get_for.union((InviteCache, sake_abc.InviteCache)))
         )
         client.set_type_dependency(async_cache.SfCache[hikari.InviteWithMetadata], adapter).set_type_dependency(
             async_cache.SfCache[hikari.Invite], adapter
@@ -1536,16 +1673,19 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
 
         adapter = _tanjun_adapter.GuildBoundCacheAdapter(
-            self.get_member, self.iter_members, self.iter_members_for_guild, trust_get=MemberCache in trust_get_for
+            self.get_member,
+            self.iter_members,
+            self.iter_members_for_guild,
+            trust_get=bool(trust_get_for.union((MemberCache, sake_abc.MemberCache))),
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.Member], adapter)
+        client.set_type_dependency(async_cache.SfGuildBound[hikari.Member], adapter)
 
     @utility.as_raw_listener("GUILD_CREATE")  # members aren't included in GUILD_UPDATE
     async def __on_guild_create(self, event: hikari.ShardPayloadEvent, /) -> None:
@@ -1678,14 +1818,16 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
 
         adapter = _tanjun_adapter.AsyncCacheAdapter(
-            self.get_message, self.iter_messages, trust_get=MessageCache in trust_get_for
+            self.get_message,
+            self.iter_messages,
+            trust_get=bool(trust_get_for.union((MessageCache, sake_abc.MessageCache))),
         )
         client.set_type_dependency(async_cache.SfCache[hikari.Message], adapter)
 
@@ -1807,7 +1949,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1817,9 +1959,9 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
             self.get_presence,
             self.iter_presences,
             self.iter_presences_for_guild,
-            trust_get=PresenceCache in trust_get_for,
+            trust_get=bool(trust_get_for.union((PresenceCache, sake_abc.PresenceCache))),
         )
-        client.set_type_dependency(async_cache.SfChannelBound[hikari.MemberPresence], adapter)
+        client.set_type_dependency(async_cache.SfGuildBound[hikari.MemberPresence], adapter)
 
     @utility.as_raw_listener("GUILD_CREATE")  # Presences is not included on GUILD_UPDATE
     async def __on_guild_create(self, event: hikari.ShardPayloadEvent, /) -> None:
@@ -1909,7 +2051,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1920,7 +2062,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
             self.iter_roles,
             self.iter_roles_for_guild,
             lambda guild_id, r: r.guild_id == guild_id,
-            trust_get=RoleCache in trust_get_for,
+            trust_get=bool(trust_get_for.union((RoleCache, sake_abc.RoleCache))),
         )
         client.set_type_dependency(async_cache.SfGuildBound[hikari.Role], adapter).set_type_dependency(
             async_cache.SfCache[hikari.Role], adapter
@@ -2072,7 +2214,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Collection[typing.Type[ResourceClient]], /
+        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -2082,7 +2224,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
             self.get_voice_state,
             self.iter_voice_states,
             self.iter_voice_states_for_guild,
-            trust_get=VoiceStateCache in trust_get_for,
+            trust_get=bool(trust_get_for.union((VoiceStateCache, sake_abc.VoiceStateCache))),
         )
         client.set_type_dependency(async_cache.SfGuildBound[hikari.VoiceState], adapter)
 

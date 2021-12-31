@@ -119,7 +119,7 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
 class GuildBoundCacheAdapter(AsyncCacheAdapter, async_cache.GuildBoundCache[_KeyT, _ValueT]):
     __slots__ = ("_get_from_guild", "_iterate_all", "_iterate_for_guild")
 
-    async def __init__(
+    def __init__(
         self,
         get_from_guild: typing.Callable[[hikari.Snowflakeish, _KeyT], typing.Awaitable[_ValueT]],
         iterate_all: typing.Callable[[], abc.CacheIterator[_ValueT]],
@@ -156,7 +156,7 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter, async_cache.GuildBoundCache[_Key
 class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.GuildBoundCache[_KeyT, _ValueT]):
     __slots__ = ("_iterate_for_guild", "_verify_guild")
 
-    async def __init__(
+    def __init__(
         self,
         get: typing.Callable[[_KeyT], typing.Awaitable[_ValueT]],
         iterate_all: typing.Callable[[], abc.CacheIterator[_ValueT]],

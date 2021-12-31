@@ -526,7 +526,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         # This is gonna be upgraded to the standard interface for tanjun.abc.Client
         assert isinstance(client, tanjun.InjectorClient)
 
-        for member in inspect.getmembers(self):
+        for _, member in inspect.getmembers(self):
             if isinstance(member, _TanjunLoader):
                 member(client, trust_get_for)
 

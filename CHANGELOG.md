@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.0.1a1] - 2021-12-25
 ### Added
 - `RedisResource.add_to_tanjun` method for easier integration with Tanjun.
   This both registers dependencies for the resource abcs and impls but also
@@ -55,5 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `window_size` parameter from `RedisClient.clear_*` methods as these are no-longer
   chunked.
 
-[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.0a1...HEAD
+[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.1a1...HEAD
+[1.0.1a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.0a1...v1.0.1a1
 [1.0.0a1]: https://github.com/FasterSpeeding/Sake/compare/0.0.1...v1.0.0a1

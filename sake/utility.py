@@ -37,7 +37,6 @@ __all__: typing.Sequence[str] = [
     "convert_expire_time",
     "ExpireT",
     "find_listeners",
-    "find_raw_listeners",
     "ListenerProto",
     "RawListenerProto",
 ]
@@ -129,8 +128,12 @@ def as_raw_listener(
 
 def find_listeners(
     obj: typing.Any, /
-) -> typing.Dict[typing.Type[hikari.Event], typing.List[ListenerProto[hikari.Event]]]:
+) -> tuple[
+    typing.Dict[typing.Type[hikari.Event], typing.List[ListenerProto[hikari.Event]]],
+    typing.Dict[str, typing.List[RawListenerProto]],
+]:
     listeners: typing.Dict[typing.Type[hikari.Event], typing.List[ListenerProto[hikari.Event]]] = {}
+    raw_listeners: typing.Dict[str, typing.List[RawListenerProto]] = {}
     for _, member in inspect.getmembers(obj):
         if isinstance(member, ListenerProto):
             try:
@@ -139,12 +142,6 @@ def find_listeners(
             except KeyError:
                 listeners[member.__sake_event_type__] = [member]
 
-    return listeners
-
-
-def find_raw_listeners(obj: typing.Any, /) -> typing.Dict[str, typing.List[RawListenerProto]]:
-    raw_listeners: typing.Dict[str, typing.List[RawListenerProto]] = {}
-    for _, member in inspect.getmembers(obj):
         if isinstance(member, RawListenerProto):
             for name in member.__sake_event_names__:
                 try:
@@ -153,4 +150,4 @@ def find_raw_listeners(obj: typing.Any, /) -> typing.Dict[str, typing.List[RawLi
                 except KeyError:
                     raw_listeners[name] = [member]
 
-    return raw_listeners
+    return listeners, raw_listeners

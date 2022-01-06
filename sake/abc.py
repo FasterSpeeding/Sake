@@ -86,7 +86,7 @@ class CacheIterator(hikari.LazyIterator[ValueT], abc.ABC):
     __slots__: typing.Sequence[str] = ()
 
     @abc.abstractmethod
-    async def len(self) -> typing.Optional[int]:
+    async def len(self) -> int:
         """Get the count of entries that this iterator covers.
 
         .. note::

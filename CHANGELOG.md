@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.1a1] - 2021-12-25
+## [1.0.1a1] - 2022-01-06
 ### Added
 - `RedisResource.add_to_tanjun` method for easier integration with Tanjun.
   This both registers dependencies for the resource abcs and impls but also

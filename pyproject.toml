@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-docs = ["pdoc==8.1.0"]
+docs = ["pdoc==8.2.0"]
 flake8 = [
     "flake8==4.0.1",
 

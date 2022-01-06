@@ -1024,7 +1024,7 @@ class PrefixCache(ResourceClient, sake_abc.PrefixCache):
         self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[typing.AbstractSet[str]]:
         # <<Inherited docstring from sake.abc.PrefixCache>>
-        return redis_iterators.Iterator(
+        return redis_iterators.Iterator[typing.AbstractSet[str]](
             self, ResourceIndex.PREFIX, _decode_prefixes, lambda v: v, window_size=window_size
         )
 

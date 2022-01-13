@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Redis `clear_voice_states_for_guild` method mishandling passing coroutines to
   `asyncio.gather` leading to errors being raised.
 
+### Removed
+- The Prefix and Integration cache implementations and interfaces as a part of
+  pruning out-of-scope and useless cache stores.
+
 ## [1.0.1a1] - 2022-01-06
 ### Added
 - `RedisResource.add_to_tanjun` method for easier integration with Tanjun.

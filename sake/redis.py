@@ -33,11 +33,9 @@ from __future__ import annotations
 
 __all__: typing.Sequence[str] = [
     "ResourceClient",
-    "PrefixCache",
     "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
-    "IntegrationCache",
     "InviteCache",
     "MemberCache",
     "MessageCache",
@@ -102,8 +100,6 @@ class ResourceIndex(enum.IntEnum):
     REFERENCE = 9
     # REFERENCE is a special case database solely used for linking other entries to other master entities.
     MESSAGE = 10
-    INTEGRATION = 11
-    PREFIX = 12
 
 
 _T = typing.TypeVar("_T")
@@ -418,11 +414,6 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             - `sake.redis.GuildChannelCache`
             - `tanjun.dependencies.async_cache.SfCache[hikari.GuildChannel]`
             - `tanjun.dependencies.async_cache.SfGuildBound[hikari.GuildChannel]`
-        * `IntegrationCache`
-            - `sake.abc.IntegrationCache`
-            - `sake.redis.IntegrationCache`
-            - `tanjun.dependencies.async_cache.SfCache[hikari.Integration]`
-            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.Integration]`
         * `InviteCache`
             - `sake.abc.InviteCache`
             - `sake.redis.InviteCache`
@@ -983,62 +974,6 @@ def _get_id(data: _ObjectT, /) -> str:
     return str(int(data["id"]))
 
 
-def _decode_prefixes(data: typing.Any, /) -> typing.Set[str]:
-    assert isinstance(data, set)
-    return {v.decode() for v in data}
-
-
-class PrefixCache(ResourceClient, sake_abc.PrefixCache):
-    __slots__: typing.Sequence[str] = ()
-
-    @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
-        # <<Inherited docstring from ResourceClient>>
-        return (ResourceIndex.PREFIX,)
-
-    @classmethod
-    def intents(cls) -> hikari.Intents:
-        # <<Inherited docstring from ResourceClient>>
-        return hikari.Intents.NONE
-
-    async def clear_prefixes(self) -> None:
-        # <<Inherited docstring from sake.abc.PrefixCache>>
-        await self.get_connection(ResourceIndex.PREFIX).flushdb()
-
-    async def clear_prefixes_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
-        # <<Inherited docstring from sake.abc.PrefixCache>>
-        await self.get_connection(ResourceIndex.PREFIX).delete(str(guild_id))
-
-    async def delete_prefixes(self, guild_id: hikari.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
-        # <<Inherited docstring from sake.abc.PrefixCache>>
-        await self.get_connection(ResourceIndex.PREFIX).srem(str(guild_id), prefix, *prefixes)
-
-    async def get_prefixes(self, guild_id: hikari.Snowflakeish, /) -> typing.AbstractSet[str]:
-        # <<Inherited docstring from sake.abc.PrefixCache>>
-        if data := await self.get_connection(ResourceIndex.PREFIX).smembers(str(guild_id)):
-            return _decode_prefixes(data)
-
-        raise errors.EntryNotFound(f"Prefix entry `{guild_id}` not found")
-
-    def iter_prefixes(
-        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
-    ) -> sake_abc.CacheIterator[typing.AbstractSet[str]]:
-        # <<Inherited docstring from sake.abc.PrefixCache>>
-        return redis_iterators.Iterator[typing.AbstractSet[str]](
-            self, ResourceIndex.PREFIX, _decode_prefixes, lambda v: v, window_size=window_size
-        )
-
-    async def add_prefixes(self, guild_id: hikari.Snowflakeish, prefix: str, /, *prefixes: str) -> None:
-        # <<Inherited docstring from sake.abc.PrefixCache>>
-        await self.get_connection(ResourceIndex.PREFIX).sadd(str(guild_id), str(prefix), *map(str, prefixes))
-
-    async def set_prefixes(self, guild_id: hikari.Snowflakeish, prefixes: typing.Iterable[str], /) -> None:
-        # <<Inherited docstring from sake.abc.PrefixCache>>
-        await self.clear_prefixes_for_guild(guild_id)
-        if prefixes:
-            await self.add_prefixes(guild_id, *prefixes)
-
-
 class EmojiCache(_Reference, sake_abc.RefEmojiCache):
     __slots__: typing.Sequence[str] = ()
 
@@ -1393,124 +1328,6 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         guild_id = str(int(payload["guild_id"]))
         await client.set(str_channel_id, self.dump(payload))
         await self._add_ids(ResourceIndex.GUILD, guild_id, ResourceIndex.CHANNEL, str_channel_id)
-
-
-class IntegrationCache(_Reference, sake_abc.IntegrationCache):
-    __slots__: typing.Sequence[str] = ()
-
-    @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
-        # <<Inherited docstring from sake.abc.Resource>>
-        return (ResourceIndex.INTEGRATION,)
-
-    @classmethod
-    def intents(cls) -> hikari.Intents:
-        # <<Inherited docstring from ResourceClient>>
-        return hikari.Intents.GUILDS | hikari.Intents.GUILD_INTEGRATIONS
-
-    @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
-        from tanjun.dependencies import async_cache
-
-        from . import _tanjun_adapter
-
-        adapter = _tanjun_adapter.GuildAndGlobalCacheAdapter(
-            self.get_integration,
-            self.iter_integrations,
-            self.iter_integrations_for_guild,
-            lambda guild_id, i: i.guild_id == guild_id,
-            trust_get=bool(trust_get_for.union((IntegrationCache, sake_abc.IntegrationCache))),
-        )
-        client.set_type_dependency(async_cache.SfCache[hikari.Integration], adapter).set_type_dependency(
-            async_cache.SfGuildBound[hikari.Integration], adapter
-        )
-
-    @utility.as_listener(hikari.GuildLeaveEvent)
-    async def __on_guild_leave_event(self, event: hikari.GuildLeaveEvent, /) -> None:
-        await self.clear_integrations_for_guild(event.guild_id)
-
-    @utility.as_raw_listener("INTEGRATION_CREATE", "INTEGRATION_UPDATE")
-    async def __on_integration_event(self, event: hikari.ShardPayloadEvent, /) -> None:
-        await self.set_integration(int(event.payload["guild_id"]), dict(event.payload))
-
-    @utility.as_listener(hikari.IntegrationDeleteEvent)
-    async def __on_integration_delete_event(self, event: hikari.IntegrationDeleteEvent, /) -> None:
-        await self.delete_integration(event.id, guild_id=event.guild_id)
-
-    async def clear_integrations(self) -> None:
-        # <<Inherited docstring from sake.abc.IntegrationCache>>
-        client = self.get_connection(ResourceIndex.INTEGRATION)
-        if ids := await self._dump_relationship(ResourceIndex.GUILD, ResourceIndex.INTEGRATION):
-            await client.delete(*ids)
-
-    async def clear_integrations_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
-        client = self.get_connection(ResourceIndex.INTEGRATION)
-        str_guild_id = str(guild_id)
-        ids = await self._get_ids(ResourceIndex.GUILD, str_guild_id, ResourceIndex.INTEGRATION, cast=bytes)
-        if not ids:
-            return
-
-        await self._delete_ids(ResourceIndex.GUILD, str_guild_id, ResourceIndex.INTEGRATION, *ids)
-        await client.delete(*ids)
-
-    async def delete_integration(
-        self, integration_id: hikari.Snowflakeish, /, *, guild_id: typing.Optional[hikari.Snowflakeish] = None
-    ) -> None:
-        # <<Inherited docstring from sake.abc.IntegrationCache>>
-        client = self.get_connection(ResourceIndex.INTEGRATION)
-        str_integration_id = str(integration_id)
-        if guild_id is None:
-            payload = await client.get(str_integration_id)
-            if not payload:
-                return
-
-            guild_id = int(self.load(payload)["guild_id"])
-
-        await self._delete_ids(ResourceIndex.GUILD, str(guild_id), ResourceIndex.INTEGRATION, str_integration_id)
-        await client.delete(str_integration_id)
-
-    async def get_integration(self, integration_id: hikari.Snowflakeish, /) -> hikari.Integration:
-        # <<Inherited docstring from sake.abc.IntegrationCache>>
-        if payload := await self.get_connection(ResourceIndex.INTEGRATION).get(str(integration_id)):
-            return self.app.entity_factory.deserialize_integration(self.load(payload))
-
-        raise errors.EntryNotFound("Integration not found")
-
-    def iter_integrations(
-        self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
-    ) -> sake_abc.CacheIterator[hikari.Integration]:
-        # <<Inherited docstring from sake.abc.IntegrationCache>>
-        return redis_iterators.Iterator(
-            self,
-            ResourceIndex.INTEGRATION,
-            self.app.entity_factory.deserialize_integration,
-            self.load,
-            window_size=window_size,
-        )
-
-    def iter_integrations_for_guild(
-        self, guild_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
-    ) -> sake_abc.CacheIterator[hikari.Integration]:
-        key = self._generate_reference_key(ResourceIndex.GUILD, str(guild_id), ResourceIndex.INTEGRATION).encode()
-        return redis_iterators.ReferenceIterator(
-            self,
-            key,
-            ResourceIndex.INTEGRATION,
-            self.app.entity_factory.deserialize_integration,
-            self.load,
-            window_size=window_size,
-        )
-
-    async def set_integration(self, guild_id: hikari.Snowflakeish, payload: _ObjectT, /) -> None:
-        # <<Inherited docstring from sake.abc.IntegrationCache>>
-        client = self.get_connection(ResourceIndex.INTEGRATION)
-        integration_id = str(int(payload["id"]))
-        str_guild_id = str(guild_id)
-        payload["guild_id"] = str_guild_id  # TODO: is this necessary?
-        await client.set(integration_id, self.dump(payload))
-        await self._add_ids(ResourceIndex.GUILD, str_guild_id, ResourceIndex.INTEGRATION, integration_id)
 
 
 class InviteCache(ResourceClient, sake_abc.InviteCache):
@@ -2416,7 +2233,6 @@ class RedisCache(
     GuildCache,
     EmojiCache,
     GuildChannelCache,
-    IntegrationCache,
     InviteCache,
     MemberCache,
     MessageCache,

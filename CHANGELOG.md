@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.0.2a1]
 ### Fixed
 - The Redis `clear_voice_states_for_guild` method mishandling passing coroutines to
   `asyncio.gather` leading to errors being raised.
@@ -64,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `window_size` parameter from `RedisClient.clear_*` methods as these are no-longer
   chunked.
 
-[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.1a1...HEAD
+[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.2a1...HEAD
+[1.0.2a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.1a1...v1.0.2a1
 [1.0.1a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.0a1...v1.0.1a1
 [1.0.0a1]: https://github.com/FasterSpeeding/Sake/compare/0.0.1...v1.0.0a1

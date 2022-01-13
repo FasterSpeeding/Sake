@@ -2307,7 +2307,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         entry_deleter = client.hdel(str_guild_id, *(str(int(state["user_id"])) for state in states))
         # Gather is awaited here to ensure that when internally bulk setting entries after triggering a bulk deletion
         # (based on events) we don't risk deleting entries after we've re-added them.
-        await asyncio.gather(id_deleters, entry_deleter)
+        await asyncio.gather(*id_deleters, entry_deleter)
 
     async def clear_voice_states_for_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
         # <<Inherited docstring from sake.abc.VoiceStateCache>>

@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- The Redis `clear_voice_states_for_guild` method mishandling passing coroutines to
+  `asyncio.gather` leading to errors being raised.
 
 ## [1.0.1a1] - 2022-01-06
 ### Added

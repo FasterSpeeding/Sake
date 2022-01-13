@@ -137,7 +137,7 @@ sake    </h1>
 <span class="c1"># cython: language_level=3</span>
 <span class="c1"># BSD 3-Clause License</span>
 <span class="c1">#</span>
-<span class="c1"># Copyright (c) 2020-2021, Faster Speeding</span>
+<span class="c1"># Copyright (c) 2020-2022, Faster Speeding</span>
 <span class="c1"># All rights reserved.</span>
 <span class="c1">#</span>
 <span class="c1"># Redistribution and use in source and binary forms, with or without</span>
@@ -208,7 +208,7 @@ sake    </h1>
 <span class="n">__issue_tracker__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;https://github.com/FasterSpeeding/Sake/issues&quot;</span>
 <span class="n">__license__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;BSD&quot;</span>
 <span class="n">__url__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;https://github.com/FasterSpeeding/Sake&quot;</span>
-<span class="n">__version__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1.0.1a1&quot;</span>
+<span class="n">__version__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1.0.2a1&quot;</span>
 </pre></div>
 
         </details>
@@ -233,7 +233,7 @@ sake    </h1>
 <span class="c1"># cython: language_level=3</span>
 <span class="c1"># BSD 3-Clause License</span>
 <span class="c1">#</span>
-<span class="c1"># Copyright (c) 2020-2021, Faster Speeding</span>
+<span class="c1"># Copyright (c) 2020-2022, Faster Speeding</span>
 <span class="c1"># All rights reserved.</span>
 <span class="c1">#</span>
 <span class="c1"># Redistribution and use in source and binary forms, with or without</span>
@@ -720,7 +720,7 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="c1"># cython: language_level=3</span>
 <span class="c1"># BSD 3-Clause License</span>
 <span class="c1">#</span>
-<span class="c1"># Copyright (c) 2020-2021, Faster Speeding</span>
+<span class="c1"># Copyright (c) 2020-2022, Faster Speeding</span>
 <span class="c1"># All rights reserved.</span>
 <span class="c1">#</span>
 <span class="c1"># Redistribution and use in source and binary forms, with or without</span>
@@ -760,11 +760,9 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="n">__all__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;Cache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;CacheIterator&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;PrefixCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;EmojiCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;GuildCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;GuildChannelCache&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;IntegrationCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;InviteCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MeCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MemberCache&quot;</span><span class="p">,</span>
@@ -772,11 +770,9 @@ The exception which caused this exception if applicable else <code>builtins.None
     <span class="s2">&quot;PresenceCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;Resource&quot;</span><span class="p">,</span>
     <span class="s2">&quot;RefCache&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;RefPrefixCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;RefEmojiCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;RefGuildCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;RefGuildChannelCache&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;RefIntegrationCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;RefInviteCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;RefMeCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;RefMemberCache&quot;</span><span class="p">,</span>
@@ -846,165 +842,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">            This should pass without raising if called on an already closed</span>
 <span class="sd">            resource.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
-
-<span class="k">class</span> <span class="nc">PrefixCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a prefix cache.&quot;&quot;&quot;</span>
-
-    <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Empty the prefix cache store.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this call failed to communicate with the cache&#39;s</span>
-<span class="sd">            backend. This may be a sign of underlying network or database</span>
-<span class="sd">            issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_prefixes_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Clear prefixes for a specific guild.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the guild to clear the prefixes.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="n">prefixes</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Delete prefixes from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the guild to clear the prefixes.</span>
-<span class="sd">        prefix : str</span>
-<span class="sd">            The first prefix to delete from the cache.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">get_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">AbstractSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;Get prefixes from the cache.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the guild to get the prefixes from the cache.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        typing.AbstractSet[str]</span>
-<span class="sd">            Set of the prefixes fetched from the cache.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        sake.errors.EntryNotFound</span>
-<span class="sd">            Raised when the targeted entity wasn&#39;t found.</span>
-<span class="sd">        sake.errors.InvalidDataFound</span>
-<span class="sd">            Raised when the data retrieved from the backend datastore was</span>
-<span class="sd">            either invalid for this implementation or corrupt.</span>
-<span class="sd">            This may be a sign of multiple sake versions or implementations</span>
-<span class="sd">            being used with the same backend store.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span> <span class="nf">iter_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">AbstractSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
-        <span class="sd">&quot;&quot;&quot;Iterate over the prefixes stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        CacheIterator[typing.Tuple[hikari.Snowflake, typing.AbstractSet[str]]]</span>
-<span class="sd">            An async iterator of tuples of guild IDs to a set of the prefixes</span>
-<span class="sd">            stored for said guild.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        sake.errors.InvalidDataFound</span>
-<span class="sd">            Raised when the data retrieved from the backend datastore was</span>
-<span class="sd">            either invalid for this implementation or corrupt.</span>
-<span class="sd">            This may be a sign of multiple sake versions or implementations</span>
-<span class="sd">            being used with the same backend store.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">add_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="n">prefixes</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Add prefixes to the cache.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        guild_id : snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the guild to store the prefix for in the cache.</span>
-<span class="sd">        prefix : str</span>
-<span class="sd">            The first prefix to add to the cache.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s</span>
-<span class="sd">            backend. This may be a sign of underlying network or database</span>
-<span class="sd">            issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">prefixes</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Set prefixes for a guild.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the guild to store the prefixes in the cache.</span>
-<span class="sd">        prefixes : typing.Iterable[str]</span>
-<span class="sd">            An iterable of prefixes to store in the cache.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s</span>
-<span class="sd">            backend. This may be a sign of underlying network or database</span>
-<span class="sd">            issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-
-<span class="n">RefPrefixCache</span> <span class="o">=</span> <span class="n">PrefixCache</span>
 
 
 <span class="k">class</span> <span class="nc">EmojiCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
@@ -1396,265 +1233,6 @@ The exception which caused this exception if applicable else <code>builtins.None
 <span class="sd">        CacheIterator[hikari.channels.GuildChannel]</span>
 <span class="sd">            An async iterator of the guild channels stored in the cache for the</span>
 <span class="sd">            specified guild.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        sake.errors.InvalidDataFound</span>
-<span class="sd">            Raised when the data retrieved from the backend datastore was</span>
-<span class="sd">            either invalid for this implementation or corrupt.</span>
-<span class="sd">            This may be a sign of multiple sake versions or implementations</span>
-<span class="sd">            being used with the same backend store.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-
-<span class="k">class</span> <span class="nc">IntegrationCache</span><span class="p">(</span><span class="n">Resource</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a integration cache.&quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Empty the integration cache store.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this call failed to communicate with the cache&#39;s</span>
-<span class="sd">            backend. This may be a sign of underlying network or database</span>
-<span class="sd">            issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_integration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">integration_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Remove an integration channel from the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        integration_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the integration to remove from the cache.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">get_integration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">integration_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Get an integration from the cache.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        integration_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the integration to get from the cache.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        hikari.guilds.Integration</span>
-<span class="sd">            The object of the integration fetched from the cache.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        sake.errors.EntryNotFound</span>
-<span class="sd">            Raised when the targeted entity wasn&#39;t found.</span>
-<span class="sd">        sake.errors.InvalidDataFound</span>
-<span class="sd">            Raised when the data retrieved from the backend datastore was</span>
-<span class="sd">            either invalid for this implementation or corrupt.</span>
-<span class="sd">            This may be a sign of multiple sake versions or implementations</span>
-<span class="sd">            being used with the same backend store.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span> <span class="nf">iter_integrations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;Iterate over the integrations stored in the cache.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        CacheIterator[hikari.guilds.Integration]</span>
-<span class="sd">            An async iterator of the integrations stored in the cache.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        sake.errors.InvalidDataFound</span>
-<span class="sd">            Raised when the data retrieved from the backend datastore was</span>
-<span class="sd">            either invalid for this implementation or corrupt.</span>
-<span class="sd">            This may be a sign of multiple sake versions or implementations</span>
-<span class="sd">            being used with the same backend store.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-
-<span class="k">class</span> <span class="nc">RefIntegrationCache</span><span class="p">(</span><span class="n">IntegrationCache</span><span class="p">,</span> <span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;The traits of a implementation which supports a referential invite cache.&quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations_for_application</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">application_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Remove the integrations cached for an application.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        application_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the application to remove cached integrations for.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this call failed to communicate with the cache&#39;s</span>
-<span class="sd">            backend. This may be a sign of underlying network or database</span>
-<span class="sd">            issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Remove the integrations cached for a guild.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            There is no guarantee that this operation will be complete before</span>
-<span class="sd">            the returned coroutine finishes.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the guild to remove cached integrations for.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this call failed to communicate with the cache&#39;s</span>
-<span class="sd">            backend. This may be a sign of underlying network or database</span>
-<span class="sd">            issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_integration_by_application</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">application_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Remove an integration channel from the cache by the ID of it&#39;s application.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Delete methods do not raise `sake.errors.CacheMissError` when the</span>
-<span class="sd">            targeted entity doesn&#39;t exist.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the guild to remove an integration for.</span>
-<span class="sd">        application_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the application to remove an integration for.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">get_integration_by_application</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">application_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Get an integration from the cache by the ID of it&#39;s application.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the guild to get an integration for.</span>
-<span class="sd">        application_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the application to get an integration for.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        hikari.guilds.Integration</span>
-<span class="sd">            The object of the integration fetched from the cache.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        sake.errors.EntryNotFound</span>
-<span class="sd">            Raised when the targeted entity wasn&#39;t found.</span>
-<span class="sd">        sake.errors.InvalidDataFound</span>
-<span class="sd">            Raised when the data retrieved from the backend datastore was</span>
-<span class="sd">            either invalid for this implementation or corrupt.</span>
-<span class="sd">            This may be a sign of multiple sake versions or implementations</span>
-<span class="sd">            being used with the same backend store.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span> <span class="nf">iter_integrations_for_application</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">application_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;Iterate over the integrations stored in the cache for a specific application.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        application_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the application to iterate over the cached integrations for.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        CacheIterator[hikari.guilds.Integration]</span>
-<span class="sd">            An async iterator of the integrations stored in the cache for the</span>
-<span class="sd">            specified application.</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        sake.errors.BackendError</span>
-<span class="sd">            Raised when this failed to communicate with the cache&#39;s backend.</span>
-<span class="sd">            This may be a sign of underlying network or database issues.</span>
-<span class="sd">        sake.errors.InvalidDataFound</span>
-<span class="sd">            Raised when the data retrieved from the backend datastore was</span>
-<span class="sd">            either invalid for this implementation or corrupt.</span>
-<span class="sd">            This may be a sign of multiple sake versions or implementations</span>
-<span class="sd">            being used with the same backend store.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
-    <span class="k">def</span> <span class="nf">iter_integrations_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;Iterate over the integrations stored in the cache for a specific guild.</span>
-
-<span class="sd">        .. note::</span>
-<span class="sd">            Errors won&#39;t be raised by the initial call to this method but rather</span>
-<span class="sd">            while iterating over the returned asynchronous iterator.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        guild_id : hikari.snowflakes.Snowflakeish</span>
-<span class="sd">            The ID of the guild to iterate over the cached integrations for.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        CacheIterator[hikari.guilds.Integration]</span>
-<span class="sd">            An async iterator of the integrations stored in the cache for the</span>
-<span class="sd">            specified application.</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -3074,7 +2652,6 @@ The exception which caused this exception if applicable else <code>builtins.None
     <span class="n">GuildCache</span><span class="p">,</span>
     <span class="n">EmojiCache</span><span class="p">,</span>
     <span class="n">GuildChannelCache</span><span class="p">,</span>
-    <span class="n">IntegrationCache</span><span class="p">,</span>
     <span class="n">InviteCache</span><span class="p">,</span>
     <span class="n">MeCache</span><span class="p">,</span>
     <span class="n">MemberCache</span><span class="p">,</span>
@@ -3095,7 +2672,6 @@ The exception which caused this exception if applicable else <code>builtins.None
     <span class="n">RefGuildCache</span><span class="p">,</span>
     <span class="n">RefEmojiCache</span><span class="p">,</span>
     <span class="n">RefGuildChannelCache</span><span class="p">,</span>
-    <span class="n">RefIntegrationCache</span><span class="p">,</span>
     <span class="n">RefInviteCache</span><span class="p">,</span>
     <span class="n">RefMeCache</span><span class="p">,</span>
     <span class="n">RefMemberCache</span><span class="p">,</span>
@@ -3133,7 +2709,7 @@ implement them.</p>
 <span class="c1"># cython: language_level=3</span>
 <span class="c1"># BSD 3-Clause License</span>
 <span class="c1">#</span>
-<span class="c1"># Copyright (c) 2020-2021, Faster Speeding</span>
+<span class="c1"># Copyright (c) 2020-2022, Faster Speeding</span>
 <span class="c1"># All rights reserved.</span>
 <span class="c1">#</span>
 <span class="c1"># Redistribution and use in source and binary forms, with or without</span>
@@ -3164,11 +2740,9 @@ implement them.</p>
 
 <span class="n">__all__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;ResourceClient&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;PrefixCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;EmojiCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;GuildCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;GuildChannelCache&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;IntegrationCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;InviteCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MemberCache&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MessageCache&quot;</span><span class="p">,</span>
@@ -3233,8 +2807,6 @@ implement them.</p>
     <span class="n">REFERENCE</span> <span class="o">=</span> <span class="mi">9</span>
     <span class="c1"># REFERENCE is a special case database solely used for linking other entries to other master entities.</span>
     <span class="n">MESSAGE</span> <span class="o">=</span> <span class="mi">10</span>
-    <span class="n">INTEGRATION</span> <span class="o">=</span> <span class="mi">11</span>
-    <span class="n">PREFIX</span> <span class="o">=</span> <span class="mi">12</span>
 
 
 <span class="n">_T</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;_T&quot;</span><span class="p">)</span>
@@ -3549,11 +3121,6 @@ implement them.</p>
 <span class="sd">            - `sake.redis.GuildChannelCache`</span>
 <span class="sd">            - `tanjun.dependencies.async_cache.SfCache[hikari.GuildChannel]`</span>
 <span class="sd">            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.GuildChannel]`</span>
-<span class="sd">        * `IntegrationCache`</span>
-<span class="sd">            - `sake.abc.IntegrationCache`</span>
-<span class="sd">            - `sake.redis.IntegrationCache`</span>
-<span class="sd">            - `tanjun.dependencies.async_cache.SfCache[hikari.Integration]`</span>
-<span class="sd">            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.Integration]`</span>
 <span class="sd">        * `InviteCache`</span>
 <span class="sd">            - `sake.abc.InviteCache`</span>
 <span class="sd">            - `sake.redis.InviteCache`</span>
@@ -4114,62 +3681,6 @@ implement them.</p>
     <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]))</span>
 
 
-<span class="k">def</span> <span class="nf">_decode_prefixes</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">set</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">{</span><span class="n">v</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data</span><span class="p">}</span>
-
-
-<span class="k">class</span> <span class="nc">PrefixCache</span><span class="p">(</span><span class="n">ResourceClient</span><span class="p">,</span> <span class="n">sake_abc</span><span class="o">.</span><span class="n">PrefixCache</span><span class="p">):</span>
-    <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">index</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="n">ResourceIndex</span><span class="p">]:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from ResourceClient&gt;&gt;</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">PREFIX</span><span class="p">,)</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">intents</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Intents</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from ResourceClient&gt;&gt;</span>
-        <span class="k">return</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Intents</span><span class="o">.</span><span class="n">NONE</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.PrefixCache&gt;&gt;</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">PREFIX</span><span class="p">)</span><span class="o">.</span><span class="n">flushdb</span><span class="p">()</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_prefixes_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.PrefixCache&gt;&gt;</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">PREFIX</span><span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">guild_id</span><span class="p">))</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="n">prefixes</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.PrefixCache&gt;&gt;</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">PREFIX</span><span class="p">)</span><span class="o">.</span><span class="n">srem</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">guild_id</span><span class="p">),</span> <span class="n">prefix</span><span class="p">,</span> <span class="o">*</span><span class="n">prefixes</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">get_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">AbstractSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.PrefixCache&gt;&gt;</span>
-        <span class="k">if</span> <span class="n">data</span> <span class="o">:=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">PREFIX</span><span class="p">)</span><span class="o">.</span><span class="n">smembers</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">guild_id</span><span class="p">)):</span>
-            <span class="k">return</span> <span class="n">_decode_prefixes</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-        <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">EntryNotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Prefix entry `</span><span class="si">{</span><span class="n">guild_id</span><span class="si">}</span><span class="s2">` not found&quot;</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">iter_prefixes</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">redis_iterators</span><span class="o">.</span><span class="n">DEFAULT_WINDOW_SIZE</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sake_abc</span><span class="o">.</span><span class="n">CacheIterator</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">AbstractSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.PrefixCache&gt;&gt;</span>
-        <span class="k">return</span> <span class="n">redis_iterators</span><span class="o">.</span><span class="n">Iterator</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">AbstractSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]](</span>
-            <span class="bp">self</span><span class="p">,</span> <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">PREFIX</span><span class="p">,</span> <span class="n">_decode_prefixes</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="n">window_size</span>
-        <span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">add_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="n">prefixes</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.PrefixCache&gt;&gt;</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">PREFIX</span><span class="p">)</span><span class="o">.</span><span class="n">sadd</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">guild_id</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">prefix</span><span class="p">),</span> <span class="o">*</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">prefixes</span><span class="p">))</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">prefixes</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.PrefixCache&gt;&gt;</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">clear_prefixes_for_guild</span><span class="p">(</span><span class="n">guild_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">prefixes</span><span class="p">:</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_prefixes</span><span class="p">(</span><span class="n">guild_id</span><span class="p">,</span> <span class="o">*</span><span class="n">prefixes</span><span class="p">)</span>
-
-
 <span class="k">class</span> <span class="nc">EmojiCache</span><span class="p">(</span><span class="n">_Reference</span><span class="p">,</span> <span class="n">sake_abc</span><span class="o">.</span><span class="n">RefEmojiCache</span><span class="p">):</span>
     <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
 
@@ -4524,124 +4035,6 @@ implement them.</p>
         <span class="n">guild_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">&quot;guild_id&quot;</span><span class="p">]))</span>
         <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">str_channel_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_ids</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">GUILD</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">,</span> <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">CHANNEL</span><span class="p">,</span> <span class="n">str_channel_id</span><span class="p">)</span>
-
-
-<span class="k">class</span> <span class="nc">IntegrationCache</span><span class="p">(</span><span class="n">_Reference</span><span class="p">,</span> <span class="n">sake_abc</span><span class="o">.</span><span class="n">IntegrationCache</span><span class="p">):</span>
-    <span class="vm">__slots__</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">index</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="n">ResourceIndex</span><span class="p">]:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.Resource&gt;&gt;</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">,)</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">intents</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Intents</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from ResourceClient&gt;&gt;</span>
-        <span class="k">return</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Intents</span><span class="o">.</span><span class="n">GUILDS</span> <span class="o">|</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Intents</span><span class="o">.</span><span class="n">GUILD_INTEGRATIONS</span>
-
-    <span class="nd">@_as_tanjun_loader</span>
-    <span class="k">def</span> <span class="nf">__add_to_tanjun</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="n">tanjun</span><span class="o">.</span><span class="n">InjectorClient</span><span class="p">,</span> <span class="n">trust_get_for</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Set</span><span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Type</span><span class="p">[</span><span class="n">sake_abc</span><span class="o">.</span><span class="n">Resource</span><span class="p">]],</span> <span class="o">/</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="kn">from</span> <span class="nn">tanjun.dependencies</span> <span class="kn">import</span> <span class="n">async_cache</span>
-
-        <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">_tanjun_adapter</span>
-
-        <span class="n">adapter</span> <span class="o">=</span> <span class="n">_tanjun_adapter</span><span class="o">.</span><span class="n">GuildAndGlobalCacheAdapter</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">get_integration</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">iter_integrations</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">iter_integrations_for_guild</span><span class="p">,</span>
-            <span class="k">lambda</span> <span class="n">guild_id</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="n">i</span><span class="o">.</span><span class="n">guild_id</span> <span class="o">==</span> <span class="n">guild_id</span><span class="p">,</span>
-            <span class="n">trust_get</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">trust_get_for</span><span class="o">.</span><span class="n">union</span><span class="p">((</span><span class="n">IntegrationCache</span><span class="p">,</span> <span class="n">sake_abc</span><span class="o">.</span><span class="n">IntegrationCache</span><span class="p">))),</span>
-        <span class="p">)</span>
-        <span class="n">client</span><span class="o">.</span><span class="n">set_type_dependency</span><span class="p">(</span><span class="n">async_cache</span><span class="o">.</span><span class="n">SfCache</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">],</span> <span class="n">adapter</span><span class="p">)</span><span class="o">.</span><span class="n">set_type_dependency</span><span class="p">(</span>
-            <span class="n">async_cache</span><span class="o">.</span><span class="n">SfGuildBound</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">],</span> <span class="n">adapter</span>
-        <span class="p">)</span>
-
-    <span class="nd">@utility</span><span class="o">.</span><span class="n">as_listener</span><span class="p">(</span><span class="n">hikari</span><span class="o">.</span><span class="n">GuildLeaveEvent</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">__on_guild_leave_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">GuildLeaveEvent</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">clear_integrations_for_guild</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">guild_id</span><span class="p">)</span>
-
-    <span class="nd">@utility</span><span class="o">.</span><span class="n">as_raw_listener</span><span class="p">(</span><span class="s2">&quot;INTEGRATION_CREATE&quot;</span><span class="p">,</span> <span class="s2">&quot;INTEGRATION_UPDATE&quot;</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">__on_integration_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">ShardPayloadEvent</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_integration</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">payload</span><span class="p">[</span><span class="s2">&quot;guild_id&quot;</span><span class="p">]),</span> <span class="nb">dict</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">payload</span><span class="p">))</span>
-
-    <span class="nd">@utility</span><span class="o">.</span><span class="n">as_listener</span><span class="p">(</span><span class="n">hikari</span><span class="o">.</span><span class="n">IntegrationDeleteEvent</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">__on_integration_delete_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">IntegrationDeleteEvent</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">delete_integration</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">guild_id</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">guild_id</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.IntegrationCache&gt;&gt;</span>
-        <span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">ids</span> <span class="o">:=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dump_relationship</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">GUILD</span><span class="p">,</span> <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">):</span>
-            <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="o">*</span><span class="n">ids</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_integrations_for_guild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">)</span>
-        <span class="n">str_guild_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">guild_id</span><span class="p">)</span>
-        <span class="n">ids</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_ids</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">GUILD</span><span class="p">,</span> <span class="n">str_guild_id</span><span class="p">,</span> <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">,</span> <span class="n">cast</span><span class="o">=</span><span class="nb">bytes</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">ids</span><span class="p">:</span>
-            <span class="k">return</span>
-
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delete_ids</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">GUILD</span><span class="p">,</span> <span class="n">str_guild_id</span><span class="p">,</span> <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">,</span> <span class="o">*</span><span class="n">ids</span><span class="p">)</span>
-        <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="o">*</span><span class="n">ids</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">delete_integration</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">integration_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.IntegrationCache&gt;&gt;</span>
-        <span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">)</span>
-        <span class="n">str_integration_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">integration_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">guild_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">payload</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">str_integration_id</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">payload</span><span class="p">:</span>
-                <span class="k">return</span>
-
-            <span class="n">guild_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">payload</span><span class="p">)[</span><span class="s2">&quot;guild_id&quot;</span><span class="p">])</span>
-
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delete_ids</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">GUILD</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">guild_id</span><span class="p">),</span> <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">,</span> <span class="n">str_integration_id</span><span class="p">)</span>
-        <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">str_integration_id</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">get_integration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">integration_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.IntegrationCache&gt;&gt;</span>
-        <span class="k">if</span> <span class="n">payload</span> <span class="o">:=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">integration_id</span><span class="p">)):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">entity_factory</span><span class="o">.</span><span class="n">deserialize_integration</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
-
-        <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">EntryNotFound</span><span class="p">(</span><span class="s2">&quot;Integration not found&quot;</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">iter_integrations</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">redis_iterators</span><span class="o">.</span><span class="n">DEFAULT_WINDOW_SIZE</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sake_abc</span><span class="o">.</span><span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">]:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.IntegrationCache&gt;&gt;</span>
-        <span class="k">return</span> <span class="n">redis_iterators</span><span class="o">.</span><span class="n">Iterator</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">entity_factory</span><span class="o">.</span><span class="n">deserialize_integration</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">,</span>
-            <span class="n">window_size</span><span class="o">=</span><span class="n">window_size</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">iter_integrations_for_guild</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">redis_iterators</span><span class="o">.</span><span class="n">DEFAULT_WINDOW_SIZE</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sake_abc</span><span class="o">.</span><span class="n">CacheIterator</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">Integration</span><span class="p">]:</span>
-        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_reference_key</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">GUILD</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">guild_id</span><span class="p">),</span> <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">redis_iterators</span><span class="o">.</span><span class="n">ReferenceIterator</span><span class="p">(</span>
-            <span class="bp">self</span><span class="p">,</span>
-            <span class="n">key</span><span class="p">,</span>
-            <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">entity_factory</span><span class="o">.</span><span class="n">deserialize_integration</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">,</span>
-            <span class="n">window_size</span><span class="o">=</span><span class="n">window_size</span><span class="p">,</span>
-        <span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_integration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">guild_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">_ObjectT</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.IntegrationCache&gt;&gt;</span>
-        <span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_connection</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">)</span>
-        <span class="n">integration_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]))</span>
-        <span class="n">str_guild_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">guild_id</span><span class="p">)</span>
-        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;guild_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">str_guild_id</span>  <span class="c1"># TODO: is this necessary?</span>
-        <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">integration_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_ids</span><span class="p">(</span><span class="n">ResourceIndex</span><span class="o">.</span><span class="n">GUILD</span><span class="p">,</span> <span class="n">str_guild_id</span><span class="p">,</span> <span class="n">ResourceIndex</span><span class="o">.</span><span class="n">INTEGRATION</span><span class="p">,</span> <span class="n">integration_id</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">InviteCache</span><span class="p">(</span><span class="n">ResourceClient</span><span class="p">,</span> <span class="n">sake_abc</span><span class="o">.</span><span class="n">InviteCache</span><span class="p">):</span>
@@ -5438,7 +4831,7 @@ implement them.</p>
         <span class="n">entry_deleter</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">hdel</span><span class="p">(</span><span class="n">str_guild_id</span><span class="p">,</span> <span class="o">*</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">]))</span> <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">states</span><span class="p">))</span>
         <span class="c1"># Gather is awaited here to ensure that when internally bulk setting entries after triggering a bulk deletion</span>
         <span class="c1"># (based on events) we don&#39;t risk deleting entries after we&#39;ve re-added them.</span>
-        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">id_deleters</span><span class="p">,</span> <span class="n">entry_deleter</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">id_deleters</span><span class="p">,</span> <span class="n">entry_deleter</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_voice_states_for_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel_id</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">Snowflakeish</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># &lt;&lt;Inherited docstring from sake.abc.VoiceStateCache&gt;&gt;</span>
@@ -5547,7 +4940,6 @@ implement them.</p>
     <span class="n">GuildCache</span><span class="p">,</span>
     <span class="n">EmojiCache</span><span class="p">,</span>
     <span class="n">GuildChannelCache</span><span class="p">,</span>
-    <span class="n">IntegrationCache</span><span class="p">,</span>
     <span class="n">InviteCache</span><span class="p">,</span>
     <span class="n">MemberCache</span><span class="p">,</span>
     <span class="n">MessageCache</span><span class="p">,</span>
@@ -5573,7 +4965,7 @@ implement them.</p>
 
         
         <span class="def">class</span>
-        <span class="name">RedisCache</span><wbr>(<span class="base"><a href="sake/redis.html#GuildCache">sake.redis.GuildCache</a></span>, <span class="base"><a href="sake/redis.html#EmojiCache">sake.redis.EmojiCache</a></span>, <span class="base"><a href="sake/redis.html#GuildChannelCache">sake.redis.GuildChannelCache</a></span>, <span class="base"><a href="sake/redis.html#IntegrationCache">sake.redis.IntegrationCache</a></span>, <span class="base"><a href="sake/redis.html#InviteCache">sake.redis.InviteCache</a></span>, <span class="base"><a href="sake/redis.html#MemberCache">sake.redis.MemberCache</a></span>, <span class="base"><a href="sake/redis.html#MessageCache">sake.redis.MessageCache</a></span>, <span class="base"><a href="sake/redis.html#PresenceCache">sake.redis.PresenceCache</a></span>, <span class="base"><a href="sake/redis.html#RoleCache">sake.redis.RoleCache</a></span>, <span class="base"><a href="sake/redis.html#UserCache">sake.redis.UserCache</a></span>, <span class="base"><a href="sake/redis.html#VoiceStateCache">sake.redis.VoiceStateCache</a></span>, <span class="base"><a href="sake/abc.html#Cache">sake.abc.Cache</a></span>):
+        <span class="name">RedisCache</span><wbr>(<span class="base"><a href="sake/redis.html#GuildCache">sake.redis.GuildCache</a></span>, <span class="base"><a href="sake/redis.html#EmojiCache">sake.redis.EmojiCache</a></span>, <span class="base"><a href="sake/redis.html#GuildChannelCache">sake.redis.GuildChannelCache</a></span>, <span class="base"><a href="sake/redis.html#InviteCache">sake.redis.InviteCache</a></span>, <span class="base"><a href="sake/redis.html#MemberCache">sake.redis.MemberCache</a></span>, <span class="base"><a href="sake/redis.html#MessageCache">sake.redis.MessageCache</a></span>, <span class="base"><a href="sake/redis.html#PresenceCache">sake.redis.PresenceCache</a></span>, <span class="base"><a href="sake/redis.html#RoleCache">sake.redis.RoleCache</a></span>, <span class="base"><a href="sake/redis.html#UserCache">sake.redis.UserCache</a></span>, <span class="base"><a href="sake/redis.html#VoiceStateCache">sake.redis.VoiceStateCache</a></span>, <span class="base"><a href="sake/abc.html#Cache">sake.abc.Cache</a></span>):
     </div>
 
                 <details>
@@ -5582,7 +4974,6 @@ implement them.</p>
     <span class="n">GuildCache</span><span class="p">,</span>
     <span class="n">EmojiCache</span><span class="p">,</span>
     <span class="n">GuildChannelCache</span><span class="p">,</span>
-    <span class="n">IntegrationCache</span><span class="p">,</span>
     <span class="n">InviteCache</span><span class="p">,</span>
     <span class="n">MemberCache</span><span class="p">,</span>
     <span class="n">MessageCache</span><span class="p">,</span>
@@ -5654,16 +5045,6 @@ implement them.</p>
                 <dd id="RedisCache.iter_guild_channels" class="function"><a href="sake/redis.html#GuildChannelCache.iter_guild_channels">iter_guild_channels</a></dd>
                 <dd id="RedisCache.iter_guild_channels_for_guild" class="function"><a href="sake/redis.html#GuildChannelCache.iter_guild_channels_for_guild">iter_guild_channels_for_guild</a></dd>
                 <dd id="RedisCache.set_guild_channel" class="function"><a href="sake/redis.html#GuildChannelCache.set_guild_channel">set_guild_channel</a></dd>
-
-            </div>
-            <div><dt><a href="sake/redis.html#IntegrationCache">sake.redis.IntegrationCache</a></dt>
-                                <dd id="RedisCache.clear_integrations" class="function"><a href="sake/redis.html#IntegrationCache.clear_integrations">clear_integrations</a></dd>
-                <dd id="RedisCache.clear_integrations_for_guild" class="function"><a href="sake/redis.html#IntegrationCache.clear_integrations_for_guild">clear_integrations_for_guild</a></dd>
-                <dd id="RedisCache.delete_integration" class="function"><a href="sake/redis.html#IntegrationCache.delete_integration">delete_integration</a></dd>
-                <dd id="RedisCache.get_integration" class="function"><a href="sake/redis.html#IntegrationCache.get_integration">get_integration</a></dd>
-                <dd id="RedisCache.iter_integrations" class="function"><a href="sake/redis.html#IntegrationCache.iter_integrations">iter_integrations</a></dd>
-                <dd id="RedisCache.iter_integrations_for_guild" class="function"><a href="sake/redis.html#IntegrationCache.iter_integrations_for_guild">iter_integrations_for_guild</a></dd>
-                <dd id="RedisCache.set_integration" class="function"><a href="sake/redis.html#IntegrationCache.set_integration">set_integration</a></dd>
 
             </div>
             <div><dt><a href="sake/redis.html#InviteCache">sake.redis.InviteCache</a></dt>

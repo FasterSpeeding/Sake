@@ -66,7 +66,7 @@ from .redis import RedisCache
 
 __author__: typing.Final[str] = "Faster Speeding"
 __ci__: typing.Final[str] = "https://github.com/FasterSpeeding/sake/actions"
-__copyright__: typing.Final[str] = "© 2020 Faster Speeding"
+__copyright__: typing.Final[str] = "© 2020-2022 Faster Speeding"
 __coverage__: typing.Final[str] = "https://codeclimate.com/github/FasterSpeeding/Sake/"
 __docs__: typing.Final[str] = "https://fasterspeeding.github.io/Sake/"
 __email__: typing.Final[str] = "lucina@lmbyrne.dev"

@@ -10,6 +10,10 @@ You can install Sake from PyPI using the following command.
 python -m pip install hikari-sake -U
 ```
 
+# Support
+
+[Hikari's support guild](https://discord.gg/hikari) provides for support for Sake. 
+
 # Quick Usage.
 
 For usage see the the [documentation](https://fasterspeeding.github.io/Sake/) and

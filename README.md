@@ -12,7 +12,7 @@ python -m pip install hikari-sake -U
 
 # Support
 
-[Hikari's support guild](https://discord.gg/hikari) provides for support for Sake. 
+[Hikari's support guild](https://discord.gg/hikari) provides for support for Sake.
 
 # Quick Usage.
 

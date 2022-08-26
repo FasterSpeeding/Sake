@@ -31,30 +31,27 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """A distributed asynchronous cache standard designed for Hikari.
 
-For the interfaces defined by this standard see `sake.abc`
+For the interfaces defined by this standard see [sake.abc][].
 
 For standard implementation(s) see:
 
-* Redis: `sake.redis`
+* Redis: [sake.redis][]
 """
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = [
     # __init__.py
-    "__author__",
-    # errors.py
-    "errors",
     "BackendError",
     "CannotDelete",
     "ClosedClient",
     "EntryNotFound",
     "InvalidDataFound",
-    "SakeException",
-    # traits.py
-    "abc",
-    # redis.py
-    "redis",
     "RedisCache",
+    "SakeException",
+    "__author__",
+    "abc",
+    "errors",
+    "redis",
 ]
 
 import typing

@@ -31,7 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """The standard error bases which Sake implementations will be raising.
 
-.. note::
+!!! note
     These supplement python's builtin exceptions but do not replace them.
 """
 
@@ -54,19 +54,17 @@ class SakeException(Exception):
 
     Parameters
     ----------
-    message : str
+    message
         The exception's message.
-    base : typing.Optional[Exception]
-        The exception which caused this exception if applicable else `builtins.None`.
+    exception
+        The exception which caused this exception if applicable else [None][].
     """
-
-    __slots__: typing.Sequence[str] = ("base_exception", "message")
 
     message: str
     """The exception's message, this may be an empty string if there is no message."""
 
     base: typing.Optional[Exception]
-    """The exception which caused this exception if applicable else `builtins.None`."""
+    """The exception which caused this exception if applicable else [None][]."""
 
     def __init__(self, message: str, *, exception: typing.Optional[Exception] = None) -> None:
         self.message: str = message
@@ -82,13 +80,9 @@ class BackendError(SakeException, ValueError):
     This may be a sign of underlying network or database issues.
     """
 
-    __slots__: typing.Sequence[str] = ()
-
 
 class ClosedClient(SakeException):
     """Error that's raised when an attempt to use an inactive client is made."""
-
-    __slots__: typing.Sequence[str] = ()
 
 
 class CannotDelete(SakeException, ValueError):
@@ -99,8 +93,6 @@ class CannotDelete(SakeException, ValueError):
     cascade references in a referential database.
     """
 
-    __slots__: typing.Sequence[str] = ()
-
 
 class InvalidDataFound(SakeException, LookupError):
     """Error that's raised when the retrieved data is in an unexpected format.
@@ -109,14 +101,10 @@ class InvalidDataFound(SakeException, LookupError):
     implementation with the same database.
     """
 
-    __slots__: typing.Sequence[str] = ()
-
 
 class EntryNotFound(SakeException, LookupError):
     """Error that's raised in response to an attempt to get an entry which doesn't exist.
 
-    .. note::
+    !!! note
         This shouldn't ever be raised by a delete method or iter method.
     """
-
-    __slots__: typing.Sequence[str] = ()

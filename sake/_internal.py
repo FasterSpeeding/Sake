@@ -32,13 +32,13 @@
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = [
+    "ExpireT",
+    "ListenerProto",
+    "RawListenerProto",
     "as_listener",
     "as_raw_listener",
     "convert_expire_time",
-    "ExpireT",
     "find_listeners",
-    "ListenerProto",
-    "RawListenerProto",
 ]
 
 import datetime
@@ -51,9 +51,9 @@ import hikari
 ExpireT = typing.Union["datetime.timedelta", int, float, None]
 """A type hint used to represent expire times.
 
-These may either be the number of seconds as an int or float (where millisecond
-precision is supported) or a timedelta. `builtins.None`, float("nan") and
-float("inf") all represent no expire.
+These may either be the number of seconds as an [int][] or [float][] (where
+millisecond precision is supported) or a timedelta. [None][], `float("nan")` and
+`float("inf")` all represent no expire.
 """
 
 _T = typing.TypeVar("_T")
@@ -73,7 +73,7 @@ def convert_expire_time(expire: ExpireT, /) -> typing.Optional[int]:
     if isinstance(expire, int):
         return expire * 1000
 
-    if isinstance(expire, float):
+    if isinstance(expire, float):  # pyright: ignore[reportUnnecessaryIsInstance]
         if math.isnan(expire) or math.isinf(expire):
             return None
 
@@ -106,7 +106,7 @@ def as_listener(
     event_type: typing.Type[_EventT], /
 ) -> typing.Callable[[_CallbackT[_T, _EventT]], _CallbackT[_T, _EventT]]:
     def decorator(listener: _CallbackT[_T, _EventT], /) -> _CallbackT[_T, _EventT]:
-        listener.__sake_event_type__ = event_type
+        listener.__sake_event_type__ = event_type  # type: ignore
         assert isinstance(listener, ListenerProto), "Incorrect attributes set for listener"
         return listener
 
@@ -119,7 +119,7 @@ def as_raw_listener(
     event_names = (event_name.upper(), *(name.upper() for name in event_names))
 
     def decorator(listener: _CallbackT[_T, hikari.ShardPayloadEvent], /) -> _CallbackT[_T, hikari.ShardPayloadEvent]:
-        listener.__sake_event_names__ = event_names
+        listener.__sake_event_names__ = event_names  # type: ignore
         assert isinstance(listener, RawListenerProto), "Incorrect attributes set for raw listener"
         return listener
 

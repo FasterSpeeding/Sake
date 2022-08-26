@@ -116,7 +116,7 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
         return CacheIteratorAdapter(self._iterate_all())
 
 
-class GuildBoundCacheAdapter(AsyncCacheAdapter, async_cache.GuildBoundCache[_KeyT, _ValueT]):
+class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.GuildBoundCache[_KeyT, _ValueT]):
     __slots__ = ("_get_from_guild", "_iterate_all", "_iterate_for_guild")
 
     def __init__(

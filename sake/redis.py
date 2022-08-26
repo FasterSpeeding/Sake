@@ -474,7 +474,6 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             - [sake.abc.RoleCache][]
             - [sake.abc.VoiceStateCache][]
             - [sake.abc.UserCache][] (if [sake.abc.MemberCache][] is also implemented).
-
         tanjun_managed
             Whether the client should be started and stopped based on the tanjun
             client's lifecycle.

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # cython: language_level=3
-# Tanjun Examples - A collection of examples for Tanjun.
+# Sake Examples - A collection of examples for Sake.
 # Written in 2021 by Lucina Lucina@lmbyrne.dev
 #
 # To the extent possible under law, the author(s) have dedicated all copyright

@@ -32,6 +32,9 @@ dependencies = [
     "hikari~=2.0.0.dev104",
 ]
 
+[project.optional-dependencies]
+tanjun = ["hikari-tanjun>=2.4.1a1, <3.0.0"]
+
 [project.urls]
 homepage = "https://github.com/FasterSpeeding/Sake"
 repository = "https://github.com/FasterSpeeding/Sake"

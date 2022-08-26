@@ -152,7 +152,7 @@ def flake8(session: nox.Session) -> None:
 @nox.session(reuse_venv=True, name="slot-check")
 def slot_check(session: nox.Session) -> None:
     """Check this project's slotted classes for common mistakes."""
-    install_requirements(session, ".", *_dev_dep("lint"))
+    install_requirements(session, ".[tanjun]", *_dev_dep("lint"))
     session.run("slotscheck", "-m", "sake")
 
 

@@ -114,7 +114,7 @@ def _pip_compile(session: nox.Session, /, *args: str) -> None:
             "pip-compile",
             str(path),
             "--output-file",
-            str(path.with_name(path.name[:-4] + ".txt")),
+            str(path.with_name(path.name[:-3] + ".txt")),
             *args
             # "--generate-hashes",
         )

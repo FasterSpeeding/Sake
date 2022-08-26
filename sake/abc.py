@@ -31,7 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """Protocols and abstract classes for the cache resources defined by this standard.
 
-.. note::
+!!! note
     Unlike the abstract classes defined here, there is no guarantee that the
     protocols defined here will be included in the MRO of the classes which
     implement them.
@@ -50,7 +50,6 @@ __all__: typing.Sequence[str] = [
     "MemberCache",
     "MessageCache",
     "PresenceCache",
-    "Resource",
     "RefCache",
     "RefEmojiCache",
     "RefGuildCache",
@@ -63,6 +62,7 @@ __all__: typing.Sequence[str] = [
     "RefRoleCache",
     "RefUserCache",
     "RefVoiceStateCache",
+    "Resource",
     "RoleCache",
     "UserCache",
     "VoiceStateCache",
@@ -85,10 +85,10 @@ class CacheIterator(hikari.LazyIterator[ValueT], abc.ABC):
     async def len(self) -> int:
         """Get the count of entries that this iterator covers.
 
-        .. note::
-            Unlike `hikari.iterators.LazyIterator.count`, this will not exhaust
-            the iterator and may return different values as entries are added
-            and removed from the cache.
+        !!! note
+            Unlike [hikari.iterators.LazyIterator.count][], this will not
+            exhaust the iterator and may return different values as entries
+            are added and removed from the cache.
 
         Returns
         -------
@@ -111,7 +111,7 @@ class Resource(abc.ABC):
     async def open(self) -> None:
         """Startup the resource(s) and allow them to connect to their relevant backend(s).
 
-        .. note::
+        !!! note
             This should pass without raising if called on an already opened
             resource.
         """
@@ -120,7 +120,7 @@ class Resource(abc.ABC):
     async def close(self) -> None:
         """Close the resource(s) and allow them to disconnect from their relevant backend(s).
 
-        .. note::
+        !!! note
             This should pass without raising if called on an already closed
             resource.
         """
@@ -135,7 +135,7 @@ class EmojiCache(Resource, abc.ABC):
     async def clear_emojis(self) -> None:
         """Empty the emoji cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -151,13 +151,13 @@ class EmojiCache(Resource, abc.ABC):
     async def delete_emoji(self, emoji_id: hikari.Snowflakeish, /) -> None:
         """Remove an emoji from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        emoji_id : hikari.snowflakes.Snowflakeish
+        emoji_id
             The ID of the emoji to remove from the cache.
 
         Raises
@@ -173,7 +173,7 @@ class EmojiCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        emoji_id : hikari.snowflakes.Snowflakeish
+        emoji_id
             The ID of the emoji to get from the cache.
 
         Returns
@@ -199,7 +199,7 @@ class EmojiCache(Resource, abc.ABC):
     def iter_emojis(self) -> CacheIterator[hikari.KnownCustomEmoji]:
         """Iterate over the emojis stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -230,13 +230,13 @@ class RefEmojiCache(EmojiCache, abc.ABC):
     async def clear_emojis_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove emojis belonging to a specific guild from the cache.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove the emojis cached for.
 
         Raises
@@ -250,13 +250,13 @@ class RefEmojiCache(EmojiCache, abc.ABC):
     def iter_emojis_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.KnownCustomEmoji]:
         """Iterate over the emojis stored in the cache for a specific guild.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to iterate over the emojis cached for.
 
         Returns
@@ -287,7 +287,7 @@ class GuildCache(Resource, abc.ABC):
     async def clear_guilds(self) -> None:
         """Empty the guild cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -303,13 +303,13 @@ class GuildCache(Resource, abc.ABC):
     async def delete_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove a guild from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove from the cache.
 
         Raises
@@ -325,7 +325,7 @@ class GuildCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to get from the cache.
 
         Returns
@@ -351,7 +351,7 @@ class GuildCache(Resource, abc.ABC):
     def iter_guilds(self) -> CacheIterator[hikari.GatewayGuild]:
         """Iterate over the guilds stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -385,7 +385,7 @@ class GuildChannelCache(Resource, abc.ABC):
     async def clear_guild_channels(self) -> None:
         """Empty the guild channel cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -401,13 +401,13 @@ class GuildChannelCache(Resource, abc.ABC):
     async def delete_guild_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
         """Remove a guild guild channel from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        channel_id : hikari.snowflakes.Snowflakeish
+        channel_id
             The ID of the guild channel to remove from the cache.
 
         Raises
@@ -423,7 +423,7 @@ class GuildChannelCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        channel_id : hikari.snowflakes.Snowflakeish
+        channel_id
             The ID of the guild channel to get from the cache.
 
         Returns
@@ -449,7 +449,7 @@ class GuildChannelCache(Resource, abc.ABC):
     def iter_guild_channels(self) -> CacheIterator[hikari.GuildChannel]:
         """Iterate over the guild channels stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -480,13 +480,13 @@ class RefGuildChannelCache(GuildChannelCache, abc.ABC):
     async def clear_guild_channels_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the guild channel cache store for the specified guild.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove the cached channels for.
 
         Raises
@@ -501,13 +501,13 @@ class RefGuildChannelCache(GuildChannelCache, abc.ABC):
     def iter_guild_channels_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.GuildChannel]:
         """Iterate over the guild channels stored in the cache for a specific guild.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to iterate over the guild channels cached for it.
 
         Returns
@@ -538,7 +538,7 @@ class InviteCache(Resource, abc.ABC):
     async def clear_invites(self) -> None:
         """Empty the invites cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -554,13 +554,13 @@ class InviteCache(Resource, abc.ABC):
     async def delete_invite(self, invite_code: str, /) -> None:
         """Remove an invite channel from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        invite_code : str
+        invite_code
             The code of the invite to remove from the cache.
 
         Raises
@@ -576,7 +576,7 @@ class InviteCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        invite_code : str
+        invite_code
             The code of the invite to get from the cache.
 
         Returns
@@ -602,7 +602,7 @@ class InviteCache(Resource, abc.ABC):
     def iter_invites(self) -> CacheIterator[hikari.InviteWithMetadata]:
         """Iterate over the invites stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -633,13 +633,13 @@ class RefInviteCache(InviteCache, abc.ABC):
     async def clear_invites_for_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
         """Remove invites cached for a specific channel..
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        channel_id : hikari.snowflakes.Snowflakeish
+        channel_id
             The ID of the channel to remove the invites cached for it.
 
         Raises
@@ -654,13 +654,13 @@ class RefInviteCache(InviteCache, abc.ABC):
     async def clear_invites_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove invites cached for a specific guild.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove the invites cached for it.
 
         Raises
@@ -675,13 +675,13 @@ class RefInviteCache(InviteCache, abc.ABC):
     def iter_invites_for_channel(self, channel_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.InviteWithMetadata]:
         """Iterate over the invites stored in the cache for a specific channel.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        channel_id : hikari.snowflakes.Snowflakeish
+        channel_id
             The ID of the channel to iterate over the invites cached for.
 
         Returns
@@ -706,13 +706,13 @@ class RefInviteCache(InviteCache, abc.ABC):
     def iter_invites_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.InviteWithMetadata]:
         """Iterate over the invites stored in the cache for a specific guild.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to iterate over the invites cached for.
 
         Returns
@@ -743,8 +743,8 @@ class MeCache(Resource, abc.ABC):
     async def delete_me(self) -> None:
         """Remove the cached own user entry.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Raises
@@ -790,7 +790,7 @@ class MemberCache(Resource, abc.ABC):
     async def clear_members(self) -> None:
         """Empty the members cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -806,15 +806,15 @@ class MemberCache(Resource, abc.ABC):
     async def delete_member(self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /) -> None:
         """Remove a member from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove a cached member for.
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to remove a cached member for.
 
         Raises
@@ -830,9 +830,9 @@ class MemberCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to get a cached member for.
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to get a cached member for.
 
         Returns
@@ -860,7 +860,7 @@ class MemberCache(Resource, abc.ABC):
     ) -> CacheIterator[hikari.Member]:
         """Iterate over the members stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -891,13 +891,13 @@ class RefMemberCache(MemberCache, abc.ABC):
     async def clear_members_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the members cached for a specific guild.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove the cached members for.
 
         Raises
@@ -912,13 +912,13 @@ class RefMemberCache(MemberCache, abc.ABC):
     async def clear_members_for_user(self, user_id: hikari.Snowflakeish, /) -> None:
         """Remove the members cached for a specific user.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to remove the cached members for.
 
         Raises
@@ -933,13 +933,13 @@ class RefMemberCache(MemberCache, abc.ABC):
     def iter_members_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Member]:
         """Iterate over the members stored in the cache for a specific guild.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to get the members cached for.
 
         Returns
@@ -964,13 +964,13 @@ class RefMemberCache(MemberCache, abc.ABC):
     def iter_members_for_user(self, user_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Member]:
         """Iterate over the members stored in the cache for a specific user.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the guild to get the user cached for.
 
         Returns
@@ -1001,7 +1001,7 @@ class MessageCache(Resource, abc.ABC):
     async def clear_messages(self) -> None:
         """Empty the messages cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1017,13 +1017,13 @@ class MessageCache(Resource, abc.ABC):
     async def delete_message(self, message_id: hikari.Snowflakeish, /) -> None:
         """Remove a message from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        message_id : hikari.snowflakes.Snowflakeish
+        message_id
             The ID of the message to remove from the cache.
 
         Raises
@@ -1039,7 +1039,7 @@ class MessageCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        message_id : hikari.snowflakes.Snowflakeish
+        message_id
             The ID of the message to get from the cache.
 
         Returns
@@ -1065,7 +1065,7 @@ class MessageCache(Resource, abc.ABC):
     def iter_messages(self) -> CacheIterator[hikari.Message]:
         """Iterate over the messages stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1096,13 +1096,13 @@ class RefMessageCache(MessageCache, abc.ABC):
     async def clear_messages_for_author(self, user_id: hikari.Snowflakeish, /) -> None:
         """Remove the messages cached for a specific author.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to remove the messages cached for.
 
         Raises
@@ -1117,13 +1117,13 @@ class RefMessageCache(MessageCache, abc.ABC):
     async def clear_messages_for_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
         """Remove the messages cached for a specific channel.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        channel_id : hikari.snowflakes.Snowflakeish
+        channel_id
             The ID of the channel to remove the messages cached for.
 
         Raises
@@ -1138,13 +1138,13 @@ class RefMessageCache(MessageCache, abc.ABC):
     async def clear_messages_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the messages cached for a specific guild.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove the messages cached for.
 
         Raises
@@ -1159,13 +1159,13 @@ class RefMessageCache(MessageCache, abc.ABC):
     def iter_messages_for_author(self, user_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Message]:
         """Iterate over the messages stored in the cache for a specific author.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to iterate over the messages cached for them.
 
         Returns
@@ -1190,13 +1190,13 @@ class RefMessageCache(MessageCache, abc.ABC):
     def iter_message_for_channel(self, channel_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Message]:
         """Iterate over the messages stored in the cache for a specific channel.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        channel_id : hikari.snowflakes.Snowflakeish
+        channel_id
             The ID of the channel to iterate over the messages cached for them.
 
         Returns
@@ -1221,13 +1221,13 @@ class RefMessageCache(MessageCache, abc.ABC):
     def iter_messages_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Message]:
         """Iterate over the messages stored in the cache for a specific guild.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to iterate over the messages cached for them.
 
         Returns
@@ -1258,7 +1258,7 @@ class PresenceCache(Resource, abc.ABC):
     async def clear_presences(self) -> None:
         """Empty the presences cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1274,15 +1274,15 @@ class PresenceCache(Resource, abc.ABC):
     async def delete_presence(self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /) -> None:
         """Remove a presence from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove a cached presence for.
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to remove a cached presence for.
 
         Raises
@@ -1300,9 +1300,9 @@ class PresenceCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to get a cached presence for.
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to get a cached presence for.
 
         Returns
@@ -1330,7 +1330,7 @@ class PresenceCache(Resource, abc.ABC):
     ) -> CacheIterator[hikari.MemberPresence]:
         """Iterate over the presences stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1361,13 +1361,13 @@ class RefPresenceCache(PresenceCache, abc.ABC):
     async def clear_presences_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the presences cached for a specific guild.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove the cached presences for.
 
         Raises
@@ -1382,13 +1382,13 @@ class RefPresenceCache(PresenceCache, abc.ABC):
     async def clear_presences_for_user(self, user_id: hikari.Snowflakeish, /) -> None:
         """Remove the presences cached for a specific user.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to remove the cached presences for.
 
         Raises
@@ -1403,13 +1403,13 @@ class RefPresenceCache(PresenceCache, abc.ABC):
     def iter_presences_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.MemberPresence]:
         """Iterate over the presences stored in the cache for a specific guild.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to iterate over the cached presences for.
 
         Returns
@@ -1434,13 +1434,13 @@ class RefPresenceCache(PresenceCache, abc.ABC):
     def iter_presences_for_user(self, user_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.MemberPresence]:
         """Iterate over the presences stored in the cache for a specific user.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to iterate over the cached presences for.
 
         Returns
@@ -1471,7 +1471,7 @@ class RoleCache(Resource, abc.ABC):
     async def clear_roles(self) -> None:
         """Empty the roles cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1487,13 +1487,13 @@ class RoleCache(Resource, abc.ABC):
     async def delete_role(self, role_id: hikari.Snowflakeish, /) -> None:
         """Remove a role from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        role_id : hikari.snowflakes.Snowflakeish
+        role_id
             The ID of the role to remove from the cache.
 
         Raises
@@ -1509,7 +1509,7 @@ class RoleCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        role_id : hikari.snowflakes.Snowflakeish
+        role_id
             The ID of the role to get from the cache.
 
         Returns
@@ -1535,7 +1535,7 @@ class RoleCache(Resource, abc.ABC):
     def iter_roles(self) -> CacheIterator[hikari.Role]:
         """Iterate over the roles stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1566,13 +1566,13 @@ class RefRoleCache(RoleCache, abc.ABC):
     async def clear_roles_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the roles cached for a specific guild.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove the cached roles for.
 
         Raises
@@ -1587,13 +1587,13 @@ class RefRoleCache(RoleCache, abc.ABC):
     def iter_roles_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.Role]:
         """Iterate over the roles stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to get the roles cached for.
 
         Returns
@@ -1618,7 +1618,7 @@ class RefRoleCache(RoleCache, abc.ABC):
 class UserCache(Resource, abc.ABC):
     """The traits of a cache implementation which supports a user cache.
 
-    .. note::
+    !!! note
         Unlike other resources, user doesn't have any events which
         directly update it and may only be updated through event
         listeners when resources which reference it are also included.
@@ -1630,7 +1630,7 @@ class UserCache(Resource, abc.ABC):
     async def clear_users(self) -> None:
         """Empty the users cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1646,13 +1646,13 @@ class UserCache(Resource, abc.ABC):
     async def delete_user(self, user_id: hikari.Snowflakeish, /) -> None:
         """Remove a user from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to remove from the cache.
 
         Raises
@@ -1668,7 +1668,7 @@ class UserCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to get from the cache.
 
         Returns
@@ -1694,7 +1694,7 @@ class UserCache(Resource, abc.ABC):
     def iter_users(self) -> CacheIterator[hikari.User]:
         """Iterate over the users stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1728,7 +1728,7 @@ class VoiceStateCache(Resource, abc.ABC):
     async def clear_voice_states(self) -> None:
         """Empty the voice states cache store.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
@@ -1744,15 +1744,15 @@ class VoiceStateCache(Resource, abc.ABC):
     async def delete_voice_state(self, guild_id: hikari.Snowflakeish, user_id: hikari.Snowflakeish, /) -> None:
         """Remove a voice state from the cache.
 
-        .. note::
-            Delete methods do not raise `sake.errors.CacheMissError` when the
+        !!! note
+            Delete methods do not raise [sake.errors.EntryNotFound][] when the
             targeted entity doesn't exist.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove a cached voice state for.
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to remove a cached voice state for.
 
         Raises
@@ -1770,9 +1770,9 @@ class VoiceStateCache(Resource, abc.ABC):
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to get a cached voice state for.
-        user_id : hikari.snowflakes.Snowflakeish
+        user_id
             The ID of the user to get a cached voice state for.
 
         Returns
@@ -1798,7 +1798,7 @@ class VoiceStateCache(Resource, abc.ABC):
     def iter_voice_states(self) -> CacheIterator[hikari.VoiceState]:
         """Iterate over the voice states stored in the cache.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
@@ -1829,13 +1829,13 @@ class RefVoiceStateCache(VoiceStateCache, abc.ABC):
     async def clear_voice_states_for_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
         """Remove the voice states cached for a specified channel.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        channel_id : hikari.snowflakes.Snowflakeish
+        channel_id
             The ID of the channel to remove the voice states cached for.
 
         Raises
@@ -1850,13 +1850,13 @@ class RefVoiceStateCache(VoiceStateCache, abc.ABC):
     async def clear_voice_states_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
         """Remove the voice states cached for a specified guild.
 
-        .. note::
+        !!! note
             There is no guarantee that this operation will be complete before
             the returned coroutine finishes.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to remove the voice states cached for.
 
         Raises
@@ -1871,13 +1871,13 @@ class RefVoiceStateCache(VoiceStateCache, abc.ABC):
     def iter_voice_states_for_channel(self, channel_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.VoiceState]:
         """Iterate over the voice states stored in the cache for a specific channel.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        channel_id : hikari.snowflakes.Snowflakeish
+        channel_id
             The ID of the channel to iterate over the voice states cached for.
 
         Returns
@@ -1902,13 +1902,13 @@ class RefVoiceStateCache(VoiceStateCache, abc.ABC):
     def iter_voice_states_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.VoiceState]:
         """Iterate over the voice states stored in the cache for a specific guild.
 
-        .. note::
+        !!! note
             Errors won't be raised by the initial call to this method but rather
             while iterating over the returned asynchronous iterator.
 
         Parameters
         ----------
-        guild_id : hikari.snowflakes.Snowflakeish
+        guild_id
             The ID of the guild to iterate over the voice states cached for.
 
         Returns

@@ -116,8 +116,12 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
         return CacheIteratorAdapter(self._iterate_all())
 
 
-class GuildBoundCacheAdapter(AsyncCacheAdapter, async_cache.GuildBoundCache[_KeyT, _ValueT]):
-    __slots__ = ("_get_from_guild", "_iterate_all", "_iterate_for_guild")
+def _not_implemented(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+    raise NotImplementedError
+
+
+class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.GuildBoundCache[_KeyT, _ValueT]):
+    __slots__ = ("_get_from_guild", "_iterate_for_guild")
 
     def __init__(
         self,
@@ -126,10 +130,9 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter, async_cache.GuildBoundCache[_Key
         iterate_for_guild: typing.Callable[[hikari.Snowflakeish], abc.CacheIterator[_ValueT]],
         trust_get: bool,
     ) -> None:
+        super().__init__(get=_not_implemented, iterate_all=iterate_all, trust_get=trust_get)
         self._get_from_guild = get_from_guild
-        self._iterate_all = iterate_all
         self._iterate_for_guild = iterate_for_guild
-        self._trust_get = trust_get
 
     async def get_from_guild(
         self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: _DefaultT = ...
@@ -145,9 +148,6 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter, async_cache.GuildBoundCache[_Key
                 raise async_cache.EntryNotFound from None
 
             raise async_cache.CacheMissError from None
-
-    def iter_all(self) -> async_cache.CacheIterator[_ValueT]:
-        return CacheIteratorAdapter(self._iterate_all())
 
     def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> async_cache.CacheIterator[_ValueT]:
         return CacheIteratorAdapter(self._iterate_for_guild(guild_id))

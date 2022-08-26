@@ -29,10 +29,14 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""Redis based implementations of Sake's clients."""
+
+# pyright: reportUnusedFunction=none
+# Doesn't agree with unused decoratored functions
+
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = [
-    "ResourceClient",
     "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
@@ -41,6 +45,7 @@ __all__: typing.Sequence[str] = [
     "MessageCache",
     "PresenceCache",
     "RedisCache",
+    "ResourceClient",
     "RoleCache",
     "UserCache",
     "VoiceStateCache",
@@ -61,10 +66,10 @@ import hikari
 from hikari import traits
 from hikari.internal import time  # TODO: don't use this
 
+from . import _internal
 from . import abc as sake_abc
 from . import errors
 from . import redis_iterators
-from . import utility
 
 if typing.TYPE_CHECKING:
     import types
@@ -115,15 +120,13 @@ def _to_map(
 
 _TanjunLoaderSigT = typing.TypeVar(
     "_TanjunLoaderSigT",
-    bound="typing.Callable[[typing.Any, tanjun.InjectorClient, typing.Set[typing.Type[sake_abc.Resource]]], None]",
+    bound="typing.Callable[[typing.Any, tanjun.abc.Client, typing.Set[typing.Type[sake_abc.Resource]]], None]",
 )
 
 
 @typing.runtime_checkable
-class _TanjunLoader(typing.Protocol):
-    def __call__(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+class _TanjunLoaderProto(typing.Protocol):
+    def __call__(self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /) -> None:
         raise NotImplementedError
 
     @property
@@ -132,8 +135,8 @@ class _TanjunLoader(typing.Protocol):
 
 
 def _as_tanjun_loader(callback: _TanjunLoaderSigT, /) -> _TanjunLoaderSigT:
-    callback.__tanjun_loader__ = True
-    assert isinstance(callback, _TanjunLoader)
+    callback.__tanjun_loader__ = True  # type: ignore
+    assert isinstance(callback, _TanjunLoaderProto)
     return typing.cast(_TanjunLoaderSigT, callback)
 
 
@@ -142,15 +145,15 @@ def _as_tanjun_loader(callback: _TanjunLoaderSigT, /) -> _TanjunLoaderSigT:
 class ResourceClient(sake_abc.Resource, abc.ABC):
     """A base client which all resources in this implementation will implement.
 
-    .. note::
+    !!! note
         This cannot be initialised by itself and is useless alone.
 
     Parameters
     ----------
-    app : hikari.traits.RESTAware
+    app
         The Hikari client all the models returned by this client should be
         bound to.
-    address : str
+    address
         The address to use to connect to the Redis backend server this
         resource is linked to.
 
@@ -168,15 +171,15 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     Other Parameters
     ----------------
-    event_manager : typing.Optional[hikari.api.EventManagerAware]
+    event_manager
         The event manager to bind this resource client to.
 
         If provided then this client will automatically manage resources
         based on received gateway events.
-    event_managed : bool
+    event_managed
         Whether the client should be started and stopped based on the attached
         event_manager's lifetime events.
-    password : typing.Optional[str]
+    password
         The password to use to connect to the backend Redis server.
     """
 
@@ -204,7 +207,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         event_manager: typing.Optional[hikari.api.EventManager] = None,
         *,
         config: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
-        default_expire: utility.ExpireT = DEFAULT_SLOW_EXPIRE,
+        default_expire: _internal.ExpireT = DEFAULT_SLOW_EXPIRE,
         event_managed: bool = False,
         password: typing.Optional[str] = None,
         max_connections_per_db: int = 5,
@@ -215,11 +218,11 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         self.__app = app
         self.__clients: typing.Dict[int, aioredis.Redis] = {}
         self.__config = config or {}
-        self.__default_expire = utility.convert_expire_time(default_expire)
+        self.__default_expire = _internal.convert_expire_time(default_expire)
         self.__dump = dumps
         self.__event_manager = event_manager
         self.__index_overrides: typing.Dict[ResourceIndex, int] = {}
-        self.__listeners, self.__raw_listeners = utility.find_listeners(self)
+        self.__listeners, self.__raw_listeners = _internal.find_listeners(self)
         self.__load = loads
         self.__max_connections_per_db = max_connections_per_db
         self.__password = password
@@ -286,7 +289,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     def default_expire(self) -> typing.Optional[int]:
         """The default expire time used for fields with no actual lifetime.
 
-        If this is `None` then these cases will have no set expire after.
+        If this is [None][] then these cases will have no set expire after.
         """
         return self.__default_expire  # TODO: , pexpire=self.default_expire
 
@@ -300,11 +303,11 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     def index(cls) -> typing.Sequence[ResourceIndex]:
         """The index for the resource which this class is linked to.
 
-        .. note::
+        !!! note
             This should be called on specific base classes and will not be
             accurate after inheritance.
 
-        .. warning::
+        !!! warning
             This doesn't account for overrides.
 
         Returns
@@ -319,7 +322,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     def intents(cls) -> hikari.Intents:
         """The intents the resource requires to function properly.
 
-        .. note::
+        !!! note
             This should be called on specific base classes and will not be
             accurate after inheritance.
 
@@ -338,12 +341,12 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     def all_indexes(self) -> typing.MutableSet[typing.Union[ResourceIndex, int]]:
         """Get a set of all the Redis client indexes this is using.
 
-        .. note::
+        !!! note
             This accounts for index overrides.
 
         Returns
         -------
-        typing.MutableSet[typing.Union[ResourceIndex, int]]]
+        typing.MutableSet[ResourceIndex | int]]
             A set of all the Redis client indexes this is using.
         """
         results: typing.Set[int] = set()
@@ -390,100 +393,92 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         """Add this Redis client to a Tanjun client.
 
         This method will register type dependencies for the resources
-        implemented by it (including `tanjun.dependencies.async_cache` compatible
-        adapters which will allow Tanjun extensions and standard utilitiy such as
+        implemented by it (including [tanjun.dependencies.async_cache][] compatible
+        adapters which will allow Tanjun extensions and standard utility such as
         converters to be aware of this cache).
 
         The type dependencies this will register depend on which resources are
         implemented but are as follows for each standard resource implementation:
 
-        * `EmojiCache`
-            - `sake.abc.EmojiCache`
-            - `sake.abc.RefEmojiCache`
-            - `sake.redis.EmojiCache`
+        * [sake.redis.EmojiCache][]
+            - [sake.abc.EmojiCache][]
+            - [sake.abc.RefEmojiCache][]
+            - [sake.redis.EmojiCache][]
             - `tanjun.dependencies.async_cache.SfCache[hikari.KnownCustomEmoji]`
             - `tanjun.dependencies.async_cache.SfGuildBound[hikari.KnownCustomEmoji]`
-        * `GuildCache`
-            - `sake.abc.GuildCache`
-            - `sake.redis.RedisCache`
+        * [sake.redis.GuildCache][]
+            - [sake.abc.GuildCache][]
+            - [sake.redis.GuildCache][]
             - `tanjun.dependencies.async_cache.SfCache[hikari.Guild]`
             - `tanjun.depepdencies.async_cache.SfCache[hikari.GatewayGuild]`
-        * `GuildChannelCache`
-            - `sake.abc.GuildChannelCache`
-            - `sake.abc.RefGuildChannelCache`
-            - `sake.redis.GuildChannelCache`
+        * [sake.redis.GuildChannelCache][]
+            - [sake.abc.GuildChannelCache][]
+            - [sake.abc.RefGuildChannelCache][]
+            - [sake.redis.GuildChannelCache][]
             - `tanjun.dependencies.async_cache.SfCache[hikari.GuildChannel]`
             - `tanjun.dependencies.async_cache.SfGuildBound[hikari.GuildChannel]`
-        * `InviteCache`
-            - `sake.abc.InviteCache`
-            - `sake.redis.InviteCache`
+        * [sake.redis.InviteCache][]
+            - [sake.abc.InviteCache][]
+            - [sake.redis.InviteCache][]
             - `tanjun.dependencies.async_cache.SfCache[hikari.Invite]`
             - `tanjun.dependencies.async_cache.SfCache[hikari.InviteWithMetadata]`
-        * `MemberCache`
-            - `sake.abc.MemberCache`
-            - `sake.redis.MemberCache`
+        * [sake.redis.MemberCache][]
+            - [sake.abc.MemberCache][]
+            - [sake.redis.MemberCache][]
             - `tanjun.dependencies.async_cache.SfGuildBound[hikari.Member]`
-        * `MessageCache`
-            - `sake.abc.MessageCache`
-            - `sake.redis.MessageCache`
+        * [sake.redis.MessageCache][]
+            - [sake.abc.MessageCache][]
+            - [sake.redis.MessageCache][]
             - `tanjun.dependencies.async_cache.SfCache[hikari.Message]`
-        * `PresenceCache`
-            - `sake.abc.PresenceCache`
-            - `sake.redis.PresenceCache`
+        * [sake.redis.PresenceCache][]
+            - [sake.abc.PresenceCache][]
+            - [sake.redis.PresenceCache][]
             - `tanjun.dependencies.async_cache.SfGuildBound[hikari.MemberPresence]`
-        * `RoleCache`
-            - `sake.abc.RoleCache`
-            - `sake.redis.RoleCache`
+        * [sake.redis.RoleCache][]
+            - [sake.abc.RoleCache][]
+            - [sake.redis.RoleCache][]
             - `tanjun.dependencies.async_cache.SfCache[hikari.Role]`
             - `tanjun.dependencies.async_cache.SfGuildBound[hikari.Role]`
-        * `UserCache`
-            - `sake.abc.MeCache`
-            - `sake.abc.UserCache`
-            - `sake.redis.UserCache`
+        * [sake.redis.UserCache][]
+            - [sake.abc.MeCache][]
+            - [sake.abc.UserCache][]
+            - [sake.redis.UserCache][]
             - `tanjun.dependencies.async_cache.SingleStoreCache[hikari.OwnUser]`
             - `tanjun.dependencies.async_cache.SfCache[hikari.User]`
-        * `VoiceStateCache`
-            - `sake.abc.VoiceStateCache`
-            - `sake.redis.VoiceStateCache`
+        * [sake.redis.VoiceStateCache][]
+            - [sake.abc.VoiceStateCache][]
+            - [sake.redis.VoiceStateCache][]
             - `tanjun.dependencies.async_cache.SfGuildBound[hikari.VoiceState]`
-        * `RedisCache`
+        * [sake.redis.RedisCache][]
             - All of the previously listed types
-            - `sake.abc.Cache`
-            - `sake.redis.RedisCache`
+            - [sake.abc.Cache][]
+            - [sake.redis.RedisCache][]
 
         Parameters
         ----------
-        client : tanjun.abc.Client
+        client
             The Tanjun client to add this client to.
-        trust_get_for : typing.Optional[typing.Collection[type[sake_abc.Resource]]]
-            A collection of resource types which the `tanjun.dependencies.async_cache`
-            adapter "get" methods should raise `tanjun.dependencies.async_cache.EntryNotFound`
-            if the entry isn't found rather than just `tanjun.dependencies.async_cache.CacheMissError`.
-
-            .. note::
-                `EntryNotFound` is a specialisation of `CacheMissError` which indicates
-                that the entry doesn't exist rather than just that it wasn't cached
-                and is used to avoid falling back to a REST request in places where this
-                would be applicable.
+        trust_get_for
+            A collection of resource types which the [tanjun.dependencies.async_cache][]
+            adapter "get" methods should raise [tanjun.dependencies.async_cache.EntryNotFound][]
+            if the entry isn't found rather than just
+            [tanjun.dependencies.async_cache.CacheMissError][].
 
             If not passed then this will default to the following resources:
 
-            - `sake.abc.EmojiCache`
-            - `sake.abc.GuildCache`
-            - `sake.abc.GuildChannelCache`
-            - `sake.abc.MemberCache`
-            - `sake.abc.PresenceCache`
-            - `sake.abc.RoleCache`
-            - `sake.abc.VoiceStateCache`
-            - `sake.abc.UserCache` (if `sake.abc.MemberCache` is also implemented).
-
-        tanjun_managed : bool
+            - [sake.abc.EmojiCache][]
+            - [sake.abc.GuildCache][]
+            - [sake.abc.GuildChannelCache][]
+            - [sake.abc.MemberCache][]
+            - [sake.abc.PresenceCache][]
+            - [sake.abc.RoleCache][]
+            - [sake.abc.VoiceStateCache][]
+            - [sake.abc.UserCache][] (if [sake.abc.MemberCache][] is also implemented).
+        tanjun_managed
             Whether the client should be started and stopped based on the tanjun
             client's lifecycle.
 
             This is useful if the client isn't being event managed.
-
-            Defaults to `False`.
 
         Raises
         ------
@@ -514,11 +509,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         except ImportError as exc:
             raise RuntimeError("This can only be called in an environment with Tanjun") from exc
 
-        # This is gonna be upgraded to the standard interface for tanjun.abc.Client
-        assert isinstance(client, tanjun.InjectorClient)
-
         for _, member in inspect.getmembers(self):
-            if isinstance(member, _TanjunLoader):
+            if isinstance(member, _TanjunLoaderProto):
                 member(client, trust_get_for)
 
         for cls in type(self).mro():
@@ -540,7 +532,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Parameters
         ----------
-        data : dict[str, typing.Any]
+        data
             The dict object to serialize.
 
         Returns
@@ -555,7 +547,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Parameters
         ----------
-        data : dict[str, typing.Any]
+        data
             The bytes representation from the database to a dict object.
 
         Returns
@@ -570,13 +562,13 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Parameters
         ----------
-        index : ResourceIndex
+        index
             The index to get the override for.
 
         Returns
         -------
-        typing.Optional[int]
-            The found override if set, else `None`.
+        int | None
+            The found override if set, else [None][].
         """
         return self.__index_overrides.get(index)
 
@@ -587,15 +579,15 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Parameters
         ----------
-        index : ResourceIndex
+        index
             The index to override.
 
         Other Parameters
         ----------------
-        override : typing.Optional[int]
+        override
             The override to set.
 
-            If this is left at `None` then any previous override is unset.
+            If this is left at [None][] then any previous override is unset.
             This will decide which Redis database is targeted for a resource.
         """
         if self.__started:
@@ -614,7 +606,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Parameters
         ----------
-        resource : ResourceIndex
+        resource
             The index of the resource to get a connection for.
 
         Returns
@@ -642,7 +634,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Parameters
         ----------
-        resource : ResourceIndex
+        resource
             The index of the resource to get the status for.
 
         Returns
@@ -846,7 +838,7 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -855,11 +847,11 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
         adapter = _tanjun_adapter.SingleStoreAdapter(self.get_me, trust_get=sake_abc.MeCache in trust_get_for)
         client.set_type_dependency(async_cache.SingleStoreCache[hikari.OwnUser], adapter)
 
-    @utility.as_raw_listener("USER_UPDATE")
+    @_internal.as_raw_listener("USER_UPDATE")
     async def __on_own_user_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.set_me(dict(event.payload))
 
-    @utility.as_raw_listener("READY")
+    @_internal.as_raw_listener("READY")
     async def __on_shard_ready(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.set_me(event.payload["user"])
 
@@ -881,6 +873,8 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
 
 
 class UserCache(_MeCache, sake_abc.UserCache):
+    """Redis implementation of [sake.abc.UserCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -895,7 +889,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -906,13 +900,13 @@ class UserCache(_MeCache, sake_abc.UserCache):
         )
         client.set_type_dependency(async_cache.SfCache[hikari.User], adapter)
 
-    def with_user_expire(self: _ResourceT, expire: typing.Optional[utility.ExpireT], /) -> _ResourceT:
+    def with_user_expire(self: _ResourceT, expire: typing.Optional[_internal.ExpireT], /) -> _ResourceT:
         """Set the default expire time for user entries added with this client.
 
         Parameters
         ----------
-        expire : typing.Union[datetime.timedelta, int, float]
-            The default expire time to add for users in this cache or `None`
+        expire
+            The default expire time to add for users in this cache or [None][]
             to set back to the default behaviour.
             This may either be the number of seconds as an int or float (where
             millisecond precision is supported) or a timedelta.
@@ -923,7 +917,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
             The client this is being called on to enable chained calls.
         """
         if expire is not None:
-            self.config["expire_user"] = utility.convert_expire_time(expire)
+            self.config["expire_user"] = _internal.convert_expire_time(expire)
 
         elif "expire_user" in self.config:
             del self.config["expire_user"]
@@ -953,14 +947,14 @@ class UserCache(_MeCache, sake_abc.UserCache):
             self, ResourceIndex.USER, self.app.entity_factory.deserialize_user, self.load, window_size=window_size
         )
 
-    async def set_user(self, payload: _ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
+    async def set_user(self, payload: _ObjectT, /, *, expire_time: typing.Optional[_internal.ExpireT] = None) -> None:
         # <<Inherited docstring from sake.abc.UserCache>>
         client = self.get_connection(ResourceIndex.USER)
         if expire_time is None:
             expire_time = int(self.config.get("expire_user", DEFAULT_EXPIRE))
 
         else:
-            expire_time = utility.convert_expire_time(expire_time)
+            expire_time = _internal.convert_expire_time(expire_time)
 
         await client.set(str(int(payload["id"])), self.dump(payload), px=expire_time)
 
@@ -975,6 +969,8 @@ def _get_id(data: _ObjectT, /) -> str:
 
 
 class EmojiCache(_Reference, sake_abc.RefEmojiCache):
+    """Redis implementation of [sake.abc.EmojiCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1001,7 +997,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1018,7 +1014,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
             async_cache.SfGuildBound[hikari.KnownCustomEmoji], adapter
         )
 
-    @utility.as_raw_listener("GUILD_EMOJIS_UPDATE")
+    @_internal.as_raw_listener("GUILD_EMOJIS_UPDATE")
     async def __on_emojis_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         guild_id = int(event.payload["guild_id"])
         await self.clear_emojis_for_guild(guild_id)
@@ -1027,7 +1023,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
             await self.__bulk_add_emojis(emojis, guild_id)
 
     #  TODO: can we also listen for member delete to manage this?
-    @utility.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
+    @_internal.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
     async def __on_guild_create_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         guild_id = int(event.payload["id"])
         await self.clear_emojis_for_guild(guild_id)
@@ -1035,7 +1031,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
         if emojis := event.payload["emojis"]:
             await self.__bulk_add_emojis(emojis, guild_id)
 
-    @utility.as_listener(hikari.GuildLeaveEvent)
+    @_internal.as_listener(hikari.GuildLeaveEvent)
     async def __on_guild_leave_event(self, event: hikari.GuildLeaveEvent, /) -> None:
         await self.clear_emojis_for_guild(event.guild_id)
 
@@ -1114,6 +1110,8 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
 
 
 class GuildCache(ResourceClient, sake_abc.GuildCache):
+    """Redis implementation of [sake.abc.GuildCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1128,7 +1126,7 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1141,11 +1139,11 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
             async_cache.SfCache[hikari.GatewayGuild], adapter
         )
 
-    @utility.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
+    @_internal.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
     async def __on_guild_create_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.set_guild(dict(event.payload))
 
-    @utility.as_listener(hikari.GuildLeaveEvent)
+    @_internal.as_listener(hikari.GuildLeaveEvent)
     async def __on_guild_leave_event(self, event: hikari.GuildLeaveEvent, /) -> None:
         await self.delete_guild(event.guild_id)
 
@@ -1158,10 +1156,10 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
         await self.get_connection(ResourceIndex.GUILD).delete(str(guild_id))
 
     def __deserialize_guild(self, payload: _ObjectT, /) -> hikari.GatewayGuild:
-        # Hikari's deserialization logic expcets these fields to be present.
+        # Hikari's deserialization logic expects these fields to be present.
         payload["roles"] = []
         payload["emojis"] = []
-        return self.app.entity_factory.deserialize_gateway_guild(payload).guild
+        return self.app.entity_factory.deserialize_gateway_guild(payload).guild()
 
     async def get_guild(self, guild_id: hikari.Snowflakeish, /) -> hikari.GatewayGuild:
         # <<Inherited docstring from sake.abc.GuildCache>>
@@ -1194,6 +1192,8 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
 
 # TODO: guild_id isn't always included in the payload?
 class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
+    """Redis implementation of [sake.abc.RefGuildChannelCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1208,7 +1208,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1225,22 +1225,22 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
             async_cache.SfGuildBound[hikari.GuildChannel], adapter
         )
 
-    @utility.as_raw_listener("CHANNEL_CREATE", "CHANNEL_UPDATE")
+    @_internal.as_raw_listener("CHANNEL_CREATE", "CHANNEL_UPDATE")
     async def __on_channel_create_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.set_guild_channel(dict(event.payload))
 
-    @utility.as_listener(hikari.GuildChannelDeleteEvent)  # we don't actually get events for DM channels
+    @_internal.as_listener(hikari.GuildChannelDeleteEvent)  # we don't actually get events for DM channels
     async def __on_channel_delete_event(self, event: hikari.GuildChannelDeleteEvent, /) -> None:
         await self.delete_guild_channel(event.channel_id, guild_id=event.guild_id)
 
-    @utility.as_raw_listener("CHANNEL_PINS_UPDATE")
+    @_internal.as_raw_listener("CHANNEL_PINS_UPDATE")
     async def __on_channel_pins_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         if payload := await self.get_connection(ResourceIndex.CHANNEL).get(str(int(event.payload["channel_id"]))):
             payload = self.load(payload)
             payload["last_pin_timestamp"] = event.payload.get("last_pin_timestamp")
             await self.set_guild_channel(payload)
 
-    @utility.as_raw_listener("GUILD_CREATE")  # GUILD_UPDATE doesn't include channels
+    @_internal.as_raw_listener("GUILD_CREATE")  # GUILD_UPDATE doesn't include channels
     async def __on_guild_create_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         client = self.get_connection(ResourceIndex.CHANNEL)
         guild_id = int(event.payload["id"])
@@ -1255,7 +1255,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         relationship_coro = self._add_ids(ResourceIndex.GUILD, str_guild_id, ResourceIndex.CHANNEL, *ids)
         await asyncio.gather(coro, relationship_coro)
 
-    @utility.as_listener(hikari.GuildLeaveEvent)  # TODO: can we also use member remove events here?
+    @_internal.as_listener(hikari.GuildLeaveEvent)  # TODO: can we also use member remove events here?
     async def __on_guild_leave_event(self, event: hikari.GuildLeaveEvent, /) -> None:
         await self.clear_guild_channels_for_guild(event.guild_id)
 
@@ -1331,6 +1331,8 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 
 
 class InviteCache(ResourceClient, sake_abc.InviteCache):
+    """Redis implementation of [sake.abc.InviteCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1345,7 +1347,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1358,21 +1360,21 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
             async_cache.SfCache[hikari.Invite], adapter
         )
 
-    @utility.as_raw_listener("INVITE_CREATE")
+    @_internal.as_raw_listener("INVITE_CREATE")
     async def __on_invite_create(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.set_invite(dict(event.payload))
 
-    @utility.as_listener(hikari.InviteDeleteEvent)
+    @_internal.as_listener(hikari.InviteDeleteEvent)
     async def __on_invite_delete_event(self, event: hikari.InviteDeleteEvent, /) -> None:
         await self.delete_invite(event.code)  # TODO: on guild leave?
 
-    def with_invite_expire(self: _ResourceT, expire: typing.Optional[utility.ExpireT], /) -> _ResourceT:
+    def with_invite_expire(self: _ResourceT, expire: typing.Optional[_internal.ExpireT], /) -> _ResourceT:
         """Set the default expire time for invite entries added with this client.
 
         Parameters
         ----------
-        expire : typing.Union[datetime.timedelta, int, float]
-            The default expire time to add for invites in this cache or `None`
+        expire
+            The default expire time to add for invites in this cache or [None][]
             to set back to the default behaviour.
             This may either be the number of seconds as an int or float (where
             millisecond precision is supported) or a timedelta.
@@ -1383,7 +1385,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
             The client this is being called on to enable chained calls.
         """
         if expire is not None:
-            self.config["expire_invite"] = utility.convert_expire_time(expire)
+            self.config["expire_invite"] = _internal.convert_expire_time(expire)
 
         elif "expire_invite" in self.config:
             del self.config["expire_invite"]
@@ -1418,7 +1420,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
             window_size=window_size,
         )
 
-    async def set_invite(self, payload: _ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
+    async def set_invite(self, payload: _ObjectT, /, *, expire_time: typing.Optional[_internal.ExpireT] = None) -> None:
         # <<Inherited docstring from sake.abc.InviteCache>>
         client = self.get_connection(ResourceIndex.INVITE)
         if expire_time is None and (raw_max_age := payload.get("max_age")):
@@ -1435,7 +1437,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
             expire_time = int(self.config.get("expire_invite", DEFAULT_INVITE_EXPIRE))
 
         else:
-            expire_time = utility.convert_expire_time(expire_time)
+            expire_time = _internal.convert_expire_time(expire_time)
 
         # Aioredis treats keys and values as type invariant so we want to ensure this is a str and not a class which
         # subclasses str.
@@ -1478,6 +1480,8 @@ def _get_sub_user_id(payload: _ObjectT, /) -> str:
 
 
 class MemberCache(ResourceClient, sake_abc.MemberCache):
+    """Redis implementation of [sake.abc.MemberCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1492,7 +1496,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1506,7 +1510,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
         )
         client.set_type_dependency(async_cache.SfGuildBound[hikari.Member], adapter)
 
-    @utility.as_raw_listener("GUILD_CREATE")  # members aren't included in GUILD_UPDATE
+    @_internal.as_raw_listener("GUILD_CREATE")  # members aren't included in GUILD_UPDATE
     async def __on_guild_create(self, event: hikari.ShardPayloadEvent, /) -> None:
         guild_id = int(event.payload["id"])
         await self.clear_members_for_guild(guild_id)
@@ -1517,15 +1521,15 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
             include_presences = bool(self.config.get("chunk_presences", False))
             await shard_aware.request_guild_members(guild_id, include_presences=include_presences)
 
-    @utility.as_listener(hikari.GuildLeaveEvent)
+    @_internal.as_listener(hikari.GuildLeaveEvent)
     async def __on_guild_leave_event(self, event: hikari.GuildLeaveEvent, /) -> None:
         await self.clear_members_for_guild(event.guild_id)
 
-    @utility.as_raw_listener("GUILD_MEMBER_ADD", "GUILD_MEMBER_UPDATE")
+    @_internal.as_raw_listener("GUILD_MEMBER_ADD", "GUILD_MEMBER_UPDATE")
     async def __on_guild_member_add_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.set_member(int(event.payload["guild_id"]), dict(event.payload))
 
-    @utility.as_listener(hikari.MemberDeleteEvent)
+    @_internal.as_listener(hikari.MemberDeleteEvent)
     async def __on_member_delete_event(self, event: hikari.MemberDeleteEvent, /) -> None:
         try:
             own_id = self.config[_OwnIDStore.KEY]
@@ -1542,7 +1546,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
         else:
             await self.delete_member(event.guild_id, event.user_id)
 
-    @utility.as_raw_listener("GUILD_MEMBERS_CHUNK")
+    @_internal.as_raw_listener("GUILD_MEMBERS_CHUNK")
     async def __on_guild_members_chunk_event(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.__bulk_set_members(event.payload["members"], int(event.payload["guild_id"]))
 
@@ -1623,6 +1627,8 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
 
 
 class MessageCache(ResourceClient, sake_abc.MessageCache):
+    """Redis implementation of [sake.abc.MessageCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1637,7 +1643,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1650,29 +1656,29 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
         )
         client.set_type_dependency(async_cache.SfCache[hikari.Message], adapter)
 
-    @utility.as_raw_listener("MESSAGE_CREATE")
+    @_internal.as_raw_listener("MESSAGE_CREATE")
     async def __on_message_create(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.set_message(dict(event.payload))
 
-    @utility.as_listener(hikari.MessageDeleteEvent)
+    @_internal.as_listener(hikari.MessageDeleteEvent)
     async def __on_message_delete_event(self, event: hikari.MessageDeleteEvent, /) -> None:
         await self.delete_message(event.message_id)
 
-    @utility.as_listener(hikari.GuildBulkMessageDeleteEvent)
+    @_internal.as_listener(hikari.GuildBulkMessageDeleteEvent)
     async def __on_guild_message_bulk_delete_event(self, event: hikari.GuildBulkMessageDeleteEvent, /) -> None:
         await self.get_connection(ResourceIndex.MESSAGE).delete(*map(str, event.message_ids))
 
-    @utility.as_raw_listener("MESSAGE_UPDATE")
+    @_internal.as_raw_listener("MESSAGE_UPDATE")
     async def __on_message_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.update_message(dict(event.payload))
 
-    def with_message_expire(self: _ResourceT, expire: typing.Optional[utility.ExpireT], /) -> _ResourceT:
+    def with_message_expire(self: _ResourceT, expire: typing.Optional[_internal.ExpireT], /) -> _ResourceT:
         """Set the default expire time for message entries added with this client.
 
         Parameters
         ----------
-        expire : typing.Union[datetime.timedelta, int, float]
-            The default expire time to add for messages in this cache or `None`
+        expire
+            The default expire time to add for messages in this cache or [None][]
             to set back to the default behaviour.
             This may either be the number of seconds as an int or float (where
             millisecond precision is supported) or a timedelta.
@@ -1683,7 +1689,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
             The client this is being called on to enable chained calls.
         """
         if expire is not None:
-            self.config["expire_message"] = utility.convert_expire_time(expire)
+            self.config["expire_message"] = _internal.convert_expire_time(expire)
 
         elif "expire_message" in self.config:
             del self.config["expire_message"]
@@ -1717,20 +1723,22 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
             window_size=window_size,
         )
 
-    async def set_message(self, payload: _ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None) -> None:
+    async def set_message(
+        self, payload: _ObjectT, /, *, expire_time: typing.Optional[_internal.ExpireT] = None
+    ) -> None:
         # <<Inherited docstring from sake.abc.MessageCache>>
         client = self.get_connection(ResourceIndex.MESSAGE)
         if expire_time is None:
             expire_time = int(self.config.get("expire_message", DEFAULT_FAST_EXPIRE))
 
         else:
-            expire_time = utility.convert_expire_time(expire_time)
+            expire_time = _internal.convert_expire_time(expire_time)
 
         await client.set(str(payload["id"]), self.dump(payload), px=expire_time)
         await self._try_set_user(payload["author"])
 
     async def update_message(
-        self, payload: _ObjectT, /, *, expire_time: typing.Optional[utility.ExpireT] = None
+        self, payload: _ObjectT, /, *, expire_time: typing.Optional[_internal.ExpireT] = None
     ) -> bool:
         # <<Inherited docstring from sake.abc.MessageCache>>
         # This is a special case method for handling the partial message updates we get
@@ -1745,6 +1753,8 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
 
 
 class PresenceCache(ResourceClient, sake_abc.PresenceCache):
+    """Redis implementation of [sake.abc.PresenceCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1768,7 +1778,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1782,20 +1792,20 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
         )
         client.set_type_dependency(async_cache.SfGuildBound[hikari.MemberPresence], adapter)
 
-    @utility.as_raw_listener("GUILD_CREATE")  # Presences is not included on GUILD_UPDATE
+    @_internal.as_raw_listener("GUILD_CREATE")  # Presences is not included on GUILD_UPDATE
     async def __on_guild_create(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.__bulk_add_presences(event.payload["presences"], int(event.payload["id"]))
 
-    @utility.as_listener(hikari.GuildLeaveEvent)
+    @_internal.as_listener(hikari.GuildLeaveEvent)
     async def __on_guild_leave_event(self, event: hikari.GuildLeaveEvent, /) -> None:
         await self.clear_presences_for_guild(event.guild_id)
 
-    @utility.as_raw_listener("GUILD_MEMBERS_CHUNK")
+    @_internal.as_raw_listener("GUILD_MEMBERS_CHUNK")
     async def __on_guild_members_chunk(self, event: hikari.ShardPayloadEvent, /) -> None:
         if presences := event.payload.get("presences"):
             await self.__bulk_add_presences(presences, int(event.payload["guild_id"]))
 
-    @utility.as_raw_listener("PRESENCE_UPDATE")
+    @_internal.as_raw_listener("PRESENCE_UPDATE")
     async def __on_presence_update_event(self, event: hikari.ShardPayloadEvent, /) -> None:
         if event.payload["status"] == hikari.Status.OFFLINE:
             await self.delete_presence(int(event.payload["guild_id"]), int(event.payload["user"]["id"]))
@@ -1856,6 +1866,8 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
 
 
 class RoleCache(_Reference, sake_abc.RoleCache):
+    """Redis implementation of [sake.abc.RoleCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -1870,7 +1882,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -1887,7 +1899,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
             async_cache.SfCache[hikari.Role], adapter
         )
 
-    @utility.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
+    @_internal.as_raw_listener("GUILD_CREATE", "GUILD_UPDATE")
     async def __on_guild_create_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         client = self.get_connection(ResourceIndex.ROLE)
         guild_id = int(event.payload["id"])
@@ -1900,15 +1912,15 @@ class RoleCache(_Reference, sake_abc.RoleCache):
         )
         await asyncio.gather(setter, id_setter)
 
-    @utility.as_listener(hikari.GuildLeaveEvent)
+    @_internal.as_listener(hikari.GuildLeaveEvent)
     async def __on_guild_leave_event(self, event: hikari.GuildLeaveEvent, /) -> None:
         await self.clear_roles_for_guild(event.guild_id)
 
-    @utility.as_raw_listener("GUILD_ROLE_CREATE", "GUILD_ROLE_UPDATE")
+    @_internal.as_raw_listener("GUILD_ROLE_CREATE", "GUILD_ROLE_UPDATE")
     async def __on_guild_role_create_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.set_role(int(event.payload["guild_id"]), event.payload["role"])
 
-    @utility.as_listener(hikari.RoleDeleteEvent)
+    @_internal.as_listener(hikari.RoleDeleteEvent)
     async def __on_guild_role_delete_event(self, event: hikari.RoleDeleteEvent, /) -> None:
         await self.delete_role(event.role_id, guild_id=event.guild_id)
 
@@ -1994,6 +2006,8 @@ def _get_user_id(payload: _ObjectT, /) -> str:
 
 
 class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
+    """Redis implementation of [sake.abc.VoiceStateCache][]."""
+
     __slots__: typing.Sequence[str] = ()
 
     @classmethod
@@ -2006,7 +2020,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         # <<Inherited docstring from ResourceClient>>
         return hikari.Intents.GUILDS | hikari.Intents.GUILD_VOICE_STATES
 
-    @utility.as_listener(hikari.GuildChannelDeleteEvent)
+    @_internal.as_listener(hikari.GuildChannelDeleteEvent)
     async def __on_channel_delete_event(self, event: hikari.GuildChannelDeleteEvent, /) -> None:
         await self.clear_voice_states_for_channel(event.channel_id)
 
@@ -2019,10 +2033,10 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
             channel_id = int(payload["channel_id"])
             user_id = int(payload["user_id"])
             try:
-                references = all_references[str(channel_id)]
+                references: typing.Set[str] = all_references[str(channel_id)]
 
             except KeyError:
-                references = all_references[str(channel_id)] = set[str]()
+                all_references[str(channel_id)] = references = set()
 
             if guild_id is not None:
                 references.add(redis_iterators.HashReferenceIterator.hash_key(guild_id))
@@ -2033,7 +2047,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
     @_as_tanjun_loader
     def __add_to_tanjun(
-        self, client: tanjun.InjectorClient, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
+        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
     ) -> None:
         from tanjun.dependencies import async_cache
 
@@ -2047,7 +2061,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         )
         client.set_type_dependency(async_cache.SfGuildBound[hikari.VoiceState], adapter)
 
-    @utility.as_raw_listener("GUILD_CREATE")  # voice states aren't included in GUILD_UPDATE
+    @_internal.as_raw_listener("GUILD_CREATE")  # voice states aren't included in GUILD_UPDATE
     async def __on_guild_create(self, event: hikari.ShardPayloadEvent, /) -> None:
         client = self.get_connection(ResourceIndex.VOICE_STATE)
         guild_id = int(event.payload["id"])
@@ -2074,11 +2088,11 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         )
         await asyncio.gather(setter, *reference_setters)
 
-    @utility.as_listener(hikari.GuildLeaveEvent)  # TODO: should this also clear when it goes unavailable?
+    @_internal.as_listener(hikari.GuildLeaveEvent)  # TODO: should this also clear when it goes unavailable?
     async def __on_guild_leave_event(self, event: hikari.GuildLeaveEvent, /) -> None:
         await self.clear_voice_states_for_guild(event.guild_id)
 
-    @utility.as_raw_listener("VOICE_STATE_UPDATE")
+    @_internal.as_raw_listener("VOICE_STATE_UPDATE")
     async def __on_voice_state_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         guild_id = int(event.payload["guild_id"])
         if event.payload.get("channel_id") is None:

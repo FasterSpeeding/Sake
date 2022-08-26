@@ -34,8 +34,8 @@
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = [
-    "Iterator",
     "HashReferenceIterator",
+    "Iterator",
     "MultiMapIterator",
     "SpecificMapIterator",
 ]

@@ -4,8 +4,6 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "hikari-sake"
-version = "1.0.2a1"
-description = "Asynchronous cache framework (with standard Redis impl) for Hikari."
 readme = "README.md"
 requires-python = ">=3.8.0,<3.12"
 license = {file = "LICENSE"}
@@ -27,10 +25,8 @@ classifiers = [
         "Topic :: Utilities",
         "Typing :: Typed",
 ]
-dependencies = [
-    "aioredis~=2.0",
-    "hikari~=2.0.0.dev104",
-]
+dependencies = ["aioredis~=2.0", "hikari~=2.0.0.dev104"]
+dynamic = ["description", "version"]
 
 [project.optional-dependencies]
 tanjun = ["hikari-tanjun>=2.4.1a1, <3.0.0"]

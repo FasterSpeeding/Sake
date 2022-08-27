@@ -53,9 +53,18 @@ _ValueT = typing.TypeVar("_ValueT")
 
 
 class CacheIteratorAdapter(async_cache.CacheIterator[_ValueT]):
+    """Tanjun adapter for a cache iterator."""
+
     __slots__ = ("_iterator",)
 
     def __init__(self, iterator: abc.CacheIterator[_ValueT], /) -> None:
+        """Initialise a cache iterator adapter.
+
+        Parameters
+        ----------
+        iterator
+            The iterator to adapt.
+        """
         self._iterator = iterator
 
     def __anext__(self) -> typing.Coroutine[typing.Any, typing.Any, _ValueT]:
@@ -66,9 +75,22 @@ class CacheIteratorAdapter(async_cache.CacheIterator[_ValueT]):
 
 
 class SingleStoreAdapter(async_cache.SingleStoreCache[_ValueT]):
+    """Tanjun adapter for a single store cache."""
+
     __slots__ = ("_get", "_trust_get")
 
-    def __init__(self, get: typing.Callable[[], typing.Awaitable[_ValueT]], trust_get: bool):
+    def __init__(self, get: typing.Callable[[], typing.Awaitable[_ValueT]], trust_get: bool) -> None:
+        """Initialise a single store adapter.
+
+        Parameters
+        ----------
+        get
+            Async method used to get this cache's resource.
+        trust_get
+            Whether this should raise [tanjun.async_cache.EntryNotFound][] if
+            the entry isn't found to indicate that it doesn't exist, rather
+            than just [tanjun.async_cache.CacheMissError][]
+        """
         self._get = get
         self._trust_get = trust_get
 
@@ -87,6 +109,8 @@ class SingleStoreAdapter(async_cache.SingleStoreCache[_ValueT]):
 
 
 class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
+    """Tanjun adapter for a global key-value async cache store."""
+
     __slots__ = ("_get", "_iterate_all", "_trust_get")
 
     def __init__(
@@ -95,6 +119,19 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
         iterate_all: typing.Callable[[], abc.CacheIterator[_ValueT]],
         trust_get: bool,
     ) -> None:
+        """Initialise an async cache adapter.
+
+        Parameters
+        ----------
+        get
+            Callback used to get an entry in this cache store.
+        iterate_all
+            Callback used to iterate over all the entries in this cache store.
+        trust_get
+            Whether this should raise [tanjun.async_cache.EntryNotFound][] if
+            the entry isn't found to indicate that it doesn't exist, rather
+            than just [tanjun.async_cache.CacheMissError][]
+        """
         self._get = get
         self._iterate_all = iterate_all
         self._trust_get = trust_get
@@ -121,6 +158,8 @@ def _not_implemented(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn
 
 
 class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.GuildBoundCache[_KeyT, _ValueT]):
+    """Tanjun adapter for a guild-bound key-value async cache store."""
+
     __slots__ = ("_get_from_guild", "_iterate_for_guild")
 
     def __init__(
@@ -130,6 +169,23 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.Guil
         iterate_for_guild: typing.Callable[[hikari.Snowflakeish], abc.CacheIterator[_ValueT]],
         trust_get: bool,
     ) -> None:
+        """Initialise a guild-bound cache adapter.
+
+        Parameters
+        ----------
+        get_from_guild
+            Callback used to get an entry from this cache store.
+        iterate_all
+            Callback used to iterate over all the entries in this cache store
+            (globally).
+        iterate_for_guild
+            Callback used to iterate over the entries in this cache store for a
+            specific guild.
+        trust_get
+            Whether this should raise [tanjun.async_cache.EntryNotFound][] if
+            the entry isn't found to indicate that it doesn't exist, rather
+            than just [tanjun.async_cache.CacheMissError][]
+        """
         super().__init__(get=_not_implemented, iterate_all=iterate_all, trust_get=trust_get)
         self._get_from_guild = get_from_guild
         self._iterate_for_guild = iterate_for_guild
@@ -154,6 +210,8 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.Guil
 
 
 class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.GuildBoundCache[_KeyT, _ValueT]):
+    """Tanjun adapter for a global key-value cache store with guild tracking."""
+
     __slots__ = ("_iterate_for_guild", "_verify_guild")
 
     def __init__(
@@ -164,6 +222,24 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.
         verify_guild: typing.Callable[[hikari.Snowflakeish, _ValueT], bool],
         trust_get: bool,
     ) -> None:
+        """Initialise a guild and global cache adapter.
+
+        get
+            Async method used to get this cache's resource.
+        iterate_all
+            Callback used to iterate over all the entries in this cache store
+            (globally).
+        iterate_for_guild
+            Callback used to iterate over the entries in this cache store for a
+            specific guild.
+        verify_guild
+            Callback used to verify that an entry is in the target guild when
+            getting the entry from a specific guild.
+        trust_get
+            Whether this should raise [tanjun.async_cache.EntryNotFound][] if
+            the entry isn't found to indicate that it doesn't exist, rather
+            than just [tanjun.async_cache.CacheMissError][]
+        """
         super().__init__(get, iterate_all, trust_get)
         self._iterate_for_guild = iterate_for_guild
         self._verify_guild = verify_guild

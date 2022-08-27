@@ -84,27 +84,60 @@ def convert_expire_time(expire: ExpireT, /) -> typing.Optional[int]:
 
 @typing.runtime_checkable
 class ListenerProto(typing.Protocol[_EventT_inv]):
+    """Protocol of an event listener method."""
+
     async def __call__(self, event: _EventT_inv, /) -> None:
+        """Execute the event listener.
+
+        Parameters
+        ----------
+        event
+            The event object.
+        """
         raise NotImplementedError
 
     @property
     def __sake_event_type__(self) -> typing.Type[_EventT_inv]:
+        """The event type this listener is listening for."""
         raise NotImplementedError
 
 
 @typing.runtime_checkable
 class RawListenerProto(typing.Protocol):
+    """Protocol of a raw event listener method."""
+
     async def __call__(self, event: hikari.ShardPayloadEvent, /) -> None:
+        """Execute the raw listener.
+
+        Parameters
+        ----------
+        event
+            The raw event object.
+        """
         raise NotImplementedError
 
     @property
     def __sake_event_names__(self) -> typing.Sequence[str]:
+        """Sequence of the raw event names this is listening for."""
         raise NotImplementedError
 
 
 def as_listener(
     event_type: typing.Type[_EventT], /
 ) -> typing.Callable[[_CallbackT[_T, _EventT]], _CallbackT[_T, _EventT]]:
+    """Mark a method as an event listener on a client implementation.
+
+    Parameters
+    ----------
+    event_type
+        Type of the event this is listening for.
+
+    Returns
+    -------
+    typing.Callable[[_CallbackT[_T, _EventT]],  _Callback[_T, _EventT]]
+        Decorator callback which marks the method as an event listener.
+    """
+
     def decorator(listener: _CallbackT[_T, _EventT], /) -> _CallbackT[_T, _EventT]:
         listener.__sake_event_type__ = event_type  # type: ignore
         assert isinstance(listener, ListenerProto), "Incorrect attributes set for listener"
@@ -116,6 +149,20 @@ def as_listener(
 def as_raw_listener(
     event_name: str, /, *event_names: str
 ) -> typing.Callable[[_CallbackT[_T, hikari.ShardPayloadEvent]], _CallbackT[_T, hikari.ShardPayloadEvent]]:
+    """Mark a method as a raw event listener on a client implementation.
+
+    Parameters
+    ----------
+    event_name
+        Name of the raw event this is listening for.
+    event_names
+        Name of other raw events this is listening for.
+
+    Returns
+    -------
+    typing.Callable[[_CallbackT[_T,hikari.ShardPayloadEvent]], _CallbackT[_T,hikari.ShardPayloadEvent]]
+        Decorator callback which marks the method as a raw event listener.
+    """
     event_names = (event_name.upper(), *(name.upper() for name in event_names))
 
     def decorator(listener: _CallbackT[_T, hikari.ShardPayloadEvent], /) -> _CallbackT[_T, hikari.ShardPayloadEvent]:
@@ -132,6 +179,21 @@ def find_listeners(
     typing.Dict[typing.Type[hikari.Event], typing.List[ListenerProto[hikari.Event]]],
     typing.Dict[str, typing.List[RawListenerProto]],
 ]:
+    """Find all the event and raw-event listener methods on an object.
+
+    Parameters
+    ----------
+    obj
+        The object to find the listeners on.
+
+    Returns
+    -------
+    tuple[dict[type[hikari.Event], list[ListenerProto]], dict[str, list[RawListenerProto]]]
+        A tuple of two elements:
+
+        0. A dictionary of hikari event types to the found event listener methods.
+        1. A dictionary of event names to the found raw event listener methods.
+    """
     listeners: typing.Dict[typing.Type[hikari.Event], typing.List[ListenerProto[hikari.Event]]] = {}
     raw_listeners: typing.Dict[str, typing.List[RawListenerProto]] = {}
     for _, member in inspect.getmembers(obj):

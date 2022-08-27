@@ -155,6 +155,8 @@ async def _iter_reference_values(
 
 
 class Iterator(abc.CacheIterator[_ValueT]):
+    """Redis DB iterator."""
+
     __slots__: typing.Sequence[str] = (
         "_buffer",
         "_builder",
@@ -175,6 +177,21 @@ class Iterator(abc.CacheIterator[_ValueT]):
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
+        """Initialise an iterator.
+
+        Parameters
+        ----------
+        client
+            The redis client this should use to get data.
+        index
+            Index of the Redis DB this targets.
+        builder
+            Callback used for building the values from dicts.
+        load
+            Callback used to parse the stored bytes into dicts.
+        window_size
+            How many entries should request at once.
+        """
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
@@ -214,6 +231,8 @@ class Iterator(abc.CacheIterator[_ValueT]):
 
 
 class ReferenceIterator(abc.CacheIterator[_ValueT]):
+    """Cache iterator of the values referenced by a set."""
+
     __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_load", "_windows", "_window_size")
 
     def __init__(
@@ -226,6 +245,23 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
+        """Initialise a reference iterator.
+
+        Parameters
+        ----------
+        client
+            The redis client this should use to get data.
+        key
+            Key of the reference set entry.
+        index
+            Index of the Redis DB this targets.
+        builder
+            Callback used for building the values from dicts.
+        load
+            Callback used to parse the stored bytes into dicts.
+        window_size
+            How many entries should request at once.
+        """
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
@@ -266,6 +302,8 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
 
 
 class HashReferenceIterator(abc.CacheIterator[_ValueT]):
+    """Cache iterator of the hash map values referenced by a set."""
+
     __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_load", "_windows", "_window_size")
 
     def __init__(
@@ -278,6 +316,23 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
+        """Initialise a hash reference iterator.
+
+        Parameters
+        ----------
+        client
+            The redis client this should use to get data.
+        key
+            Key of the reference set entry.
+        index
+            Index of the Redis DB this targets.
+        builder
+            Callback used for building the values from dicts.
+        load
+            Callback used to parse the stored bytes into dicts.
+        window_size
+            How many entries should request at once.
+        """
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
@@ -344,6 +399,8 @@ async def _empty_async_iterator() -> typing.AsyncIterator[typing.Any]:
 
 
 class MultiMapIterator(abc.CacheIterator[_ValueT]):
+    """Cache iterator of the nested values of hash map entries."""
+
     __slots__: typing.Sequence[str] = (
         "_buffer",
         "_builder",
@@ -365,6 +422,21 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
+        """Initialise a map iterator.
+
+        Parameters
+        ----------
+        client
+            The redis client this should use to get data.
+        index
+            Index of the Redis DB this targets.
+        builder
+            Callback used for building the values from dicts.
+        load
+            Callback used to parse the stored bytes into dicts.
+        window_size
+            How many entries should request at once.
+        """
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
@@ -415,6 +487,8 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
 
 
 class SpecificMapIterator(abc.CacheIterator[_ValueT]):
+    """Cache iterator of a specific hash map's values."""
+
     __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_load", "_windows", "_window_size")
 
     def __init__(
@@ -427,6 +501,23 @@ class SpecificMapIterator(abc.CacheIterator[_ValueT]):
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
+        """Initialise a specific map iterator.
+
+        Parameters
+        ----------
+        client
+            The redis client this should use to get data.
+        key
+            Key of hash map entry this should iterate over the values of.
+        index
+            Index of the Redis DB this targets.
+        builder
+            Callback used for building the values from dicts.
+        load
+            Callback used to parse the stored bytes into dicts.
+        window_size
+            How many entries should request at once.
+        """
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 

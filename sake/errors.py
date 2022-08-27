@@ -76,7 +76,7 @@ class SakeException(Exception):
 
 
 class BackendError(SakeException, ValueError):
-    """Error that's raised when communicating with the backend fails
+    """Error that's raised when communicating with the backend fails.
 
     This may be a sign of underlying network or database issues.
     """

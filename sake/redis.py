@@ -147,40 +147,6 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     !!! note
         This cannot be initialised by itself and is useless alone.
-
-    Parameters
-    ----------
-    app
-        The Hikari client all the models returned by this client should be
-        bound to.
-    address
-        The address to use to connect to the Redis backend server this
-        resource is linked to.
-
-        E.g:
-        - `"redis://[[username]:[password]]@localhost:6379"`
-        - `"rediss://[[username]:[password]]@localhost:6379"`
-        - `"unix://[[username]:[password]]@/path/to/socket.sock"`
-
-        Three URL schemes are supported:
-        - `redis://`: creates a TCP socket connection. See more at:
-          <https://www.iana.org/assignments/uri-schemes/prov/redis>
-        - `rediss://`: creates a SSL wrapped TCP socket connection. See more at:
-          <https://www.iana.org/assignments/uri-schemes/prov/rediss>
-        - `unix://`: creates a Unix Domain Socket connection.
-
-    Other Parameters
-    ----------------
-    event_manager
-        The event manager to bind this resource client to.
-
-        If provided then this client will automatically manage resources
-        based on received gateway events.
-    event_managed
-        Whether the client should be started and stopped based on the attached
-        event_manager's lifetime events.
-    password
-        The password to use to connect to the backend Redis server.
     """
 
     __slots__: typing.Sequence[str] = (
@@ -214,6 +180,44 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         dumps: typing.Callable[[_ObjectT], bytes] = lambda obj: json.dumps(obj).encode(),
         loads: typing.Callable[[bytes], _ObjectT] = json.loads,
     ) -> None:
+        """Initialise a resource client.
+
+        Parameters
+        ----------
+        app
+            The Hikari client all the models returned by this client should be
+            bound to.
+        address
+            The address to use to connect to the Redis backend server this
+            resource is linked to.
+
+            E.g:
+            - `"redis://[[username]:[password]]@localhost:6379"`
+            - `"rediss://[[username]:[password]]@localhost:6379"`
+            - `"unix://[[username]:[password]]@/path/to/socket.sock"`
+
+            Three URL schemes are supported:
+            - `redis://`: creates a TCP socket connection. See more at:
+            <https://www.iana.org/assignments/uri-schemes/prov/redis>
+            - `rediss://`: creates a SSL wrapped TCP socket connection. See more at:
+            <https://www.iana.org/assignments/uri-schemes/prov/rediss>
+            - `unix://`: creates a Unix Domain Socket connection.
+        event_manager
+            The event manager to bind this resource client to.
+
+            If provided then this client will automatically manage resources
+            based on received gateway events.
+        event_managed
+            Whether the client should be started and stopped based on the attached
+            event_manager's lifetime events.
+        password
+            The password to use to connect to the backend Redis server.
+
+        Raises
+        ------
+        ValueError
+            When `event_managed` is [True][] and `event_manager` wasn't passed.
+        """
         self.__address = address
         self.__app = app
         self.__clients: typing.Dict[int, aioredis.Redis] = {}
@@ -237,7 +241,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
                 self.__check_intents(event_manager.intents)
 
         elif event_managed:
-            raise ValueError("Client cannot be event_managed when not attached to an event manager.")
+            raise ValueError("Client cannot be event_managed when not attached to an event manager")
 
     async def __on_starting_event(self, _: hikari.StartingEvent, /) -> None:
         await self.open()
@@ -312,7 +316,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Returns
         -------
-        ResourceIndex
+        typing.Sequence[ResourceIndex]
             The index of the resource this class is linked to.
         """
         return ()
@@ -346,7 +350,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Returns
         -------
-        typing.MutableSet[ResourceIndex | int]]
+        typing.MutableSet[ResourceIndex | int]
             A set of all the Redis client indexes this is using.
         """
         results: typing.Set[int] = set()
@@ -581,9 +585,6 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         ----------
         index
             The index to override.
-
-        Other Parameters
-        ----------------
         override
             The override to set.
 

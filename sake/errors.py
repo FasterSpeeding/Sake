@@ -50,15 +50,7 @@ import typing
 
 
 class SakeException(Exception):
-    """Base exception for the expected exceptions raised by Sake implementations.
-
-    Parameters
-    ----------
-    message
-        The exception's message.
-    exception
-        The exception which caused this exception if applicable else [None][].
-    """
+    """Base exception for the expected exceptions raised by Sake implementations."""
 
     message: str
     """The exception's message, this may be an empty string if there is no message."""
@@ -67,6 +59,15 @@ class SakeException(Exception):
     """The exception which caused this exception if applicable else [None][]."""
 
     def __init__(self, message: str, *, exception: typing.Optional[Exception] = None) -> None:
+        """Initialise a sake exception instance.
+
+        Parameters
+        ----------
+        message
+            The exception's message.
+        exception
+            The exception which caused this exception if applicable else [None][].
+        """
         self.message: str = message
         self.base_exception: typing.Optional[Exception] = exception
 

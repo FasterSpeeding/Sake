@@ -58,5 +58,8 @@ plugins:
             - https://docs.python.org/3.9/objects.inv
             - https://hikari-py.github.io/hikari/objects.inv
             - https://tanjun.cursed.solutions/objects.inv
-      watch:
-        - sake
+
+watch:
+  - CHANGELOG.md
+  - README.md
+  - sake

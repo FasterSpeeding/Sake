@@ -48,8 +48,6 @@ __all__: typing.Sequence[str] = [
     "InvalidDataFound",
     "RedisCache",
     "SakeException",
-    "__author__",
-    "__version__",
     "abc",
     "errors",
     "redis",
@@ -61,6 +59,3 @@ from . import abc
 from . import redis
 from .errors import *
 from .redis import RedisCache
-
-__author__: typing.Final[str] = "Faster Speeding"
-__version__: typing.Final[str] = "1.0.3a1.post1"

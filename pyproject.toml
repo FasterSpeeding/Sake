@@ -34,10 +34,10 @@ dynamic = ["description"]
 tanjun = ["hikari-tanjun>=2.4.1a1, <3.0.0"]
 
 [project.urls]
-homepage = "https://github.com/FasterSpeeding/Sake"
-repository = "https://github.com/FasterSpeeding/Sake"
-documentation = "https://fasterspeeding.github.io/Sake/"
-changelog = "https://github.com/FasterSpeeding/Sake/blob/master/CHANGELOG.md"
+Homepage = "https://github.com/FasterSpeeding/Sake"
+Repository = "https://github.com/FasterSpeeding/Sake"
+Documentation = "https://fasterspeeding.github.io/Sake/"
+Changelog = "https://github.com/FasterSpeeding/Sake/blob/master/CHANGELOG.md"
 
 [tool.flit.module]
 name = "sake"

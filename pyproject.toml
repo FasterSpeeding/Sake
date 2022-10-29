@@ -85,7 +85,7 @@ ignore = [
     "D404",   # Conflits with property doc-strings too much.
     "D412",   # No blank lines allowed between a section header and its content
     "E402",   # Module level import not at top of file (isn't compatible with our import style).
-    "IFS001",  # "use a oneliner here".
+    "IFS001", # "use a oneliner here".
     "T101",   # TO-DO comment detection (T102 is FIX-ME and T103 is XXX).
     "W503",   # line break before binary operator.
     "W504",   # line break before binary operator (again, I guess).

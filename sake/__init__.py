@@ -48,7 +48,6 @@ __all__: typing.Sequence[str] = [
     "InvalidDataFound",
     "RedisCache",
     "SakeException",
-    "__author__",
     "abc",
     "errors",
     "redis",
@@ -60,14 +59,3 @@ from . import abc
 from . import redis
 from .errors import *
 from .redis import RedisCache
-
-__author__: typing.Final[str] = "Faster Speeding"
-__ci__: typing.Final[str] = "https://github.com/FasterSpeeding/sake/actions"
-__copyright__: typing.Final[str] = "© 2020-2022 Faster Speeding"
-__coverage__: typing.Final[str] = "https://codeclimate.com/github/FasterSpeeding/Sake/"
-__docs__: typing.Final[str] = "https://fasterspeeding.github.io/Sake/"
-__email__: typing.Final[str] = "lucina@lmbyrne.dev"
-__issue_tracker__: typing.Final[str] = "https://github.com/FasterSpeeding/Sake/issues"
-__license__: typing.Final[str] = "BSD"
-__url__: typing.Final[str] = "https://github.com/FasterSpeeding/Sake"
-__version__: typing.Final[str] = "1.0.3a1.post1"

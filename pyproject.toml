@@ -4,6 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "hikari-sake"
+version = "1.0.3a1.post1"
 readme = "README.md"
 requires-python = ">=3.8.0,<3.12"
 license = {file = "LICENSE"}
@@ -27,7 +28,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = ["aioredis~=2.0", "hikari~=2.0.0.dev108"]
-dynamic = ["description", "version"]
+dynamic = ["description"]
 
 [project.optional-dependencies]
 tanjun = ["hikari-tanjun>=2.4.1a1, <3.0.0"]

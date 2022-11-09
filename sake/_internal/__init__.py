@@ -222,19 +222,17 @@ def find_listeners(
 class OwnIDStore:
     """Helper class for tracking the current users' ID."""
 
-    __slots__: typing.Sequence[str] = ("_event", "_is_waiting", "_lock", "_app", "value")
+    __slots__: typing.Sequence[str] = ("_app", "_lock", "value")
 
     KEY: typing.Final[str] = "OWN_ID"
 
     def __init__(self, app: hikari.RESTAware, /) -> None:
-        self._lock: typing.Optional[asyncio.Lock] = None
-        self._is_waiting = False
         self._app = app
+        self._lock: typing.Optional[asyncio.Lock] = None
         self.value: typing.Optional[hikari.Snowflake] = None
 
     async def await_value(self) -> hikari.Snowflake:
-        if self._is_waiting:
-            assert self._lock
+        if self._lock:
             async with self._lock:
                 assert self.value is not None
                 return self.value
@@ -243,6 +241,7 @@ class OwnIDStore:
         async with self._lock:
             user = await self._app.rest.fetch_my_user()
             self.value = user.id
+            self._lock = None
             return self.value
 
     @classmethod

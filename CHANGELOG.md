@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - The project metadata dunder attributes from [sake][].
   [importlib.metadata][] should be used to get this metadata instead.
+- `sake.redis_iterators` is now internal/hidden.
+- `redis.ResourceClient.get_connection` is now internal/hidden.
 
 ## [1.0.3a1.post1] - 2022-08-30
 ### Changed

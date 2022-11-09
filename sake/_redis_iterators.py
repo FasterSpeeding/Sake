@@ -123,14 +123,14 @@ async def _iter_hash_values(
 
 
 async def _iter_reference_keys(
-    client: redis.ResourceClient,
+    get_connection: typing.Callable[[redis.ResourceIndex], aioredis.Redis],
     key: _RedisKeyT,
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.List[bytes]]:
     """Asynchronously iterate over slices of the keys in a REFERENCE set."""
-    reference_client = client.get_connection(redis.ResourceIndex.REFERENCE)
+    reference_client = get_connection(redis.ResourceIndex.REFERENCE)
     cursor = 0
 
     while True:
@@ -144,37 +144,26 @@ async def _iter_reference_keys(
 
 
 async def _iter_reference_values(
-    client: redis.ResourceClient,
-    index: redis.ResourceIndex,
+    client: aioredis.Redis,
+    get_connection: typing.Callable[[redis.ResourceIndex], aioredis.Redis],
     key: _RedisKeyT,
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
 ) -> typing.AsyncIterator[typing.Iterator[typing.Optional[bytes]]]:
     """Asynchronously iterate over slices of the values referenced by a REFERENCE set."""
-    connection = client.get_connection(index)
-    async for window in _iter_reference_keys(client, key, window_size=window_size, match=match):
-        yield await connection.mget(*window)
+    async for window in _iter_reference_keys(get_connection, key, window_size=window_size, match=match):
+        yield await client.mget(*window)
 
 
 class Iterator(abc.CacheIterator[_ValueT]):
     """Redis DB iterator."""
 
-    __slots__: typing.Sequence[str] = (
-        "_buffer",
-        "_builder",
-        "_client",
-        "_index",
-        "_len",
-        "_load",
-        "_windows",
-        "_window_size",
-    )
+    __slots__: typing.Sequence[str] = ("_buffer", "_builder", "_client", "_len", "_load", "_windows", "_window_size")
 
     def __init__(
         self,
-        client: redis.ResourceClient,
-        index: redis.ResourceIndex,
+        client: aioredis.Redis,
         builder: typing.Callable[[_ObjectT], _ValueT],
         load: typing.Callable[[bytes], _ObjectT],
         *,
@@ -185,9 +174,7 @@ class Iterator(abc.CacheIterator[_ValueT]):
         Parameters
         ----------
         client
-            The redis client this should use to get data.
-        index
-            Index of the Redis DB this targets.
+            The aioredis client this should use to get data.
         builder
             Callback used for building the values from dicts.
         load
@@ -201,7 +188,6 @@ class Iterator(abc.CacheIterator[_ValueT]):
         self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
-        self._index = index
         self._len: typing.Optional[int] = None
         self._load = load
         self._windows: typing.Optional[typing.AsyncIterator[typing.Iterator[typing.Optional[bytes]]]] = None
@@ -212,7 +198,7 @@ class Iterator(abc.CacheIterator[_ValueT]):
 
     async def __anext__(self) -> _ValueT:
         if self._windows is None:
-            self._windows = _iter_values(self._client.get_connection(self._index), window_size=self._window_size)
+            self._windows = _iter_values(self._client, window_size=self._window_size)
 
         # A window might be empty due to none of the requested keys being found, hence the while not self._buffer
         while not self._buffer:
@@ -228,7 +214,7 @@ class Iterator(abc.CacheIterator[_ValueT]):
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
-            self._len = await self._client.get_connection(self._index).dbsize()
+            self._len = await self._client.dbsize()
 
         return self._len
 
@@ -240,8 +226,7 @@ class GuildIterator(Iterator[_ValueT], typing.Generic[_ObjectT, _ValueT]):
 
     def __init__(
         self,
-        client: redis.ResourceClient,
-        index: redis.ResourceIndex,
+        client: aioredis.Redis,
         builder: typing.Callable[[_ObjectT, hikari.Snowflake], _ValueT],
         load: typing.Callable[[bytes], _ObjectT],
         *,
@@ -251,7 +236,7 @@ class GuildIterator(Iterator[_ValueT], typing.Generic[_ObjectT, _ValueT]):
         self._actual_builder = builder
         self._guild_id = own_id_store.value
         self._own_id_store = own_id_store
-        super().__init__(client=client, index=index, builder=self._build, load=load, window_size=window_size)
+        super().__init__(client=client, builder=self._build, load=load, window_size=window_size)
 
     def _build(self, data: _ObjectT, /) -> _ValueT:
         assert self._guild_id is not None
@@ -267,13 +252,23 @@ class GuildIterator(Iterator[_ValueT], typing.Generic[_ObjectT, _ValueT]):
 class ReferenceIterator(abc.CacheIterator[_ValueT]):
     """Cache iterator of the values referenced by a set."""
 
-    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_load", "_windows", "_window_size")
+    __slots__ = (
+        "_buffer",
+        "_client",
+        "_builder",
+        "_get_connection",
+        "_key",
+        "_len",
+        "_load",
+        "_windows",
+        "_window_size",
+    )
 
     def __init__(
         self,
-        client: redis.ResourceClient,
+        client: aioredis.Redis,
+        get_connection: typing.Callable[[redis.ResourceIndex], aioredis.Redis],
         key: _RedisKeyT,
-        index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
         load: typing.Callable[[bytes], _ObjectT],
         *,
@@ -285,10 +280,10 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
         ----------
         client
             The redis client this should use to get data.
+        get_connection
+            Callback used to get the underlying aioredis connection of the referenced data.
         key
             Key of the reference set entry.
-        index
-            Index of the Redis DB this targets.
         builder
             Callback used for building the values from dicts.
         load
@@ -302,7 +297,7 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
         self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
-        self._index = index
+        self._get_connection = get_connection
         self._key = key
         self._len: typing.Optional[int] = None
         self._load = load
@@ -314,7 +309,9 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
 
     async def __anext__(self) -> _ValueT:
         if not self._windows:
-            self._windows = _iter_reference_values(self._client, self._index, self._key, window_size=self._window_size)
+            self._windows = _iter_reference_values(
+                self._client, self._get_connection, self._key, window_size=self._window_size
+            )
 
         # Skip None/empty values as this indicates that the entry cannot be accessed anymore.
         while not self._buffer:
@@ -330,7 +327,7 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
-            self._len = await self._client.get_connection(redis.ResourceIndex.REFERENCE).scard(self._key)
+            self._len = await self._get_connection(redis.ResourceIndex.REFERENCE).scard(self._key)
 
         return self._len
 
@@ -338,13 +335,23 @@ class ReferenceIterator(abc.CacheIterator[_ValueT]):
 class HashReferenceIterator(abc.CacheIterator[_ValueT]):
     """Cache iterator of the hash map values referenced by a set."""
 
-    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_load", "_windows", "_window_size")
+    __slots__ = (
+        "_buffer",
+        "_builder",
+        "_client",
+        "_get_connection",
+        "_key",
+        "_len",
+        "_load",
+        "_windows",
+        "_window_size",
+    )
 
     def __init__(
         self,
-        client: redis.ResourceClient,
+        client: aioredis.Redis,
+        get_connection: typing.Callable[[redis.ResourceIndex], aioredis.Redis],
         key: _RedisKeyT,
-        index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
         load: typing.Callable[[bytes], _ObjectT],
         *,
@@ -356,10 +363,10 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
         ----------
         client
             The redis client this should use to get data.
+        get_connection
+            Callback used to get the underlying aioredis connection of the referenced data.
         key
             Key of the reference set entry.
-        index
-            Index of the Redis DB this targets.
         builder
             Callback used for building the values from dicts.
         load
@@ -373,7 +380,7 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
         self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
-        self._index = index
+        self._get_connection = get_connection
         self._key = key
         self._len: typing.Optional[int] = None
         self._load = load
@@ -389,7 +396,7 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
 
     async def __anext__(self) -> _ValueT:
         if self._windows is None:
-            reference_client = self._client.get_connection(redis.ResourceIndex.REFERENCE)
+            reference_client = self._get_connection(redis.ResourceIndex.REFERENCE)
             # Should always be bytes in this context.
             keys = await reference_client.smembers(self._key)
 
@@ -401,9 +408,9 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
             else:
                 raise LookupError("Couldn't find reference key")
 
-            client = self._client.get_connection(self._index)
             windows = (
-                await client.hmget(hash_key, *window) for window in _chunk_values(keys, window_size=self._window_size)
+                await self._client.hmget(hash_key, *window)
+                for window in _chunk_values(keys, window_size=self._window_size)
             )
             self._windows = windows
 
@@ -421,7 +428,7 @@ class HashReferenceIterator(abc.CacheIterator[_ValueT]):
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
-            client = self._client.get_connection(redis.ResourceIndex.REFERENCE)
+            client = self._get_connection(redis.ResourceIndex.REFERENCE)
             self._len = (await client.scard(self._key)) - 1
 
         return self._len
@@ -439,7 +446,6 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
         "_buffer",
         "_builder",
         "_client",
-        "_index",
         "_len",
         "_load",
         "_top_level_keys",
@@ -449,8 +455,7 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
 
     def __init__(
         self,
-        client: redis.ResourceClient,
-        index: redis.ResourceIndex,
+        client: aioredis.Redis,
         builder: typing.Callable[[_ObjectT], _ValueT],
         load: typing.Callable[[bytes], _ObjectT],
         *,
@@ -461,9 +466,7 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
         Parameters
         ----------
         client
-            The redis client this should use to get data.
-        index
-            Index of the Redis DB this targets.
+            The aioredis client this should use to get data.
         builder
             Callback used for building the values from dicts.
         load
@@ -477,7 +480,6 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
         self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
-        self._index = index
         self._len: typing.Optional[int] = None
         self._load = load
         self._top_level_keys: typing.Optional[typing.AsyncIterator[bytes]] = None
@@ -488,10 +490,8 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
         return self
 
     async def __anext__(self) -> _ValueT:
-        client = self._client.get_connection(self._index)
-
         if not self._top_level_keys:
-            self._top_level_keys = client.scan_iter()
+            self._top_level_keys = self._client.scan_iter()
 
         while not self._buffer:
             async for window in self._windows:
@@ -501,7 +501,7 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
             else:
                 async for key in self._top_level_keys:
                     assert isinstance(key, bytes)
-                    self._windows = _iter_hash_values(client, key, window_size=self._window_size)
+                    self._windows = _iter_hash_values(self._client, key, window_size=self._window_size)
                     break
 
                 else:
@@ -512,9 +512,8 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
-            client = self._client.get_connection(self._index)
-            keys = await client.keys()
-            self._len = sum([await client.hlen(key) for key in keys])
+            keys = await self._client.keys()
+            self._len = sum([await self._client.hlen(key) for key in keys])
             assert self._len is not None
 
         return self._len
@@ -523,13 +522,12 @@ class MultiMapIterator(abc.CacheIterator[_ValueT]):
 class SpecificMapIterator(abc.CacheIterator[_ValueT]):
     """Cache iterator of a specific hash map's values."""
 
-    __slots__ = ("_buffer", "_builder", "_client", "_index", "_key", "_len", "_load", "_windows", "_window_size")
+    __slots__ = ("_buffer", "_builder", "_client", "_key", "_len", "_load", "_windows", "_window_size")
 
     def __init__(
         self,
-        client: redis.ResourceClient,
+        client: aioredis.Redis,
         key: _RedisKeyT,
-        index: redis.ResourceIndex,
         builder: typing.Callable[[_ObjectT], _ValueT],
         load: typing.Callable[[bytes], _ObjectT],
         *,
@@ -558,7 +556,6 @@ class SpecificMapIterator(abc.CacheIterator[_ValueT]):
         self._buffer: typing.List[bytes] = []
         self._builder = builder
         self._client = client
-        self._index = index
         self._key = key
         self._len: typing.Optional[int] = None
         self._load = load
@@ -570,8 +567,7 @@ class SpecificMapIterator(abc.CacheIterator[_ValueT]):
 
     async def __anext__(self) -> _ValueT:
         if not self._windows:
-            client = self._client.get_connection(self._index)
-            self._windows = _iter_hash_values(client, self._key, window_size=self._window_size)
+            self._windows = _iter_hash_values(self._client, self._key, window_size=self._window_size)
 
         while not self._buffer:
             async for window in self._windows:
@@ -587,6 +583,6 @@ class SpecificMapIterator(abc.CacheIterator[_ValueT]):
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
         if self._len is None:
-            self._len = int(await self._client.get_connection(self._index).hlen(self._key))
+            self._len = int(await self._client.hlen(self._key))
 
         return self._len

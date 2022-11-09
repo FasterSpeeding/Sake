@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   been received.
 
 ### Fixed
-- Async locking when fetching the bot's ID internally and ensuring it only
+- Async locking when fetching the bot's ID internally and ensure it only
   fetches once.
 
 ### Removed

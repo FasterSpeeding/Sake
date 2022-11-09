@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Bumped the minimum hikari version to 2.0.0.dev112.
+- Avoid fetching the bot's user to get it's ID if a READY event has already
+  been received.
 
 ### Fixed
-- Async locking when fetching the bot's ID internally.
+- Async locking when fetching the bot's ID internally and ensure it only
+  fetches once.
 
 ### Removed
 - The project metadata dunder attributes from [sake][].

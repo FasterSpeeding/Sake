@@ -670,6 +670,12 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             # TODO: return_exceptions and handle each exception explicitly
             await asyncio.gather(*(listener(event) for listener in listeners))
 
+    @_internal.as_raw_listener("READY")
+    async def __on_shard_ready(self, event: hikari.ShardPayloadEvent, /) -> None:
+        id_store = _internal.OwnIDStore.get_from_client(self)
+        if id_store.value is None:
+            id_store.set_value(hikari.Snowflake(event.payload["user"]["id"]))
+
     async def __spawn_connection(self, resource: int, /) -> None:
         # On startup this can try to open thousands of connections dependent on the scale of the bot
         # regardless of current-pipelining optimisations which isn't favourable so we have to

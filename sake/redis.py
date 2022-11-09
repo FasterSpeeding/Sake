@@ -63,7 +63,6 @@ import warnings
 
 import aioredis
 import hikari
-from hikari import traits
 from hikari.internal import time  # TODO: don't use this
 
 from . import _internal
@@ -169,7 +168,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     def __init__(
         self,
         address: str,
-        app: traits.RESTAware,
+        app: hikari.RESTAware,
         event_manager: typing.Optional[hikari.api.EventManager] = None,
         *,
         config: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
@@ -237,7 +236,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
                 event_manager.subscribe(hikari.StartingEvent, self.__on_starting_event)
                 event_manager.subscribe(hikari.StoppingEvent, self.__on_stopping_event)
 
-            if isinstance(event_manager, traits.ShardAware):
+            if isinstance(event_manager, hikari.ShardAware):
                 self.__check_intents(event_manager.intents)
 
         elif event_managed:
@@ -277,7 +276,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             return None
 
     @property
-    def app(self) -> traits.RESTAware:
+    def app(self) -> hikari.RESTAware:
         """The Hikari client this resource client is tied to.
 
         This is used to build models with a `app` attribute.
@@ -419,8 +418,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             - [sake.abc.GuildChannelCache][]
             - [sake.abc.RefGuildChannelCache][]
             - [sake.redis.GuildChannelCache][]
-            - `tanjun.dependencies.async_cache.SfCache[hikari.GuildChannel]`
-            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.GuildChannel]`
+            - `tanjun.dependencies.async_cache.SfCache[hikari.PermissibleGuildChannel]`
+            - `tanjun.dependencies.async_cache.SfGuildBound[hikari.PermissibleGuildChannel]`
         * [sake.redis.InviteCache][]
             - [sake.abc.InviteCache][]
             - [sake.redis.InviteCache][]
@@ -1156,16 +1155,20 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
         # <<Inherited docstring from sake.abc.GuildCache>>
         await self.get_connection(ResourceIndex.GUILD).delete(str(guild_id))
 
-    def __deserialize_guild(self, payload: _ObjectT, /) -> hikari.GatewayGuild:
+    def __deserialize_guild(self, payload: _ObjectT, /, user_id: hikari.Snowflake) -> hikari.GatewayGuild:
         # Hikari's deserialization logic expects these fields to be present.
         payload["roles"] = []
         payload["emojis"] = []
-        return self.app.entity_factory.deserialize_gateway_guild(payload).guild()
+        return self.app.entity_factory.deserialize_gateway_guild(payload, user_id=user_id).guild()
 
     async def get_guild(self, guild_id: hikari.Snowflakeish, /) -> hikari.GatewayGuild:
         # <<Inherited docstring from sake.abc.GuildCache>>
         if payload := await self.get_connection(ResourceIndex.GUILD).get(str(guild_id)):
-            return self.__deserialize_guild(self.load(payload))
+            own_id = _internal.OwnIDStore.get_from_client(self)
+            if (own_id_value := own_id.value) is None:
+                own_id_value = await own_id.await_value()
+
+            return self.__deserialize_guild(self.load(payload), user_id=own_id_value)
 
         raise errors.EntryNotFound("Guild not found")
 
@@ -1173,8 +1176,13 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
         self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
     ) -> sake_abc.CacheIterator[hikari.GatewayGuild]:
         # <<Inherited docstring from sake.abc.GuildCache>>
-        return redis_iterators.Iterator(
-            self, ResourceIndex.GUILD, self.__deserialize_guild, self.load, window_size=window_size
+        return redis_iterators.GuildIterator(
+            self,
+            ResourceIndex.GUILD,
+            self.__deserialize_guild,
+            self.load,
+            own_id_store=_internal.OwnIDStore.get_from_client(self),
+            window_size=window_size,
         )
 
     async def set_guild(self, payload: _ObjectT, /) -> None:
@@ -1222,8 +1230,8 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
             lambda guild_id, c: c.guild_id == guild_id,
             trust_get=bool(trust_get_for.union((GuildChannelCache, sake_abc.GuildChannelCache))),
         )
-        client.set_type_dependency(async_cache.SfCache[hikari.GuildChannel], adapter).set_type_dependency(
-            async_cache.SfGuildBound[hikari.GuildChannel], adapter
+        client.set_type_dependency(async_cache.SfCache[hikari.PermissibleGuildChannel], adapter).set_type_dependency(
+            async_cache.SfGuildBound[hikari.PermissibleGuildChannel], adapter
         )
 
     @_internal.as_raw_listener("CHANNEL_CREATE", "CHANNEL_UPDATE")
@@ -1293,21 +1301,21 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         await self._delete_ids(ResourceIndex.GUILD, str(guild_id), ResourceIndex.CHANNEL, str_channel_id)
         await client.delete(str_channel_id)
 
-    async def get_guild_channel(self, channel_id: hikari.Snowflakeish, /) -> hikari.GuildChannel:
+    async def get_guild_channel(self, channel_id: hikari.Snowflakeish, /) -> hikari.PermissibleGuildChannel:
         # <<Inherited docstring from sake.abc.GuildChannelCache>>
         if payload := await self.get_connection(ResourceIndex.CHANNEL).get(str(channel_id)):
             return self.__deserialize_guild_channel(self.load(payload))
 
         raise errors.EntryNotFound("Guild channel not found")
 
-    def __deserialize_guild_channel(self, payload: _ObjectT, /) -> hikari.GuildChannel:
+    def __deserialize_guild_channel(self, payload: _ObjectT, /) -> hikari.PermissibleGuildChannel:
         channel = self.app.entity_factory.deserialize_channel(payload)
-        assert isinstance(channel, hikari.GuildChannel)
+        assert isinstance(channel, hikari.PermissibleGuildChannel)
         return channel
 
     def iter_guild_channels(
         self, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
-    ) -> sake_abc.CacheIterator[hikari.GuildChannel]:
+    ) -> sake_abc.CacheIterator[hikari.PermissibleGuildChannel]:
         # <<Inherited docstring from sake.abc.GuildChannelCache>>
         return redis_iterators.Iterator(
             self, ResourceIndex.CHANNEL, self.__deserialize_guild_channel, self.load, window_size=window_size
@@ -1315,7 +1323,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 
     def iter_guild_channels_for_guild(
         self, guild_id: hikari.Snowflakeish, /, *, window_size: int = redis_iterators.DEFAULT_WINDOW_SIZE
-    ) -> sake_abc.CacheIterator[hikari.GuildChannel]:
+    ) -> sake_abc.CacheIterator[hikari.PermissibleGuildChannel]:
         # <<Inherited docstring from sake.abc.GuildChannelCache>>
         key = self._generate_reference_key(ResourceIndex.GUILD, str(guild_id), ResourceIndex.CHANNEL)
         return redis_iterators.ReferenceIterator(
@@ -1451,31 +1459,6 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
             await self._try_set_user(inviter)
 
 
-class _OwnIDStore:
-    __slots__: typing.Sequence[str] = ("_event", "_is_waiting", "_lock", "_app", "value")
-
-    KEY: typing.Final[str] = "OWN_ID"
-
-    def __init__(self, app: traits.RESTAware, /) -> None:
-        self._lock: typing.Optional[asyncio.Lock] = None
-        self._is_waiting = False
-        self._app = app
-        self.value: typing.Optional[hikari.Snowflake] = None
-
-    async def await_value(self) -> int:
-        if self._is_waiting:
-            assert self._lock
-            async with self._lock:
-                assert self.value is not None
-                return self.value
-
-        self._lock = asyncio.Lock()
-        async with self._lock:
-            user = await self._app.rest.fetch_my_user()
-            self.value = user.id
-            return self.value
-
-
 def _get_sub_user_id(payload: _ObjectT, /) -> str:
     return str(int(payload["user"]["id"]))
 
@@ -1518,7 +1501,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
         await self.__bulk_set_members(event.payload["members"], guild_id)
 
         if shard_aware := self.config.get("chunk_on_create"):
-            assert isinstance(shard_aware, traits.ShardAware)
+            assert isinstance(shard_aware, hikari.ShardAware)
             include_presences = bool(self.config.get("chunk_presences", False))
             await shard_aware.request_guild_members(guild_id, include_presences=include_presences)
 
@@ -1532,13 +1515,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
 
     @_internal.as_listener(hikari.MemberDeleteEvent)
     async def __on_member_delete_event(self, event: hikari.MemberDeleteEvent, /) -> None:
-        try:
-            own_id = self.config[_OwnIDStore.KEY]
-            assert isinstance(own_id, _OwnIDStore)
-
-        except KeyError:
-            own_id = self.config[_OwnIDStore.KEY] = _OwnIDStore(self.app)
-
+        own_id = _internal.OwnIDStore.get_from_client(self)
         if (own_id_value := own_id.value) is None:
             own_id_value = await own_id.await_value()
 
@@ -1562,7 +1539,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
             user_setter = self._try_bulk_set_users(member["user"] for member in members)
             await asyncio.gather(setter, user_setter)
 
-    def chunk_on_guild_create(self: _ResourceT, shard_aware: typing.Optional[traits.ShardAware], /) -> _ResourceT:
+    def chunk_on_guild_create(self: _ResourceT, shard_aware: typing.Optional[hikari.ShardAware], /) -> _ResourceT:
         if shard_aware:
             if not self.event_manager:
                 raise ValueError("An event manager-less cache instance cannot request member chunk on guild create")

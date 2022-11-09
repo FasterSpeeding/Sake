@@ -41,12 +41,16 @@ __all__: typing.Sequence[str] = [
     "find_listeners",
 ]
 
+import asyncio
 import datetime
 import inspect
 import math
 import typing
 
 import hikari
+
+if typing.TYPE_CHECKING:
+    from .. import redis
 
 ExpireT = typing.Union["datetime.timedelta", int, float, None]
 """A type hint used to represent expire times.
@@ -213,3 +217,41 @@ def find_listeners(
                     raw_listeners[name] = [member]
 
     return listeners, raw_listeners
+
+
+class OwnIDStore:
+    """Helper class for tracking the current users' ID."""
+
+    __slots__: typing.Sequence[str] = ("_event", "_is_waiting", "_lock", "_app", "value")
+
+    KEY: typing.Final[str] = "OWN_ID"
+
+    def __init__(self, app: hikari.RESTAware, /) -> None:
+        self._lock: typing.Optional[asyncio.Lock] = None
+        self._is_waiting = False
+        self._app = app
+        self.value: typing.Optional[hikari.Snowflake] = None
+
+    async def await_value(self) -> hikari.Snowflake:
+        if self._is_waiting:
+            assert self._lock
+            async with self._lock:
+                assert self.value is not None
+                return self.value
+
+        self._lock = asyncio.Lock()
+        async with self._lock:
+            user = await self._app.rest.fetch_my_user()
+            self.value = user.id
+            return self.value
+
+    @classmethod
+    def get_from_client(cls, client: redis.ResourceClient) -> OwnIDStore:
+        try:
+            own_id = client.config[OwnIDStore.KEY]
+            assert isinstance(own_id, OwnIDStore)
+
+        except KeyError:
+            own_id = client.config[OwnIDStore.KEY] = OwnIDStore(client.app)
+
+        return own_id

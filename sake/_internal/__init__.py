@@ -231,6 +231,17 @@ class OwnIDStore:
         self._lock: typing.Optional[asyncio.Lock] = None
         self.value: typing.Optional[hikari.Snowflake] = None
 
+    @classmethod
+    def get_from_client(cls, client: redis.ResourceClient) -> OwnIDStore:
+        try:
+            own_id = client.config[OwnIDStore.KEY]
+            assert isinstance(own_id, OwnIDStore)
+
+        except KeyError:
+            own_id = client.config[OwnIDStore.KEY] = OwnIDStore(client.app)
+
+        return own_id
+
     async def await_value(self) -> hikari.Snowflake:
         if self._lock:
             async with self._lock:
@@ -247,13 +258,8 @@ class OwnIDStore:
             self._lock = None
             return self.value
 
-    @classmethod
-    def get_from_client(cls, client: redis.ResourceClient) -> OwnIDStore:
-        try:
-            own_id = client.config[OwnIDStore.KEY]
-            assert isinstance(own_id, OwnIDStore)
+    def set_value(self, value: hikari.Snowflake) -> None:
+        if self._lock:
+            self._lock = None
 
-        except KeyError:
-            own_id = client.config[OwnIDStore.KEY] = OwnIDStore(client.app)
-
-        return own_id
+        self.value = value

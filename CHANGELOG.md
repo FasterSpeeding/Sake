@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped the minimum hikari version to 2.0.0.dev112.
 
 ### Fixed
-- Async locking when fetching the bot's ID internally.
+- Async locking when fetching the bot's ID internally and ensuring it only
+  fetches once.
 
 ### Removed
 - The project metadata dunder attributes from [sake][].

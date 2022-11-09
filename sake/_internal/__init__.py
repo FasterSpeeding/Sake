@@ -239,6 +239,9 @@ class OwnIDStore:
 
         self._lock = asyncio.Lock()
         async with self._lock:
+            if self.value is not None:
+                return self.value
+
             user = await self._app.rest.fetch_my_user()
             self.value = user.id
             self._lock = None

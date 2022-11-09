@@ -48,6 +48,9 @@ from . import redis
 
 if typing.TYPE_CHECKING:
     import aioredis
+    import hikari
+
+    from . import _internal
 
 
 _ObjectT = typing.TypeVar("_ObjectT")
@@ -228,6 +231,37 @@ class Iterator(abc.CacheIterator[_ValueT]):
             self._len = await self._client.get_connection(self._index).dbsize()
 
         return self._len
+
+
+class GuildIterator(Iterator[_ValueT], typing.Generic[_ObjectT, _ValueT]):
+    """Redis DB iterator for guilds."""
+
+    __slots__ = ("_actual_builder", "_guild_id", "_own_id_store")
+
+    def __init__(
+        self,
+        client: redis.ResourceClient,
+        index: redis.ResourceIndex,
+        builder: typing.Callable[[_ObjectT, hikari.Snowflake], _ValueT],
+        load: typing.Callable[[bytes], _ObjectT],
+        *,
+        own_id_store: _internal.OwnIDStore,
+        window_size: int = DEFAULT_WINDOW_SIZE,
+    ) -> None:
+        self._actual_builder = builder
+        self._guild_id = own_id_store.value
+        self._own_id_store = own_id_store
+        super().__init__(client=client, index=index, builder=self._build, load=load, window_size=window_size)
+
+    def _build(self, data: _ObjectT, /) -> _ValueT:
+        assert self._guild_id is not None
+        return self._actual_builder(data, self._guild_id)
+
+    async def __anext__(self) -> _ValueT:
+        if self._guild_id is None:
+            self._guild_id = await self._own_id_store.await_value()
+
+        return await super().__anext__()
 
 
 class ReferenceIterator(abc.CacheIterator[_ValueT]):

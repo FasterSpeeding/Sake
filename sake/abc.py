@@ -418,7 +418,7 @@ class GuildChannelCache(Resource, abc.ABC):
         """
 
     @abc.abstractmethod
-    async def get_guild_channel(self, channel_id: hikari.Snowflakeish, /) -> hikari.GuildChannel:
+    async def get_guild_channel(self, channel_id: hikari.Snowflakeish, /) -> hikari.PermissibleGuildChannel:
         """Get a guild channel from the cache.
 
         Parameters
@@ -428,7 +428,7 @@ class GuildChannelCache(Resource, abc.ABC):
 
         Returns
         -------
-        hikari.channels.GuildChannel
+        hikari.channels.PermissibleGuildChannel
             The object of the guild channel fetched from the cache.
 
         Raises
@@ -446,7 +446,7 @@ class GuildChannelCache(Resource, abc.ABC):
         """
 
     @abc.abstractmethod
-    def iter_guild_channels(self) -> CacheIterator[hikari.GuildChannel]:
+    def iter_guild_channels(self) -> CacheIterator[hikari.PermissibleGuildChannel]:
         """Iterate over the guild channels stored in the cache.
 
         !!! note
@@ -455,7 +455,7 @@ class GuildChannelCache(Resource, abc.ABC):
 
         Returns
         -------
-        CacheIterator[hikari.channels.GuildChannel]
+        CacheIterator[hikari.channels.PermissibleGuildChannel]
             An async iterator of the guild channels stored in the cache.
 
         Raises
@@ -498,7 +498,9 @@ class RefGuildChannelCache(GuildChannelCache, abc.ABC):
         """
 
     @abc.abstractmethod
-    def iter_guild_channels_for_guild(self, guild_id: hikari.Snowflakeish, /) -> CacheIterator[hikari.GuildChannel]:
+    def iter_guild_channels_for_guild(
+        self, guild_id: hikari.Snowflakeish, /
+    ) -> CacheIterator[hikari.PermissibleGuildChannel]:
         """Iterate over the guild channels stored in the cache for a specific guild.
 
         !!! note
@@ -512,7 +514,7 @@ class RefGuildChannelCache(GuildChannelCache, abc.ABC):
 
         Returns
         -------
-        CacheIterator[hikari.channels.GuildChannel]
+        CacheIterator[hikari.channels.PermissibleGuildChannel]
             An async iterator of the guild channels stored in the cache for the
             specified guild.
 

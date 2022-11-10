@@ -67,11 +67,27 @@ class CacheIteratorAdapter(async_cache.CacheIterator[_ValueT]):
         """
         self._iterator = iterator
 
-    def __anext__(self) -> typing.Coroutine[typing.Any, typing.Any, _ValueT]:
-        return self._iterator.__anext__()
+    async def __anext__(self) -> _ValueT:
+        try:
+            return await self._iterator.__anext__()
+
+        except errors.ClosedClient:
+            raise StopAsyncIteration from None
 
     def len(self) -> typing.Coroutine[typing.Any, typing.Any, int]:
         return self._iterator.len()
+
+
+class EmptyCacheIterator(async_cache.CacheIterator[typing.Any]):
+    """An empty Tanjun cache iterator."""
+
+    __slots__ = ()
+
+    async def __anext__(self) -> typing.NoReturn:
+        raise StopAsyncIteration
+
+    async def len(self) -> int:
+        return 0
 
 
 class SingleStoreAdapter(async_cache.SingleStoreCache[_ValueT]):
@@ -97,6 +113,12 @@ class SingleStoreAdapter(async_cache.SingleStoreCache[_ValueT]):
     async def get(self, *, default: _DefaultT = ...) -> typing.Union[_ValueT, _DefaultT]:
         try:
             return await self._get()
+
+        except errors.ClosedClient:
+            if default is not ...:
+                return default
+
+            raise async_cache.CacheMissError from None
 
         except errors.EntryNotFound:
             if default is not ...:
@@ -140,6 +162,12 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
         try:
             return await self._get(key)
 
+        except errors.ClosedClient:
+            if default is not ...:
+                return default
+
+            raise async_cache.CacheMissError from None
+
         except errors.EntryNotFound:
             if default is not ...:
                 return default
@@ -150,7 +178,11 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
             raise async_cache.CacheMissError from None
 
     def iter_all(self) -> async_cache.CacheIterator[_ValueT]:
-        return CacheIteratorAdapter(self._iterate_all())
+        try:
+            return CacheIteratorAdapter(self._iterate_all())
+
+        except errors.ClosedClient:
+            return EmptyCacheIterator()
 
 
 def _not_implemented(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
@@ -196,6 +228,12 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.Guil
         try:
             return await self._get_from_guild(guild_id, key)
 
+        except errors.ClosedClient:
+            if default is not ...:
+                return default
+
+            raise async_cache.CacheMissError from None
+
         except errors.EntryNotFound:
             if default is not ...:
                 return default
@@ -206,7 +244,11 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.Guil
             raise async_cache.CacheMissError from None
 
     def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> async_cache.CacheIterator[_ValueT]:
-        return CacheIteratorAdapter(self._iterate_for_guild(guild_id))
+        try:
+            return CacheIteratorAdapter(self._iterate_for_guild(guild_id))
+
+        except errors.ClosedClient:
+            return EmptyCacheIterator()
 
 
 class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.GuildBoundCache[_KeyT, _ValueT]):
@@ -254,7 +296,14 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.
         if default is not ...:
             return default
 
-        raise async_cache.EntryNotFound
+        if self._trust_get or result is not default:
+            raise async_cache.EntryNotFound
+
+        raise async_cache.CacheMissError from None
 
     def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> async_cache.CacheIterator[_ValueT]:
-        return CacheIteratorAdapter(self._iterate_for_guild(guild_id))
+        try:
+            return CacheIteratorAdapter(self._iterate_for_guild(guild_id))
+
+        except errors.ClosedClient:
+            return EmptyCacheIterator()

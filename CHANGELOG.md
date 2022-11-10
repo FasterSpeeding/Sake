@@ -11,9 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Avoid fetching the bot's user to get it's ID if a READY event has already
   been received.
 
+### Changed
+- The tanjun adapter get and iter methods no-longer raise [TypeError][] when
+  the inner-client is inactive.
+
 ### Fixed
 - Async locking when fetching the bot's ID internally and ensure it only
   fetches once.
+- Raise [sake.errors.ClosedClient][] instead of [TypeError][] when the Sake
+  client is inactive.
 
 ### Removed
 - The project metadata dunder attributes from [sake][].

@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.0.4a1.post1] - 2022-11-10
+### Changed
+- Switched from aioredis to redis-py for connecting to Redis to properly support
+  Python 3.11.
+
 ## [1.0.4a1] - 2022-11-10
 ### Changed
 - Bumped the minimum hikari version to 2.0.0.dev112.
@@ -93,7 +98,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `window_size` parameter from `RedisClient.clear_*` methods as these are no-longer
   chunked.
 
-[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.4a1...HEAD
+[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.4a1.post1...HEAD
+[1.0.4a1.post1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.4a1...v1.0.4a1.post1
 [1.0.4a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.3a1.post1...v1.0.4a1
 [1.0.3a1.post1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.3a1...v1.0.3a1.post1
 [1.0.3a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.2a1...v1.0.3a1

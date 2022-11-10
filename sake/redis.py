@@ -61,9 +61,9 @@ import json
 import typing
 import warnings
 
-import aioredis
 import hikari
 from hikari.internal import time  # TODO: don't use this
+from redis import asyncio as aioredis
 
 from . import _internal
 from . import _redis_iterators
@@ -113,7 +113,7 @@ _ValueT = typing.TypeVar("_ValueT")
 
 def _to_map(
     iterator: typing.Iterable[_T], key_cast: typing.Callable[[_T], _KeyT], value_cast: typing.Callable[[_T], _ValueT]
-) -> dict[_KeyT, _ValueT]:
+) -> typing.MutableMapping[_KeyT, _ValueT]:
     return {key_cast(entry): value_cast(entry) for entry in iterator}
 
 
@@ -219,7 +219,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         """
         self.__address = address
         self.__app = app
-        self.__clients: typing.Dict[int, aioredis.Redis] = {}
+        self.__clients: typing.Dict[int, aioredis.Redis[bytes]] = {}
         self.__config = config or {}
         self.__default_expire = _internal.convert_expire_time(default_expire)
         self.__dump = dumps
@@ -601,7 +601,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         return self
 
-    def _get_connection(self, resource: ResourceIndex, /) -> aioredis.Redis:
+    def _get_connection(self, resource: ResourceIndex, /) -> aioredis.Redis[bytes]:
         """Get the connection for a specific resource.
 
         Parameters
@@ -611,7 +611,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Returns
         -------
-        aioredis.Redis
+        redis.asyncio.Redis[bytes]
             The connection instance for the specified resource.
 
         Raises
@@ -1554,7 +1554,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
     async def __bulk_set_members(self, members: typing.Iterator[_ObjectT], /, guild_id: int) -> None:
         client = self._get_connection(ResourceIndex.MEMBER)
         str_guild_id = str(guild_id)
-        members_map = _to_map(
+        members_map: typing.Mapping[typing.Union[str, bytes], bytes] = _to_map(
             (_add_guild_id(payload, str_guild_id) for payload in members), _get_sub_user_id, self.dump
         )
         if members_map:
@@ -1772,7 +1772,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
     async def __bulk_add_presences(self, presences: typing.Iterator[_ObjectT], /, guild_id: int) -> None:
         client = self._get_connection(ResourceIndex.PRESENCE)
         str_guild_id = str(guild_id)
-        presence_map = _to_map(
+        presence_map: typing.Mapping[typing.Union[str, bytes], bytes] = _to_map(
             (_add_guild_id(payload, str_guild_id) for payload in presences), _get_sub_user_id, self.dump
         )
         if presence_map:
@@ -2075,7 +2075,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
         voice_states = event.payload["voice_states"]
         members = {int(payload["user"]["id"]): payload for payload in event.payload["members"]}
-        voice_states_map = _to_map(
+        voice_states_map: typing.Mapping[typing.Union[str, bytes], bytes] = _to_map(
             (_add_voice_fields(payload, str_guild_id, members[int(payload["user_id"])]) for payload in voice_states),
             _get_user_id,
             self.dump,
@@ -2235,7 +2235,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         user_id = int(payload["user_id"])
         # We have to ensure this is deleted first to make sure previous references are removed.
         await self.delete_voice_state(guild_id, channel_id)
-        await client.hset(str_guild_id, user_id, self.dump(payload))
+        await client.hset(str_guild_id, str(user_id), self.dump(payload))
         await self._add_ids(
             ResourceIndex.CHANNEL,
             str(channel_id),

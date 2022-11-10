@@ -5,9 +5,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.0.4a1] - 2022-11-10
+### Changed
+- Bumped the minimum hikari version to 2.0.0.dev112.
+- Avoid fetching the bot's user to get it's ID if a READY event has already
+  been received.
+- The Tanjun adapter get and iter methods no-longer raise [TypeError][] when
+  the inner-client is inactive.
+
+### Fixed
+- Async locking when fetching the bot's ID internally and ensure it only
+  fetches once.
+- Raise [sake.errors.ClosedClient][] instead of [TypeError][] when the Sake
+  Client is inactive (from get and iter methods).
+
+### Removed
+- The project metadata dunder attributes from [sake][].
+  [importlib.metadata][] should be used to get this metadata instead.
+- `sake.redis_iterators` is now internal/hidden.
+- `redis.ResourceClient.get_connection` is now internal/hidden.
+
 ## [1.0.3a1.post1] - 2022-08-30
 ### Changed
-- Bumped the minimum hikari version to 2.0.0.dev110
+- Bumped the minimum hikari version to 2.0.0.dev110.
 
 ## [1.0.3a1] - 2022-08-27
 ### Fixed
@@ -73,9 +93,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `window_size` parameter from `RedisClient.clear_*` methods as these are no-longer
   chunked.
 
-1.0.3a1.post1
-[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/1.0.3a1.post1...HEAD
-[1.0.3a1.post1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.3a1...1.0.3a1.post1
+[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.4a1...HEAD
+[1.0.4a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.3a1.post1...v1.0.4a1
+[1.0.3a1.post1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.3a1...v1.0.3a1.post1
 [1.0.3a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.2a1...v1.0.3a1
 [1.0.2a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.1a1...v1.0.2a1
 [1.0.1a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.0a1...v1.0.1a1

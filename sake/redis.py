@@ -622,7 +622,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             When you pass an invalid resource for the client.
         """
         if not self.__started:
-            raise TypeError("Cannot use an inactive client")
+            raise errors.ClosedClient("Cannot use an inactive client")
 
         try:
             return self.__clients[self.__index_overrides.get(resource, resource)]

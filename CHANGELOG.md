@@ -10,10 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped the minimum hikari version to 2.0.0.dev112.
 - Avoid fetching the bot's user to get it's ID if a READY event has already
   been received.
+- The Tanjun adapter get and iter methods no-longer raise [TypeError][] when
+  the inner-client is inactive.
 
 ### Fixed
 - Async locking when fetching the bot's ID internally and ensure it only
   fetches once.
+- Raise [sake.errors.ClosedClient][] instead of [TypeError][] when the Sake
+  Client is inactive (from get and iter methods).
 
 ### Removed
 - The project metadata dunder attributes from [sake][].

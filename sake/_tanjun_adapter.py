@@ -39,6 +39,7 @@ __all__: typing.Sequence[str] = [
     "SingleStoreAdapter",
 ]
 
+import enum
 import typing
 
 import hikari
@@ -47,17 +48,28 @@ from tanjun.dependencies import async_cache
 from . import abc
 from . import errors
 
+_T = typing.TypeVar("_T")
 _DefaultT = typing.TypeVar("_DefaultT")
 _KeyT = typing.TypeVar("_KeyT")
-_ValueT = typing.TypeVar("_ValueT")
 
 
-class CacheIteratorAdapter(async_cache.CacheIterator[_ValueT]):
+class _NoDefaultEnum(enum.Enum):
+    VALUE = object()
+
+
+NO_DEFAULT = _NoDefaultEnum.VALUE
+"""Internal singleton used to signify when a value wasn't provided."""
+
+NoDefault = typing.Literal[_NoDefaultEnum.VALUE]
+"""The type of `NO_DEFAULT`."""
+
+
+class CacheIteratorAdapter(async_cache.CacheIterator[_T]):
     """Tanjun adapter for a cache iterator."""
 
     __slots__ = ("_iterator",)
 
-    def __init__(self, iterator: abc.CacheIterator[_ValueT], /) -> None:
+    def __init__(self, iterator: abc.CacheIterator[_T], /) -> None:
         """Initialise a cache iterator adapter.
 
         Parameters
@@ -67,7 +79,7 @@ class CacheIteratorAdapter(async_cache.CacheIterator[_ValueT]):
         """
         self._iterator = iterator
 
-    async def __anext__(self) -> _ValueT:
+    async def __anext__(self) -> _T:
         try:
             return await self._iterator.__anext__()
 
@@ -90,12 +102,12 @@ class EmptyCacheIterator(async_cache.CacheIterator[typing.Any]):
         return 0
 
 
-class SingleStoreAdapter(async_cache.SingleStoreCache[_ValueT]):
+class SingleStoreAdapter(async_cache.SingleStoreCache[_T]):
     """Tanjun adapter for a single store cache."""
 
     __slots__ = ("_get", "_trust_get")
 
-    def __init__(self, get: typing.Callable[[], typing.Awaitable[_ValueT]], trust_get: bool) -> None:
+    def __init__(self, get: typing.Callable[[], typing.Awaitable[_T]], trust_get: bool) -> None:
         """Initialise a single store adapter.
 
         Parameters
@@ -110,18 +122,18 @@ class SingleStoreAdapter(async_cache.SingleStoreCache[_ValueT]):
         self._get = get
         self._trust_get = trust_get
 
-    async def get(self, *, default: _DefaultT = ...) -> typing.Union[_ValueT, _DefaultT]:
+    async def get(self, *, default: typing.Union[_DefaultT, NoDefault] = NO_DEFAULT) -> typing.Union[_T, _DefaultT]:
         try:
             return await self._get()
 
         except errors.ClosedClient:
-            if default is not ...:
+            if default is not NO_DEFAULT:
                 return default
 
             raise async_cache.CacheMissError from None
 
         except errors.EntryNotFound:
-            if default is not ...:
+            if default is not NO_DEFAULT:
                 return default
 
             if self._trust_get:
@@ -130,15 +142,15 @@ class SingleStoreAdapter(async_cache.SingleStoreCache[_ValueT]):
             raise async_cache.CacheMissError from None
 
 
-class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
+class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _T]):
     """Tanjun adapter for a global key-value async cache store."""
 
     __slots__ = ("_get", "_iterate_all", "_trust_get")
 
     def __init__(
         self,
-        get: typing.Callable[[_KeyT], typing.Awaitable[_ValueT]],
-        iterate_all: typing.Callable[[], abc.CacheIterator[_ValueT]],
+        get: typing.Callable[[_KeyT], typing.Awaitable[_T]],
+        iterate_all: typing.Callable[[], abc.CacheIterator[_T]],
         trust_get: bool,
     ) -> None:
         """Initialise an async cache adapter.
@@ -158,18 +170,20 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
         self._iterate_all = iterate_all
         self._trust_get = trust_get
 
-    async def get(self, key: _KeyT, /, *, default: _DefaultT = ...) -> typing.Union[_ValueT, _DefaultT]:
+    async def get(
+        self, key: _KeyT, /, *, default: typing.Union[_DefaultT, NoDefault] = NO_DEFAULT
+    ) -> typing.Union[_T, _DefaultT]:
         try:
             return await self._get(key)
 
         except errors.ClosedClient:
-            if default is not ...:
+            if default is not NO_DEFAULT:
                 return default
 
             raise async_cache.CacheMissError from None
 
         except errors.EntryNotFound:
-            if default is not ...:
+            if default is not NO_DEFAULT:
                 return default
 
             if self._trust_get:
@@ -177,7 +191,7 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _ValueT]):
 
             raise async_cache.CacheMissError from None
 
-    def iter_all(self) -> async_cache.CacheIterator[_ValueT]:
+    def iter_all(self) -> async_cache.CacheIterator[_T]:
         try:
             return CacheIteratorAdapter(self._iterate_all())
 
@@ -189,16 +203,16 @@ def _not_implemented(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn
     raise NotImplementedError
 
 
-class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.GuildBoundCache[_KeyT, _ValueT]):
+class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.GuildBoundCache[_KeyT, _T]):
     """Tanjun adapter for a guild-bound key-value async cache store."""
 
     __slots__ = ("_get_from_guild", "_iterate_for_guild")
 
     def __init__(
         self,
-        get_from_guild: typing.Callable[[hikari.Snowflakeish, _KeyT], typing.Awaitable[_ValueT]],
-        iterate_all: typing.Callable[[], abc.CacheIterator[_ValueT]],
-        iterate_for_guild: typing.Callable[[hikari.Snowflakeish], abc.CacheIterator[_ValueT]],
+        get_from_guild: typing.Callable[[hikari.Snowflakeish, _KeyT], typing.Awaitable[_T]],
+        iterate_all: typing.Callable[[], abc.CacheIterator[_T]],
+        iterate_for_guild: typing.Callable[[hikari.Snowflakeish], abc.CacheIterator[_T]],
         trust_get: bool,
     ) -> None:
         """Initialise a guild-bound cache adapter.
@@ -223,19 +237,19 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.Guil
         self._iterate_for_guild = iterate_for_guild
 
     async def get_from_guild(
-        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: _DefaultT = ...
-    ) -> typing.Union[_ValueT, _DefaultT]:
+        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: typing.Union[_DefaultT, NoDefault] = NO_DEFAULT
+    ) -> typing.Union[_T, _DefaultT]:
         try:
             return await self._get_from_guild(guild_id, key)
 
         except errors.ClosedClient:
-            if default is not ...:
+            if default is not NO_DEFAULT:
                 return default
 
             raise async_cache.CacheMissError from None
 
         except errors.EntryNotFound:
-            if default is not ...:
+            if default is not NO_DEFAULT:
                 return default
 
             if self._trust_get:
@@ -243,7 +257,7 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.Guil
 
             raise async_cache.CacheMissError from None
 
-    def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> async_cache.CacheIterator[_ValueT]:
+    def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> async_cache.CacheIterator[_T]:
         try:
             return CacheIteratorAdapter(self._iterate_for_guild(guild_id))
 
@@ -251,17 +265,17 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.Guil
             return EmptyCacheIterator()
 
 
-class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.GuildBoundCache[_KeyT, _ValueT]):
+class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.GuildBoundCache[_KeyT, _T]):
     """Tanjun adapter for a global key-value cache store with guild tracking."""
 
     __slots__ = ("_iterate_for_guild", "_verify_guild")
 
     def __init__(
         self,
-        get: typing.Callable[[_KeyT], typing.Awaitable[_ValueT]],
-        iterate_all: typing.Callable[[], abc.CacheIterator[_ValueT]],
-        iterate_for_guild: typing.Callable[[hikari.Snowflakeish], abc.CacheIterator[_ValueT]],
-        verify_guild: typing.Callable[[hikari.Snowflakeish, _ValueT], bool],
+        get: typing.Callable[[_KeyT], typing.Awaitable[_T]],
+        iterate_all: typing.Callable[[], abc.CacheIterator[_T]],
+        iterate_for_guild: typing.Callable[[hikari.Snowflakeish], abc.CacheIterator[_T]],
+        verify_guild: typing.Callable[[hikari.Snowflakeish, _T], bool],
         trust_get: bool,
     ) -> None:
         """Initialise a guild and global cache adapter.
@@ -287,13 +301,13 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.
         self._verify_guild = verify_guild
 
     async def get_from_guild(
-        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: _DefaultT = ...
-    ) -> typing.Union[_ValueT, _DefaultT]:
+        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: typing.Union[_DefaultT, NoDefault] = NO_DEFAULT
+    ) -> typing.Union[_T, _DefaultT]:
         result = await self.get(key, default=default)
-        if result is default or self._verify_guild(guild_id, typing.cast(_ValueT, result)):
+        if result is default or self._verify_guild(guild_id, typing.cast(_T, result)):
             return result
 
-        if default is not ...:
+        if default is not NO_DEFAULT:
             return default
 
         if self._trust_get or result is not default:
@@ -301,7 +315,7 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _ValueT], async_cache.
 
         raise async_cache.CacheMissError from None
 
-    def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> async_cache.CacheIterator[_ValueT]:
+    def iter_for_guild(self, guild_id: hikari.Snowflakeish, /) -> async_cache.CacheIterator[_T]:
         try:
             return CacheIteratorAdapter(self._iterate_for_guild(guild_id))
 

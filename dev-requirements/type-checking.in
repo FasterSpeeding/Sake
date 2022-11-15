@@ -1,2 +1,3 @@
 mypy==0.990
 pyright==1.1.279
+types-redis==4.3.21.4

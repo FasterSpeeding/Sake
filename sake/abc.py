@@ -73,10 +73,10 @@ import typing
 
 import hikari
 
-ValueT = typing.TypeVar("ValueT")
+_T = typing.TypeVar("_T")
 
 
-class CacheIterator(hikari.LazyIterator[ValueT], abc.ABC):
+class CacheIterator(hikari.LazyIterator[_T], abc.ABC):
     """A asynchronous iterator of entries within a defined cache store."""
 
     __slots__: typing.Sequence[str] = ()

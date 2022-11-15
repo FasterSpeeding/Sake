@@ -234,11 +234,11 @@ class OwnIDStore:
     @classmethod
     def get_from_client(cls, client: redis.ResourceClient) -> OwnIDStore:
         try:
-            own_id = client.config[OwnIDStore.KEY]
+            own_id: OwnIDStore = client.config[OwnIDStore.KEY]
             assert isinstance(own_id, OwnIDStore)
 
         except KeyError:
-            own_id = client.config[OwnIDStore.KEY] = OwnIDStore(client.app)
+            client.config[OwnIDStore.KEY] = own_id = OwnIDStore(client.app)
 
         return own_id
 

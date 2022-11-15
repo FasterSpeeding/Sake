@@ -74,10 +74,14 @@ if typing.TYPE_CHECKING:
     import types
 
     import tanjun
+    from typing_extensions import Self
+
+_T = typing.TypeVar("_T")
+_KeyT = typing.TypeVar("_KeyT")
+_ValueT = typing.TypeVar("_ValueT")
 
 _ObjectT = typing.Dict[str, typing.Any]
 _RedisValueT = typing.Union[int, str, bytes]
-_ResourceT = typing.TypeVar("_ResourceT", bound="ResourceClient")
 
 DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
 """The default expire time (in milliseconds) used for expiring resources of 60 minutes."""
@@ -104,11 +108,6 @@ class ResourceIndex(enum.IntEnum):
     REFERENCE = 9
     # REFERENCE is a special case database solely used for linking other entries to other master entities.
     MESSAGE = 10
-
-
-_T = typing.TypeVar("_T")
-_KeyT = typing.TypeVar("_KeyT")
-_ValueT = typing.TypeVar("_ValueT")
 
 
 def _to_map(
@@ -248,7 +247,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     async def __on_stopping_event(self, _: hikari.StoppingEvent, /) -> None:
         await self.close()
 
-    async def __aenter__(self: _ResourceT) -> _ResourceT:
+    async def __aenter__(self) -> Self:
         await self.open()
         return self
 
@@ -575,9 +574,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         """
         return self.__index_overrides.get(index)
 
-    def with_index_override(
-        self: _ResourceT, index: ResourceIndex, /, *, override: typing.Optional[int] = None
-    ) -> _ResourceT:
+    def with_index_override(self, index: ResourceIndex, /, *, override: typing.Optional[int] = None) -> Self:
         """Add an index override.
 
         Parameters
@@ -906,7 +903,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
         )
         client.set_type_dependency(async_cache.SfCache[hikari.User], adapter)
 
-    def with_user_expire(self: _ResourceT, expire: typing.Optional[_internal.ExpireT], /) -> _ResourceT:
+    def with_user_expire(self, expire: typing.Optional[_internal.ExpireT], /) -> Self:
         """Set the default expire time for user entries added with this client.
 
         Parameters
@@ -919,7 +916,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
 
         Returns
         -------
-        _ResourceT
+        Self
             The client this is being called on to enable chained calls.
         """
         if expire is not None:
@@ -1260,8 +1257,8 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 
     @_internal.as_raw_listener("CHANNEL_PINS_UPDATE")
     async def __on_channel_pins_update(self, event: hikari.ShardPayloadEvent, /) -> None:
-        if payload := await self._get_connection(ResourceIndex.CHANNEL).get(str(int(event.payload["channel_id"]))):
-            payload = self.load(payload)
+        if raw_data := await self._get_connection(ResourceIndex.CHANNEL).get(str(int(event.payload["channel_id"]))):
+            payload = self.load(raw_data)
             payload["last_pin_timestamp"] = event.payload.get("last_pin_timestamp")
             await self.set_guild_channel(payload)
 
@@ -1401,7 +1398,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
     async def __on_invite_delete_event(self, event: hikari.InviteDeleteEvent, /) -> None:
         await self.delete_invite(event.code)  # TODO: on guild leave?
 
-    def with_invite_expire(self: _ResourceT, expire: typing.Optional[_internal.ExpireT], /) -> _ResourceT:
+    def with_invite_expire(self, expire: typing.Optional[_internal.ExpireT], /) -> Self:
         """Set the default expire time for invite entries added with this client.
 
         Parameters
@@ -1414,7 +1411,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
 
         Returns
         -------
-        _ResourceT
+        Self
             The client this is being called on to enable chained calls.
         """
         if expire is not None:
@@ -1562,7 +1559,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
             user_setter = self._try_bulk_set_users(member["user"] for member in members)
             await asyncio.gather(setter, user_setter)
 
-    def chunk_on_guild_create(self: _ResourceT, shard_aware: typing.Optional[hikari.ShardAware], /) -> _ResourceT:
+    def chunk_on_guild_create(self, shard_aware: typing.Optional[hikari.ShardAware], /) -> Self:
         if shard_aware:
             if not self.event_manager:
                 raise ValueError("An event manager-less cache instance cannot request member chunk on guild create")
@@ -1675,7 +1672,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
     async def __on_message_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.update_message(dict(event.payload))
 
-    def with_message_expire(self: _ResourceT, expire: typing.Optional[_internal.ExpireT], /) -> _ResourceT:
+    def with_message_expire(self, expire: typing.Optional[_internal.ExpireT], /) -> Self:
         """Set the default expire time for message entries added with this client.
 
         Parameters
@@ -1688,7 +1685,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
 
         Returns
         -------
-        _ResourceT
+        Self
             The client this is being called on to enable chained calls.
         """
         if expire is not None:
@@ -1744,9 +1741,9 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
     ) -> bool:
         # <<Inherited docstring from sake.abc.MessageCache>>
         # This is a special case method for handling the partial message updates we get
-        if full_message := await self._get_connection(ResourceIndex.MESSAGE).get(str(int(payload["id"]))):
+        if raw_data := await self._get_connection(ResourceIndex.MESSAGE).get(str(int(payload["id"]))):
             # TODO: do we need to unset fields?
-            full_message = self.load(full_message)
+            full_message = self.load(raw_data)
             full_message.update(payload)
             await self.set_message(full_message, expire_time=expire_time)
             return True

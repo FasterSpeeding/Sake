@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `"tanjun"` feature flag for ensuring this is installed with a Tanjun version that's
+  compatible with the Tanjun adapters.
+
 ## [1.0.4a1.post1] - 2022-11-10
 ### Changed
 - Switched from aioredis to redis-py for connecting to Redis to properly support

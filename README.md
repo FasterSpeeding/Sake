@@ -12,7 +12,7 @@ python -m pip install hikari-sake -U
 
 The `hikari-yuyo[tanjun]` feature flag can be used to ensure that the installed Tanjun version
 is compatible with Sake's Tanjun adapters. You should still have a Tanjun version pinned in
-your own dependencies as this just provides requirement range.
+your own requirements as this just provides an acceptable range for the requirement.
 
 # Support
 

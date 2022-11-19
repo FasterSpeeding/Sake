@@ -94,9 +94,6 @@ ignore = [
     "E231",   # missing whitespace after ','
 ]
 per-file-ignores = [
-    # F403: cannot detect unused vars if we use starred import
-    # F405: __all__ field may be undefined or defined from star imports
-    "sake/__init__.py: F403,F405",
     # Doc errors don't matter in the tests, noxfile nor py.typed
     "noxfile.py: D100, D101, D103",
     "sake/py.typed: D100",

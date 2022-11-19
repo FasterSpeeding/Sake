@@ -57,5 +57,10 @@ import typing
 
 from . import abc
 from . import redis
-from .errors import *
+from .errors import BackendError
+from .errors import CannotDelete
+from .errors import ClosedClient
+from .errors import EntryNotFound
+from .errors import InvalidDataFound
+from .errors import SakeException
 from .redis import RedisCache

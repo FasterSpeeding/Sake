@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed compatibility with newer Hikari and Tanjun releases.
 
-## [1.0.2a1] - 2022-1-13
+## [1.0.2a1] - 2022-01-13
 ### Fixed
 - The Redis `clear_voice_states_for_guild` method mishandling passing coroutines to
   `asyncio.gather` leading to errors being raised.

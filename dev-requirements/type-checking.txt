@@ -12,7 +12,7 @@ nodeenv==1.7.0
     # via pyright
 pyright==1.1.280
     # via -r dev-requirements/type-checking.in
-types-redis==4.3.21.4
+types-redis==4.3.21.6
     # via -r dev-requirements/type-checking.in
 typing-extensions==4.4.0
     # via mypy

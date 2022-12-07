@@ -253,8 +253,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     async def __aexit__(
         self,
-        exc_type: typing.Optional[typing.Type[Exception]],
-        exc_val: typing.Optional[Exception],
+        exc_type: typing.Optional[typing.Type[BaseException]],
+        exc_val: typing.Optional[BaseException],
         exc_tb: typing.Optional[types.TracebackType],
     ) -> None:
         await self.close()
@@ -268,8 +268,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         def __exit__(
             self,
-            exc_type: typing.Optional[typing.Type[Exception]],
-            exc_val: typing.Optional[Exception],
+            exc_type: typing.Optional[typing.Type[BaseException]],
+            exc_val: typing.Optional[BaseException],
             exc_tb: typing.Optional[types.TracebackType],
         ) -> None:
             return None

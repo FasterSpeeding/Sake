@@ -32,12 +32,7 @@
 
 from __future__ import annotations
 
-__all__: typing.Sequence[str] = [
-    "HashReferenceIterator",
-    "Iterator",
-    "MultiMapIterator",
-    "SpecificMapIterator",
-]
+__all__: list[str] = ["HashReferenceIterator", "Iterator", "MultiMapIterator", "SpecificMapIterator"]
 
 import itertools
 import typing
@@ -46,6 +41,8 @@ from . import abc
 from . import redis
 
 if typing.TYPE_CHECKING:
+    from collections import abc as collections
+
     import hikari
     from redis import asyncio as aioredis
     from typing_extensions import Self
@@ -63,8 +60,8 @@ DEFAULT_WINDOW_SIZE: typing.Final[int] = 1_000
 
 
 def _chunk_values(
-    values: typing.Iterable[_T], window_size: int = DEFAULT_WINDOW_SIZE
-) -> typing.Iterator[typing.Sequence[_T]]:
+    values: collections.Iterable[_T], window_size: int = DEFAULT_WINDOW_SIZE
+) -> collections.Iterator[collections.Sequence[_T]]:
     """Iterate over slices of the values in an iterator."""
     iterator = iter(values)
 
@@ -73,11 +70,8 @@ def _chunk_values(
 
 
 async def _iter_keys(
-    client: aioredis.Redis[bytes],
-    *,
-    window_size: int = DEFAULT_WINDOW_SIZE,
-    match: typing.Optional[str] = None,
-) -> typing.AsyncIterator[typing.List[bytes]]:
+    client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: typing.Optional[str] = None
+) -> collections.AsyncIterator[list[bytes]]:
     """Asynchronously iterate over slices of the top level keys in a redis resource."""
     cursor = 0
 
@@ -92,11 +86,8 @@ async def _iter_keys(
 
 
 async def _iter_values(
-    client: aioredis.Redis[bytes],
-    *,
-    window_size: int = DEFAULT_WINDOW_SIZE,
-    match: typing.Optional[str] = None,
-) -> typing.AsyncIterator[typing.List[typing.Optional[bytes]]]:
+    client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: typing.Optional[str] = None
+) -> collections.AsyncIterator[list[typing.Optional[bytes]]]:
     """Asynchronously iterate over slices of the values in a key to string datastore."""
     async for window in _iter_keys(client, window_size=window_size, match=match):
         yield await client.mget(*window)
@@ -108,7 +99,7 @@ async def _iter_hash_values(
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
-) -> typing.AsyncIterator[typing.Iterable[bytes]]:
+) -> collections.AsyncIterator[collections.Iterable[bytes]]:
     """Asynchronously iterate over slices of the values in a redis hash."""
     cursor = 0
 
@@ -123,12 +114,12 @@ async def _iter_hash_values(
 
 
 async def _iter_reference_keys(
-    get_connection: typing.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
+    get_connection: collections.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
     key: _RedisKeyT,
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
-) -> typing.AsyncIterator[typing.List[bytes]]:
+) -> collections.AsyncIterator[list[bytes]]:
     """Asynchronously iterate over slices of the keys in a REFERENCE set."""
     reference_client = get_connection(redis.ResourceIndex.REFERENCE)
     cursor = 0
@@ -145,12 +136,12 @@ async def _iter_reference_keys(
 
 async def _iter_reference_values(
     client: aioredis.Redis[bytes],
-    get_connection: typing.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
+    get_connection: collections.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
     key: _RedisKeyT,
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
     match: typing.Optional[str] = None,
-) -> typing.AsyncIterator[typing.List[typing.Optional[bytes]]]:
+) -> collections.AsyncIterator[list[typing.Optional[bytes]]]:
     """Asynchronously iterate over slices of the values referenced by a REFERENCE set."""
     async for window in _iter_reference_keys(get_connection, key, window_size=window_size, match=match):
         yield await client.mget(*window)
@@ -159,13 +150,13 @@ async def _iter_reference_values(
 class Iterator(abc.CacheIterator[_T]):
     """Redis DB iterator."""
 
-    __slots__: typing.Sequence[str] = ("_buffer", "_builder", "_client", "_len", "_load", "_windows", "_window_size")
+    __slots__ = ("_buffer", "_builder", "_client", "_len", "_load", "_windows", "_window_size")
 
     def __init__(
         self,
         client: aioredis.Redis[bytes],
-        builder: typing.Callable[[_ObjectT], _T],
-        load: typing.Callable[[bytes], _ObjectT],
+        builder: collections.Callable[[_ObjectT], _T],
+        load: collections.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
@@ -185,12 +176,12 @@ class Iterator(abc.CacheIterator[_T]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[bytes] = []
+        self._buffer: list[bytes] = []
         self._builder = builder
         self._client = client
         self._len: typing.Optional[int] = None
         self._load = load
-        self._windows: typing.Optional[typing.AsyncIterator[typing.List[typing.Optional[bytes]]]] = None
+        self._windows: typing.Optional[collections.AsyncIterator[list[typing.Optional[bytes]]]] = None
         self._window_size = int(window_size)
 
     def __aiter__(self) -> Iterator[_T]:
@@ -227,8 +218,8 @@ class GuildIterator(Iterator[_T], typing.Generic[_ObjectT, _T]):
     def __init__(
         self,
         client: aioredis.Redis[bytes],
-        builder: typing.Callable[[_ObjectT, hikari.Snowflake], _T],
-        load: typing.Callable[[bytes], _ObjectT],
+        builder: collections.Callable[[_ObjectT, hikari.Snowflake], _T],
+        load: collections.Callable[[bytes], _ObjectT],
         *,
         own_id_store: _internal.OwnIDStore,
         window_size: int = DEFAULT_WINDOW_SIZE,
@@ -267,10 +258,10 @@ class ReferenceIterator(abc.CacheIterator[_T]):
     def __init__(
         self,
         client: aioredis.Redis[bytes],
-        get_connection: typing.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
+        get_connection: collections.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
         key: _RedisKeyT,
-        builder: typing.Callable[[_ObjectT], _T],
-        load: typing.Callable[[bytes], _ObjectT],
+        builder: collections.Callable[[_ObjectT], _T],
+        load: collections.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
@@ -294,14 +285,14 @@ class ReferenceIterator(abc.CacheIterator[_T]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[bytes] = []
+        self._buffer: list[bytes] = []
         self._builder = builder
         self._client = client
         self._get_connection = get_connection
         self._key = key
         self._len: typing.Optional[int] = None
         self._load = load
-        self._windows: typing.Optional[typing.AsyncIterator[typing.List[typing.Optional[bytes]]]] = None
+        self._windows: typing.Optional[collections.AsyncIterator[list[typing.Optional[bytes]]]] = None
         self._window_size = int(window_size)
 
     def __aiter__(self) -> ReferenceIterator[_T]:
@@ -350,10 +341,10 @@ class HashReferenceIterator(abc.CacheIterator[_T]):
     def __init__(
         self,
         client: aioredis.Redis[bytes],
-        get_connection: typing.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
+        get_connection: collections.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
         key: _RedisKeyT,
-        builder: typing.Callable[[_ObjectT], _T],
-        load: typing.Callable[[bytes], _ObjectT],
+        builder: collections.Callable[[_ObjectT], _T],
+        load: collections.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
@@ -377,14 +368,14 @@ class HashReferenceIterator(abc.CacheIterator[_T]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[bytes] = []
+        self._buffer: list[bytes] = []
         self._builder = builder
         self._client = client
         self._get_connection = get_connection
         self._key = key
         self._len: typing.Optional[int] = None
         self._load = load
-        self._windows: typing.Optional[typing.AsyncIterator[typing.List[typing.Optional[bytes]]]] = None
+        self._windows: typing.Optional[collections.AsyncIterator[list[typing.Optional[bytes]]]] = None
         self._window_size = int(window_size)
 
     @staticmethod
@@ -447,22 +438,13 @@ class _EmptyAsyncIterator:
 class MultiMapIterator(abc.CacheIterator[_T]):
     """Cache iterator of the nested values of hash map entries."""
 
-    __slots__: typing.Sequence[str] = (
-        "_buffer",
-        "_builder",
-        "_client",
-        "_len",
-        "_load",
-        "_top_level_keys",
-        "_windows",
-        "_window_size",
-    )
+    __slots__ = ("_buffer", "_builder", "_client", "_len", "_load", "_top_level_keys", "_windows", "_window_size")
 
     def __init__(
         self,
         client: aioredis.Redis[bytes],
-        builder: typing.Callable[[_ObjectT], _T],
-        load: typing.Callable[[bytes], _ObjectT],
+        builder: collections.Callable[[_ObjectT], _T],
+        load: collections.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
@@ -482,13 +464,13 @@ class MultiMapIterator(abc.CacheIterator[_T]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[bytes] = []
+        self._buffer: list[bytes] = []
         self._builder = builder
         self._client = client
         self._len: typing.Optional[int] = None
         self._load = load
-        self._top_level_keys: typing.Optional[typing.AsyncIterator[bytes]] = None
-        self._windows: typing.AsyncIterator[typing.Iterable[bytes]] = _EmptyAsyncIterator()
+        self._top_level_keys: typing.Optional[collections.AsyncIterator[bytes]] = None
+        self._windows: collections.AsyncIterator[collections.Iterable[bytes]] = _EmptyAsyncIterator()
         self._window_size = int(window_size)
 
     def __aiter__(self) -> MultiMapIterator[_T]:
@@ -533,8 +515,8 @@ class SpecificMapIterator(abc.CacheIterator[_T]):
         self,
         client: aioredis.Redis[bytes],
         key: _RedisKeyT,
-        builder: typing.Callable[[_ObjectT], _T],
-        load: typing.Callable[[bytes], _ObjectT],
+        builder: collections.Callable[[_ObjectT], _T],
+        load: collections.Callable[[bytes], _ObjectT],
         *,
         window_size: int = DEFAULT_WINDOW_SIZE,
     ) -> None:
@@ -558,13 +540,13 @@ class SpecificMapIterator(abc.CacheIterator[_T]):
         if window_size <= 0:
             raise ValueError("Window size must be a positive integer")
 
-        self._buffer: typing.List[bytes] = []
+        self._buffer: list[bytes] = []
         self._builder = builder
         self._client = client
         self._key = key
         self._len: typing.Optional[int] = None
         self._load = load
-        self._windows: typing.Optional[typing.AsyncIterator[typing.Iterable[bytes]]] = None
+        self._windows: typing.Optional[collections.AsyncIterator[collections.Iterable[bytes]]] = None
         self._window_size = window_size
 
     def __aiter__(self) -> SpecificMapIterator[_T]:

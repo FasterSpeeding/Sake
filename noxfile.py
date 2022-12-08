@@ -50,10 +50,8 @@ nox.options.sessions = [
 ]
 GENERAL_TARGETS = ["./noxfile.py", "./tests"]
 TOP_LEVEL_TARGETS = ["./sake", "./tests", "./noxfile.py"]
-_BLACKLISTED_TARGETS = re.compile("^_internal/vendor/.*\\.py")
 for path in pathlib.Path("./sake").glob("**/*.py"):
-    if not _BLACKLISTED_TARGETS.match(str(path.relative_to("./sake")).replace("\\", "/")):
-        GENERAL_TARGETS.append(str(path))
+    GENERAL_TARGETS.append(str(path))
 
 
 _DEV_DEP_DIR = pathlib.Path("./dev-requirements")
@@ -202,9 +200,7 @@ def spell_check(session: nox.Session) -> None:
     """Check this project's text-like files for common spelling mistakes."""
     install_requirements(session, *_dev_dep("lint"))
     session.log("Running codespell")
-    session.run(
-        "codespell", *_tracked_files(session), log=False
-    )
+    session.run("codespell", *_tracked_files(session), log=False)
 
 
 @nox.session(reuse_venv=True)

@@ -12,6 +12,7 @@
 
 __all__ = ["register"]
 
+from collections import abc as collections
 import typing
 
 import hikari
@@ -37,7 +38,7 @@ def register(
     # While we could make a specific Protocol which implements all these resources,
     # for the sake of being more compatible with services which use multiple
     # implementations we will take in each resources as a separate argument.
-) -> typing.Callable[..., None]:
+) -> collections.Callable[..., None]:
     # This listener simply deletes a message if it's updated to NSFW content.
     @events.event_manager.listen()
     async def on_message_update(event: hikari.MessageUpdateEvent) -> None:

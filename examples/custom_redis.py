@@ -10,7 +10,6 @@
 # If not, see <https://creativecommons.org/publicdomain/zero/1.0/>.
 """Examples of defining a specific set of cache stores to target."""
 import os
-import typing
 
 import hikari
 
@@ -35,7 +34,7 @@ class Cache(sake.redis.MemberCache, sake.redis.UserCache):
         behaviour or just not work.
     """
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
 
 cache = Cache(

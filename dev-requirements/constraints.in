@@ -1,0 +1,3 @@
+hikari~=2.0.0.dev112
+redis~=4.2
+hikari-tanjun>=2.9.0a1, <3.0.0

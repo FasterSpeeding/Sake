@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# cython: language_level=3
 # BSD 3-Clause License
 #
 # Copyright (c) 2020-2022, Faster Speeding
@@ -36,7 +35,7 @@
 
 from __future__ import annotations
 
-__all__: typing.Sequence[str] = [
+__all__: list[str] = [
     "EmojiCache",
     "GuildCache",
     "GuildChannelCache",
@@ -72,6 +71,7 @@ from . import errors
 
 if typing.TYPE_CHECKING:
     import types
+    from collections import abc as collections
 
     import tanjun
     from typing_extensions import Self
@@ -80,7 +80,7 @@ _T = typing.TypeVar("_T")
 _KeyT = typing.TypeVar("_KeyT")
 _ValueT = typing.TypeVar("_ValueT")
 
-_ObjectT = typing.Dict[str, typing.Any]
+_ObjectT = dict[str, typing.Any]
 _RedisValueT = typing.Union[int, str, bytes]
 
 DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
@@ -111,20 +111,22 @@ class ResourceIndex(enum.IntEnum):
 
 
 def _to_map(
-    iterator: typing.Iterable[_T], key_cast: typing.Callable[[_T], _KeyT], value_cast: typing.Callable[[_T], _ValueT]
-) -> typing.MutableMapping[_KeyT, _ValueT]:
+    iterator: collections.Iterable[_T],
+    key_cast: collections.Callable[[_T], _KeyT],
+    value_cast: collections.Callable[[_T], _ValueT],
+) -> collections.MutableMapping[_KeyT, _ValueT]:
     return {key_cast(entry): value_cast(entry) for entry in iterator}
 
 
 _TanjunLoaderSigT = typing.TypeVar(
     "_TanjunLoaderSigT",
-    bound="typing.Callable[[typing.Any, tanjun.abc.Client, typing.Set[typing.Type[sake_abc.Resource]]], None]",
+    bound="collections.Callable[[typing.Any, tanjun.abc.Client, set[type[sake_abc.Resource]]], None]",
 )
 
 
 @typing.runtime_checkable
 class _TanjunLoaderProto(typing.Protocol):
-    def __call__(self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /) -> None:
+    def __call__(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         raise NotImplementedError
 
     @property
@@ -147,7 +149,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         This cannot be initialised by itself and is useless alone.
     """
 
-    __slots__: typing.Sequence[str] = (
+    __slots__ = (
         "__address",
         "__app",
         "__clients",
@@ -170,13 +172,13 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         app: hikari.RESTAware,
         event_manager: typing.Optional[hikari.api.EventManager] = None,
         *,
-        config: typing.Optional[typing.MutableMapping[str, typing.Any]] = None,
+        config: typing.Optional[collections.MutableMapping[str, typing.Any]] = None,
         default_expire: _internal.ExpireT = DEFAULT_SLOW_EXPIRE,
         event_managed: bool = False,
         password: typing.Optional[str] = None,
         max_connections_per_db: int = 5,
-        dumps: typing.Callable[[_ObjectT], bytes] = lambda obj: json.dumps(obj).encode(),
-        loads: typing.Callable[[bytes], _ObjectT] = json.loads,
+        dumps: collections.Callable[[_ObjectT], bytes] = lambda obj: json.dumps(obj).encode(),
+        loads: collections.Callable[[bytes], _ObjectT] = json.loads,
     ) -> None:
         """Initialise a resource client.
 
@@ -218,12 +220,12 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         """
         self.__address = address
         self.__app = app
-        self.__clients: typing.Dict[int, aioredis.Redis[bytes]] = {}
+        self.__clients: dict[int, aioredis.Redis[bytes]] = {}
         self.__config = config or {}
         self.__default_expire = _internal.convert_expire_time(default_expire)
         self.__dump = dumps
         self.__event_manager = event_manager
-        self.__index_overrides: typing.Dict[ResourceIndex, int] = {}
+        self.__index_overrides: dict[ResourceIndex, int] = {}
         self.__listeners, self.__raw_listeners = _internal.find_listeners(self)
         self.__load = loads
         self.__max_connections_per_db = max_connections_per_db
@@ -253,7 +255,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     async def __aexit__(
         self,
-        exc_type: typing.Optional[typing.Type[BaseException]],
+        exc_type: typing.Optional[type[BaseException]],
         exc_val: typing.Optional[BaseException],
         exc_tb: typing.Optional[types.TracebackType],
     ) -> None:
@@ -268,7 +270,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         def __exit__(
             self,
-            exc_type: typing.Optional[typing.Type[BaseException]],
+            exc_type: typing.Optional[type[BaseException]],
             exc_val: typing.Optional[BaseException],
             exc_tb: typing.Optional[types.TracebackType],
         ) -> None:
@@ -283,7 +285,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         return self.__app
 
     @property
-    def config(self) -> typing.MutableMapping[str, typing.Any]:
+    def config(self) -> collections.MutableMapping[str, typing.Any]:
         """This client's settings."""
         return self.__config
 
@@ -302,7 +304,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         """The index for the resource which this class is linked to.
 
         !!! note
@@ -314,7 +316,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Returns
         -------
-        typing.Sequence[ResourceIndex]
+        collections.abc.Sequence[ResourceIndex]
             The index of the resource this class is linked to.
         """
         return ()
@@ -340,7 +342,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         # <<Inherited docstring from sake.abc.Resource>>
         return self.__started
 
-    def all_indexes(self) -> typing.MutableSet[typing.Union[ResourceIndex, int]]:
+    def all_indexes(self) -> collections.MutableSet[typing.Union[ResourceIndex, int]]:
         """Get a set of all the Redis client indexes this is using.
 
         !!! note
@@ -348,10 +350,10 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         Returns
         -------
-        typing.MutableSet[ResourceIndex | int]
+        collections.abc.MutableSet[ResourceIndex | int]
             A set of all the Redis client indexes this is using.
         """
-        results: typing.Set[int] = set()
+        results: set[int] = set()
         for sub_class in type(self).mro():
             if issubclass(sub_class, ResourceClient):
                 results.update((self.__index_overrides.get(index, index) for index in sub_class.index()))
@@ -389,7 +391,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         client: tanjun.abc.Client,
         /,
         *,
-        trust_get_for: typing.Optional[typing.Collection[typing.Type[sake_abc.Resource]]] = None,
+        trust_get_for: typing.Optional[collections.Collection[type[sake_abc.Resource]]] = None,
         tanjun_managed: bool = False,
     ) -> None:
         """Add this Redis client to a Tanjun client.
@@ -488,7 +490,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             If this is called in an environment without Tanjun.
         """
         if trust_get_for is None:
-            trust_get_for_: typing.Set[typing.Type[sake_abc.Resource]] = {
+            trust_get_for_: set[type[sake_abc.Resource]] = {
                 sake_abc.EmojiCache,
                 sake_abc.GuildCache,
                 sake_abc.GuildChannelCache,
@@ -642,7 +644,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         resource_ = self.__index_overrides.get(resource, resource)
         return resource_ in self.__clients and self.__clients[resource_].connection is not None
 
-    async def _try_bulk_set_users(self, users: typing.Iterable[_ObjectT], /) -> None:
+    async def _try_bulk_set_users(self, users: collections.Iterable[_ObjectT], /) -> None:
         if not (client := self.__clients.get(ResourceIndex.USER)) or not (users := list(users)):
             return
 
@@ -743,10 +745,10 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
 
 class _Reference(ResourceClient, abc.ABC):
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.REFERENCE,)
 
@@ -786,11 +788,9 @@ class _Reference(ResourceClient, abc.ABC):
         if reference_key and await client.scard(key) == 1:
             await client.delete(key)
 
-    async def _dump_relationship(
-        self, master: ResourceIndex, slave: ResourceIndex, /
-    ) -> typing.Dict[bytes, typing.List[bytes]]:
+    async def _dump_relationship(self, master: ResourceIndex, slave: ResourceIndex, /) -> dict[bytes, list[bytes]]:
         client = self._get_connection(ResourceIndex.REFERENCE)
-        keys: typing.List[bytes] = [k async for k in client.scan_iter(match=f"{master}:*:{slave}")]
+        keys: list[bytes] = [k async for k in client.scan_iter(match=f"{master}:*:{slave}")]
 
         async with client.pipeline() as pipeline:
             for key in keys:
@@ -808,28 +808,22 @@ class _Reference(ResourceClient, abc.ABC):
         return references
 
     async def _get_ids(
-        self,
-        master: ResourceIndex,
-        master_id: str,
-        slave: ResourceIndex,
-        /,
-        *,
-        cast: typing.Callable[[bytes], _T],
-    ) -> typing.List[_T]:
+        self, master: ResourceIndex, master_id: str, slave: ResourceIndex, /, *, cast: collections.Callable[[bytes], _T]
+    ) -> list[_T]:
         client = self._get_connection(ResourceIndex.REFERENCE)
         key = self._generate_reference_key(master, master_id, slave)
-        members = typing.cast("typing.List[bytes]", await client.smembers(key))
+        members = typing.cast("list[bytes]", await client.smembers(key))
         return [*map(cast, members)]
 
 
 # To avoid breaking Mro conflicts this is kept as a separate class despite only being exposed through the UserCache.
 class _MeCache(ResourceClient, sake_abc.MeCache):
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     __ME_KEY: typing.Final[str] = "ME"
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
         # This isn't a full MeCache implementation in itself as it's reliant on the UserCache implementation.
         return ()
@@ -840,9 +834,7 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
         return hikari.Intents.NONE
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -878,10 +870,10 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
 class UserCache(_MeCache, sake_abc.UserCache):
     """Redis implementation of [sake.abc.UserCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.USER,)
 
@@ -891,9 +883,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
         return hikari.Intents.NONE
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -977,10 +967,10 @@ def _get_id(data: _ObjectT, /) -> str:
 class EmojiCache(_Reference, sake_abc.RefEmojiCache):
     """Redis implementation of [sake.abc.EmojiCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.EMOJI,)
 
@@ -989,7 +979,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
         # <<Inherited docstring from ResourceClient>>
         return hikari.Intents.GUILD_EMOJIS | hikari.Intents.GUILDS
 
-    async def __bulk_add_emojis(self, emojis: typing.Iterable[_ObjectT], /, guild_id: int) -> None:
+    async def __bulk_add_emojis(self, emojis: collections.Iterable[_ObjectT], /, guild_id: int) -> None:
         client = self._get_connection(ResourceIndex.EMOJI)
         str_guild_id = str(guild_id)
         user_setter = self._try_bulk_set_users(user for payload in emojis if (user := payload.get("user")))
@@ -1002,9 +992,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
         await other_calls
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -1126,10 +1114,10 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
 class GuildCache(ResourceClient, sake_abc.GuildCache):
     """Redis implementation of [sake.abc.GuildCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.GUILD,)
 
@@ -1139,9 +1127,7 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
         return hikari.Intents.GUILDS
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -1216,10 +1202,10 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
 class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
     """Redis implementation of [sake.abc.RefGuildChannelCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.abc.Resource>>
         return (ResourceIndex.CHANNEL,)
 
@@ -1229,9 +1215,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         return hikari.Intents.GUILDS
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -1363,10 +1347,10 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
 class InviteCache(ResourceClient, sake_abc.InviteCache):
     """Redis implementation of [sake.abc.InviteCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.abc.Resource>>
         return (ResourceIndex.INVITE,)
 
@@ -1376,9 +1360,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
         return hikari.Intents.GUILD_INVITES
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -1486,10 +1468,10 @@ def _get_sub_user_id(payload: _ObjectT, /) -> str:
 class MemberCache(ResourceClient, sake_abc.MemberCache):
     """Redis implementation of [sake.abc.MemberCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.abc.Resource>>
         return (ResourceIndex.MEMBER,)
 
@@ -1499,9 +1481,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
         return hikari.Intents.GUILD_MEMBERS | hikari.Intents.GUILDS
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -1548,10 +1528,10 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
     async def __on_guild_members_chunk_event(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.__bulk_set_members(event.payload["members"], int(event.payload["guild_id"]))
 
-    async def __bulk_set_members(self, members: typing.Iterator[_ObjectT], /, guild_id: int) -> None:
+    async def __bulk_set_members(self, members: collections.Iterator[_ObjectT], /, guild_id: int) -> None:
         client = self._get_connection(ResourceIndex.MEMBER)
         str_guild_id = str(guild_id)
-        members_map: typing.Mapping[typing.Union[str, bytes], bytes] = _to_map(
+        members_map: collections.Mapping[typing.Union[str, bytes], bytes] = _to_map(
             (_add_guild_id(payload, str_guild_id) for payload in members), _get_sub_user_id, self.dump
         )
         if members_map:
@@ -1629,10 +1609,10 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
 class MessageCache(ResourceClient, sake_abc.MessageCache):
     """Redis implementation of [sake.abc.MessageCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.abc.Resource>>
         return (ResourceIndex.MESSAGE,)
 
@@ -1642,9 +1622,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
         return hikari.Intents.ALL_MESSAGES
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -1754,10 +1732,10 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
 class PresenceCache(ResourceClient, sake_abc.PresenceCache):
     """Redis implementation of [sake.abc.PresenceCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.PRESENCE,)
 
@@ -1766,19 +1744,17 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
         # <<Inherited docstring from ResourceClient>>
         return hikari.Intents.GUILDS | hikari.Intents.GUILD_PRESENCES
 
-    async def __bulk_add_presences(self, presences: typing.Iterator[_ObjectT], /, guild_id: int) -> None:
+    async def __bulk_add_presences(self, presences: collections.Iterator[_ObjectT], /, guild_id: int) -> None:
         client = self._get_connection(ResourceIndex.PRESENCE)
         str_guild_id = str(guild_id)
-        presence_map: typing.Mapping[typing.Union[str, bytes], bytes] = _to_map(
+        presence_map: collections.Mapping[typing.Union[str, bytes], bytes] = _to_map(
             (_add_guild_id(payload, str_guild_id) for payload in presences), _get_sub_user_id, self.dump
         )
         if presence_map:
             await client.hset(str_guild_id, mapping=presence_map)
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -1865,10 +1841,10 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
 class RoleCache(_Reference, sake_abc.RoleCache):
     """Redis implementation of [sake.abc.RoleCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from ResourceClient>>
         return (ResourceIndex.ROLE,)
 
@@ -1878,9 +1854,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
         return hikari.Intents.GUILDS
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -2010,10 +1984,10 @@ def _get_user_id(payload: _ObjectT, /) -> str:
 class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
     """Redis implementation of [sake.abc.VoiceStateCache][]."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @classmethod
-    def index(cls) -> typing.Sequence[ResourceIndex]:
+    def index(cls) -> collections.Sequence[ResourceIndex]:
         # <<Inherited docstring from sake.abc.Resource>>
         return (ResourceIndex.VOICE_STATE,)
 
@@ -2028,14 +2002,14 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
     @staticmethod
     def __generate_references(
-        voice_states: typing.Iterable[_ObjectT], /, *, guild_id: typing.Optional[str] = None
-    ) -> typing.Dict[str, typing.Set[str]]:
-        all_references: typing.Dict[str, typing.Set[str]] = {}
+        voice_states: collections.Iterable[_ObjectT], /, *, guild_id: typing.Optional[str] = None
+    ) -> dict[str, set[str]]:
+        all_references: dict[str, set[str]] = {}
         for payload in voice_states:
             channel_id = int(payload["channel_id"])
             user_id = int(payload["user_id"])
             try:
-                references: typing.Set[str] = all_references[str(channel_id)]
+                references: set[str] = all_references[str(channel_id)]
 
             except KeyError:
                 all_references[str(channel_id)] = references = set()
@@ -2048,9 +2022,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         return all_references
 
     @_as_tanjun_loader
-    def __add_to_tanjun(
-        self, client: tanjun.abc.Client, trust_get_for: typing.Set[typing.Type[sake_abc.Resource]], /
-    ) -> None:
+    def __add_to_tanjun(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         from tanjun.dependencies import async_cache
 
         from . import _tanjun_adapter
@@ -2072,7 +2044,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
         voice_states = event.payload["voice_states"]
         members = {int(payload["user"]["id"]): payload for payload in event.payload["members"]}
-        voice_states_map: typing.Mapping[typing.Union[str, bytes], bytes] = _to_map(
+        voice_states_map: collections.Mapping[typing.Union[str, bytes], bytes] = _to_map(
             (_add_voice_fields(payload, str_guild_id, members[int(payload["user_id"])]) for payload in voice_states),
             _get_user_id,
             self.dump,
@@ -2103,7 +2075,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
             await self.set_voice_state(guild_id, dict(event.payload))
 
     @staticmethod
-    def __pop_reference(keys: typing.List[bytes], /) -> typing.Tuple[bytes, typing.Sequence[bytes]]:
+    def __pop_reference(keys: list[bytes], /) -> tuple[bytes, collections.Sequence[bytes]]:
         for key in keys:
             if key.startswith(b"KEY."):
                 keys.remove(key)
@@ -2258,4 +2230,4 @@ class RedisCache(
 ):
     """A Redis implementation of all the defined cache resources."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()

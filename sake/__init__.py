@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# cython: language_level=3
 # BSD 3-Clause License
 #
 # Copyright (c) 2020-2022, Faster Speeding
@@ -39,7 +38,7 @@ For standard implementation(s) see:
 """
 from __future__ import annotations
 
-__all__: typing.Sequence[str] = [
+__all__: list[str] = [
     # __init__.py
     "BackendError",
     "CannotDelete",
@@ -52,8 +51,6 @@ __all__: typing.Sequence[str] = [
     "errors",
     "redis",
 ]
-
-import typing
 
 from . import abc
 from . import redis

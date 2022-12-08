@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# cython: language_level=3
 # BSD 3-Clause License
 #
 # Copyright (c) 2020-2022, Faster Speeding
@@ -31,7 +30,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import annotations
 
-__all__: typing.Sequence[str] = [
+__all__: list[str] = [
     "ExpireT",
     "ListenerProto",
     "RawListenerProto",
@@ -46,6 +45,7 @@ import datetime
 import inspect
 import math
 import typing
+from collections import abc as collections
 
 import hikari
 
@@ -63,7 +63,7 @@ millisecond precision is supported) or a timedelta. [None][], `float("nan")` and
 _T = typing.TypeVar("_T")
 _EventT_inv = typing.TypeVar("_EventT_inv", bound=hikari.Event)
 _EventT = typing.TypeVar("_EventT", bound=hikari.Event)
-_CallbackT = typing.Callable[["_T", _EventT], typing.Coroutine[typing.Any, typing.Any, None]]
+_CallbackT = collections.Callable[["_T", _EventT], collections.Coroutine[typing.Any, typing.Any, None]]
 
 
 def convert_expire_time(expire: ExpireT, /) -> typing.Optional[int]:
@@ -101,7 +101,7 @@ class ListenerProto(typing.Protocol[_EventT_inv]):
         raise NotImplementedError
 
     @property
-    def __sake_event_type__(self) -> typing.Type[_EventT_inv]:
+    def __sake_event_type__(self) -> type[_EventT_inv]:
         """The event type this listener is listening for."""
         raise NotImplementedError
 
@@ -121,14 +121,14 @@ class RawListenerProto(typing.Protocol):
         raise NotImplementedError
 
     @property
-    def __sake_event_names__(self) -> typing.Sequence[str]:
+    def __sake_event_names__(self) -> collections.Sequence[str]:
         """Sequence of the raw event names this is listening for."""
         raise NotImplementedError
 
 
 def as_listener(
-    event_type: typing.Type[_EventT], /
-) -> typing.Callable[[_CallbackT[_T, _EventT]], _CallbackT[_T, _EventT]]:
+    event_type: type[_EventT], /
+) -> collections.Callable[[_CallbackT[_T, _EventT]], _CallbackT[_T, _EventT]]:
     """Mark a method as an event listener on a client implementation.
 
     Parameters
@@ -138,7 +138,7 @@ def as_listener(
 
     Returns
     -------
-    typing.Callable[[_CallbackT[_T, _EventT]],  _Callback[_T, _EventT]]
+    collections.abc.Callable[[_CallbackT[_T, _EventT]],  _Callback[_T, _EventT]]
         Decorator callback which marks the method as an event listener.
     """
 
@@ -152,7 +152,7 @@ def as_listener(
 
 def as_raw_listener(
     event_name: str, /, *event_names: str
-) -> typing.Callable[[_CallbackT[_T, hikari.ShardPayloadEvent]], _CallbackT[_T, hikari.ShardPayloadEvent]]:
+) -> collections.Callable[[_CallbackT[_T, hikari.ShardPayloadEvent]], _CallbackT[_T, hikari.ShardPayloadEvent]]:
     """Mark a method as a raw event listener on a client implementation.
 
     Parameters
@@ -164,7 +164,7 @@ def as_raw_listener(
 
     Returns
     -------
-    typing.Callable[[_CallbackT[_T,hikari.ShardPayloadEvent]], _CallbackT[_T,hikari.ShardPayloadEvent]]
+    collections.abc.Callable[[_CallbackT[_T,hikari.ShardPayloadEvent]], _CallbackT[_T,hikari.ShardPayloadEvent]]
         Decorator callback which marks the method as a raw event listener.
     """
     event_names = (event_name.upper(), *(name.upper() for name in event_names))
@@ -179,10 +179,7 @@ def as_raw_listener(
 
 def find_listeners(
     obj: typing.Any, /
-) -> tuple[
-    typing.Dict[typing.Type[hikari.Event], typing.List[ListenerProto[hikari.Event]]],
-    typing.Dict[str, typing.List[RawListenerProto]],
-]:
+) -> tuple[dict[type[hikari.Event], list[ListenerProto[hikari.Event]]], dict[str, list[RawListenerProto]],]:
     """Find all the event and raw-event listener methods on an object.
 
     Parameters
@@ -198,8 +195,8 @@ def find_listeners(
         0. A dictionary of hikari event types to the found event listener methods.
         1. A dictionary of event names to the found raw event listener methods.
     """
-    listeners: typing.Dict[typing.Type[hikari.Event], typing.List[ListenerProto[hikari.Event]]] = {}
-    raw_listeners: typing.Dict[str, typing.List[RawListenerProto]] = {}
+    listeners: dict[type[hikari.Event], list[ListenerProto[hikari.Event]]] = {}
+    raw_listeners: dict[str, list[RawListenerProto]] = {}
     for _, member in inspect.getmembers(obj):
         if isinstance(member, ListenerProto):
             try:
@@ -222,7 +219,7 @@ def find_listeners(
 class OwnIDStore:
     """Helper class for tracking the current users' ID."""
 
-    __slots__: typing.Sequence[str] = ("_app", "_lock", "value")
+    __slots__ = ("_app", "_lock", "value")
 
     KEY: typing.Final[str] = "OWN_ID"
 

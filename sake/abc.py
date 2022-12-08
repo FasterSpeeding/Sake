@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# cython: language_level=3
 # BSD 3-Clause License
 #
 # Copyright (c) 2020-2022, Faster Speeding
@@ -39,7 +38,7 @@
 
 from __future__ import annotations
 
-__all__: typing.Sequence[str] = [
+__all__: list[str] = [
     "Cache",
     "CacheIterator",
     "EmojiCache",
@@ -79,7 +78,7 @@ _T = typing.TypeVar("_T")
 class CacheIterator(hikari.LazyIterator[_T], abc.ABC):
     """A asynchronous iterator of entries within a defined cache store."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def len(self) -> int:
@@ -100,7 +99,7 @@ class CacheIterator(hikari.LazyIterator[_T], abc.ABC):
 class Resource(abc.ABC):
     """The basic interface which all cache resources should implement."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @property
     @abc.abstractmethod
@@ -129,7 +128,7 @@ class Resource(abc.ABC):
 class EmojiCache(Resource, abc.ABC):
     """The traits of a implementation which supports a emoji cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_emojis(self) -> None:
@@ -224,7 +223,7 @@ class EmojiCache(Resource, abc.ABC):
 class RefEmojiCache(EmojiCache, abc.ABC):
     """The traits of a implementation which supports a referential emoji cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_emojis_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
@@ -281,7 +280,7 @@ class RefEmojiCache(EmojiCache, abc.ABC):
 class GuildCache(Resource, abc.ABC):
     """The traits of a implementation which supports a guild cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_guilds(self) -> None:
@@ -379,7 +378,7 @@ RefGuildCache = GuildCache
 class GuildChannelCache(Resource, abc.ABC):
     """The traits of a implementation which supports a guild channel cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_guild_channels(self) -> None:
@@ -474,7 +473,7 @@ class GuildChannelCache(Resource, abc.ABC):
 class RefGuildChannelCache(GuildChannelCache, abc.ABC):
     """The traits of a implementation which supports a referential guild channel cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_guild_channels_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
@@ -534,7 +533,7 @@ class RefGuildChannelCache(GuildChannelCache, abc.ABC):
 class InviteCache(Resource, abc.ABC):
     """The traits of a implementation which supports a invite cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_invites(self) -> None:
@@ -629,7 +628,7 @@ class InviteCache(Resource, abc.ABC):
 class RefInviteCache(InviteCache, abc.ABC):
     """The traits of a implementation which supports a referential invite cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_invites_for_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
@@ -739,7 +738,7 @@ class RefInviteCache(InviteCache, abc.ABC):
 class MeCache(Resource, abc.ABC):
     """The traits of a implementation which supports a own user cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def delete_me(self) -> None:
@@ -786,7 +785,7 @@ RefMeCache = MeCache
 class MemberCache(Resource, abc.ABC):
     """The traits of a implementation which supports a member cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_members(self) -> None:
@@ -857,9 +856,7 @@ class MemberCache(Resource, abc.ABC):
         """
 
     @abc.abstractmethod
-    def iter_members(
-        self,
-    ) -> CacheIterator[hikari.Member]:
+    def iter_members(self) -> CacheIterator[hikari.Member]:
         """Iterate over the members stored in the cache.
 
         !!! note
@@ -887,7 +884,7 @@ class MemberCache(Resource, abc.ABC):
 class RefMemberCache(MemberCache, abc.ABC):
     """The traits of a implementation which supports a referential member cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_members_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
@@ -997,7 +994,7 @@ class RefMemberCache(MemberCache, abc.ABC):
 class MessageCache(Resource, abc.ABC):
     """The traits of a implementation which supports a message cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_messages(self) -> None:
@@ -1092,7 +1089,7 @@ class MessageCache(Resource, abc.ABC):
 class RefMessageCache(MessageCache, abc.ABC):
     """The traits of a implementation which supports a referential message cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_messages_for_author(self, user_id: hikari.Snowflakeish, /) -> None:
@@ -1254,7 +1251,7 @@ class RefMessageCache(MessageCache, abc.ABC):
 class PresenceCache(Resource, abc.ABC):
     """The traits of a implementation which supports a presence cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_presences(self) -> None:
@@ -1327,9 +1324,7 @@ class PresenceCache(Resource, abc.ABC):
         """
 
     @abc.abstractmethod
-    def iter_presences(
-        self,
-    ) -> CacheIterator[hikari.MemberPresence]:
+    def iter_presences(self) -> CacheIterator[hikari.MemberPresence]:
         """Iterate over the presences stored in the cache.
 
         !!! note
@@ -1357,7 +1352,7 @@ class PresenceCache(Resource, abc.ABC):
 class RefPresenceCache(PresenceCache, abc.ABC):
     """The traits of a implementation which supports a referential presence cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_presences_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
@@ -1467,7 +1462,7 @@ class RefPresenceCache(PresenceCache, abc.ABC):
 class RoleCache(Resource, abc.ABC):
     """The traits of a implementation which supports a role cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_roles(self) -> None:
@@ -1562,7 +1557,7 @@ class RoleCache(Resource, abc.ABC):
 class RefRoleCache(RoleCache, abc.ABC):
     """The traits of a implementation which supports a referential role cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_roles_for_guild(self, guild_id: hikari.Snowflakeish, /) -> None:
@@ -1626,7 +1621,7 @@ class UserCache(Resource, abc.ABC):
         listeners when resources which reference it are also included.
     """
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_users(self) -> None:
@@ -1724,7 +1719,7 @@ RefUserCache = UserCache
 class VoiceStateCache(Resource, abc.ABC):
     """The traits of a implementation which supports a voice state cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_voice_states(self) -> None:
@@ -1825,7 +1820,7 @@ class VoiceStateCache(Resource, abc.ABC):
 class RefVoiceStateCache(VoiceStateCache, abc.ABC):
     """The traits of a implementation which supports a referential voice state cache."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
     @abc.abstractmethod
     async def clear_voice_states_for_channel(self, channel_id: hikari.Snowflakeish, /) -> None:
@@ -1948,7 +1943,7 @@ class Cache(
 ):
     """Protocol of a cache which implements all the defined resources."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()
 
 
 class RefCache(
@@ -1968,4 +1963,4 @@ class RefCache(
 ):
     """Protocol of a cache which implements all the defined reference resources."""
 
-    __slots__: typing.Sequence[str] = ()
+    __slots__ = ()

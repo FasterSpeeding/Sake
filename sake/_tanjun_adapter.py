@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# cython: language_level=3
 # BSD 3-Clause License
 #
 # Copyright (c) 2020-2022, Faster Speeding
@@ -31,7 +30,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import annotations
 
-__all__: typing.Sequence[str] = [
+__all__: list[str] = [
     "AsyncCacheAdapter",
     "CacheIteratorAdapter",
     "GuildAndGlobalCacheAdapter",
@@ -41,6 +40,7 @@ __all__: typing.Sequence[str] = [
 
 import enum
 import typing
+from collections import abc as collections
 
 import hikari
 from tanjun.dependencies import async_cache
@@ -86,7 +86,7 @@ class CacheIteratorAdapter(async_cache.CacheIterator[_T]):
         except errors.ClosedClient:
             raise StopAsyncIteration from None
 
-    def len(self) -> typing.Coroutine[typing.Any, typing.Any, int]:
+    def len(self) -> collections.Coroutine[typing.Any, typing.Any, int]:
         return self._iterator.len()
 
 
@@ -107,7 +107,7 @@ class SingleStoreAdapter(async_cache.SingleStoreCache[_T]):
 
     __slots__ = ("_get", "_trust_get")
 
-    def __init__(self, get: typing.Callable[[], typing.Awaitable[_T]], trust_get: bool) -> None:
+    def __init__(self, get: collections.Callable[[], collections.Awaitable[_T]], trust_get: bool) -> None:
         """Initialise a single store adapter.
 
         Parameters
@@ -149,8 +149,8 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _T]):
 
     def __init__(
         self,
-        get: typing.Callable[[_KeyT], typing.Awaitable[_T]],
-        iterate_all: typing.Callable[[], abc.CacheIterator[_T]],
+        get: collections.Callable[[_KeyT], collections.Awaitable[_T]],
+        iterate_all: collections.Callable[[], abc.CacheIterator[_T]],
         trust_get: bool,
     ) -> None:
         """Initialise an async cache adapter.
@@ -210,9 +210,9 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.GuildBoun
 
     def __init__(
         self,
-        get_from_guild: typing.Callable[[hikari.Snowflakeish, _KeyT], typing.Awaitable[_T]],
-        iterate_all: typing.Callable[[], abc.CacheIterator[_T]],
-        iterate_for_guild: typing.Callable[[hikari.Snowflakeish], abc.CacheIterator[_T]],
+        get_from_guild: collections.Callable[[hikari.Snowflakeish, _KeyT], collections.Awaitable[_T]],
+        iterate_all: collections.Callable[[], abc.CacheIterator[_T]],
+        iterate_for_guild: collections.Callable[[hikari.Snowflakeish], abc.CacheIterator[_T]],
         trust_get: bool,
     ) -> None:
         """Initialise a guild-bound cache adapter.
@@ -272,10 +272,10 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.Guild
 
     def __init__(
         self,
-        get: typing.Callable[[_KeyT], typing.Awaitable[_T]],
-        iterate_all: typing.Callable[[], abc.CacheIterator[_T]],
-        iterate_for_guild: typing.Callable[[hikari.Snowflakeish], abc.CacheIterator[_T]],
-        verify_guild: typing.Callable[[hikari.Snowflakeish, _T], bool],
+        get: collections.Callable[[_KeyT], collections.Awaitable[_T]],
+        iterate_all: collections.Callable[[], abc.CacheIterator[_T]],
+        iterate_for_guild: collections.Callable[[hikari.Snowflakeish], abc.CacheIterator[_T]],
+        verify_guild: collections.Callable[[hikari.Snowflakeish, _T], bool],
         trust_get: bool,
     ) -> None:
         """Initialise a guild and global cache adapter.

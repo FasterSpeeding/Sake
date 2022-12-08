@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# cython: language_level=3
 # Sake Examples - A collection of examples for Sake.
 # Written in 2021 by Lucina Lucina@lmbyrne.dev
 #

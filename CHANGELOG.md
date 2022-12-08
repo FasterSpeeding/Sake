@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `"tanjun"` feature flag for ensuring this is installed with a Tanjun version that's
   compatible with the Tanjun adapters.
 
+### Changed
+- Dropped support for Python 3.8.
+
 ## [1.0.4a1.post1] - 2022-11-10
 ### Changed
 - Switched from aioredis to redis-py for connecting to Redis to properly support

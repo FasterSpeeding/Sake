@@ -13,7 +13,6 @@
 __all__ = ["register"]
 
 from collections import abc as collections
-import typing
 
 import hikari
 

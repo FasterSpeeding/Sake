@@ -200,7 +200,13 @@ class Iterator(abc.CacheIterator[_T]):
             else:
                 raise StopAsyncIteration from None
 
-        return self._builder(self._load(self._buffer.pop(0)))
+        data = self._load(self._buffer.pop(0))
+
+        try:
+            return self._builder(data)
+
+        except hikari.UnrecognisedEntityError:
+            return await self.__anext__()
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
@@ -313,7 +319,12 @@ class ReferenceIterator(abc.CacheIterator[_T]):
             else:
                 raise StopAsyncIteration from None
 
-        return self._builder(self._load(self._buffer.pop(0)))
+        data = self._load(self._buffer.pop(0))
+        try:
+            return self._builder(data)
+
+        except hikari.UnrecognisedEntityError:
+            return await self.__anext__()
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
@@ -414,7 +425,13 @@ class HashReferenceIterator(abc.CacheIterator[_T]):
             else:
                 raise StopAsyncIteration from None
 
-        return self._builder(self._load(self._buffer.pop(0)))
+        data = self._load(self._buffer.pop(0))
+
+        try:
+            return self._builder(data)
+
+        except hikari.UnrecognisedEntityError:
+            return await self.__anext__()
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
@@ -494,7 +511,13 @@ class MultiMapIterator(abc.CacheIterator[_T]):
                 else:
                     raise StopAsyncIteration from None
 
-        return self._builder(self._load(self._buffer.pop(0)))
+        data = self._load(self._buffer.pop(0))
+
+        try:
+            return self._builder(data)
+
+        except hikari.UnrecognisedEntityError:
+            return await self.__anext__()
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>
@@ -565,7 +588,13 @@ class SpecificMapIterator(abc.CacheIterator[_T]):
             else:
                 raise StopAsyncIteration from None
 
-        return self._builder(self._load(self._buffer.pop(0)))
+        data = self._load(self._buffer.pop(0))
+
+        try:
+            return self._builder(data)
+
+        except hikari.UnrecognisedEntityError:
+            return await self.__anext__()
 
     async def len(self) -> int:
         # <<Inherited docstring from sake.traits.CacheIterator>>

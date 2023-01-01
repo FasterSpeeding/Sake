@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.0.6]
+### Fixed
+- Catch and ignore [hikari.errors.UnrecognisedEntityError][] during iteration.
+
 ## [1.0.5a1]
 ### Added
 - `"tanjun"` feature flag for ensuring this is installed with a Tanjun version that's
@@ -106,7 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `window_size` parameter from `RedisClient.clear_*` methods as these are no-longer
   chunked.
 
-[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.5a1...HEAD
+[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/FasterSpeeding/Sake/compare/v1.0.5a1.post1...v1.0.6
 [1.0.5a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.4a1.post1...v1.0.5a1
 [1.0.4a1.post1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.4a1...v1.0.4a1.post1
 [1.0.4a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.3a1.post1...v1.0.4a1

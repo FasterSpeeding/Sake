@@ -526,6 +526,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#sake.redis.ResourceClient.app" class="md-nav__link">
+    app
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sake.redis.ResourceClient.config" class="md-nav__link">
+    config
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sake.redis.ResourceClient.default_expire" class="md-nav__link">
+    default_expire
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sake.redis.ResourceClient.event_manager" class="md-nav__link">
+    event_manager
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sake.redis.ResourceClient.__init__" class="md-nav__link">
     __init__()
   </a>
@@ -554,36 +582,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#sake.redis.ResourceClient.app" class="md-nav__link">
-    app()
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sake.redis.ResourceClient.config" class="md-nav__link">
-    config()
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sake.redis.ResourceClient.default_expire" class="md-nav__link">
-    default_expire()
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#sake.redis.ResourceClient.dump" class="md-nav__link">
     dump()
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sake.redis.ResourceClient.event_manager" class="md-nav__link">
-    event_manager()
   </a>
   
 </li>
@@ -836,6 +836,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#sake.redis.ResourceClient.app" class="md-nav__link">
+    app
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sake.redis.ResourceClient.config" class="md-nav__link">
+    config
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sake.redis.ResourceClient.default_expire" class="md-nav__link">
+    default_expire
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sake.redis.ResourceClient.event_manager" class="md-nav__link">
+    event_manager
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sake.redis.ResourceClient.__init__" class="md-nav__link">
     __init__()
   </a>
@@ -864,36 +892,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#sake.redis.ResourceClient.app" class="md-nav__link">
-    app()
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sake.redis.ResourceClient.config" class="md-nav__link">
-    config()
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sake.redis.ResourceClient.default_expire" class="md-nav__link">
-    default_expire()
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#sake.redis.ResourceClient.dump" class="md-nav__link">
     dump()
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sake.redis.ResourceClient.event_manager" class="md-nav__link">
-    event_manager()
   </a>
   
 </li>
@@ -1596,6 +1596,100 @@ millisecond precision is supported) or a timedelta.</p>
 
 
 
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="sake.redis.ResourceClient.app" class="doc doc-heading">
+        <span class="doc doc-object-name doc-attribute-name">app</span>
+
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sake.redis.ResourceClient.app" class="headerlink" title="Permanent link">#</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">app</span><span class="p">:</span> <span class="n">hikari</span><span class="o">.</span><span class="n">RESTAware</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>The Hikari client this resource client is tied to.</p>
+<p>This is used to build models with a <code>app</code> attribute.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="sake.redis.ResourceClient.config" class="doc doc-heading">
+        <span class="doc doc-object-name doc-attribute-name">config</span>
+
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sake.redis.ResourceClient.config" class="headerlink" title="Permanent link">#</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">config</span><span class="p">:</span> <span class="n">collections</span><span class="o">.</span><span class="n">MutableMapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>This client's settings.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="sake.redis.ResourceClient.default_expire" class="doc doc-heading">
+        <span class="doc doc-object-name doc-attribute-name">default_expire</span>
+
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sake.redis.ResourceClient.default_expire" class="headerlink" title="Permanent link">#</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">default_expire</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>The default expire time used for fields with no actual lifetime.</p>
+<p>If this is <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a> then these cases will have no set expire after.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="sake.redis.ResourceClient.event_manager" class="doc doc-heading">
+        <span class="doc doc-object-name doc-attribute-name">event_manager</span>
+
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sake.redis.ResourceClient.event_manager" class="headerlink" title="Permanent link">#</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">event_manager</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">hikari</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">EventManager</span><span class="p">]</span>
+</code></pre></div>
+
+  <div class="doc doc-contents ">
+  
+      <p>The event manager this resource client is using for managing state.</p>
+  </div>
+
+</div>
+
 
 
 <div class="doc doc-object doc-function">
@@ -2008,80 +2102,6 @@ linked redis database(s).</p>
 
 
 
-<h3 id="sake.redis.ResourceClient.app" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">app</span>
-
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#sake.redis.ResourceClient.app" class="headerlink" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">app</span><span class="p">()</span>
-</code></pre></div>
-
-  <div class="doc doc-contents ">
-  
-      <p>The Hikari client this resource client is tied to.</p>
-<p>This is used to build models with a <code>app</code> attribute.</p>
-
-  </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-
-<h3 id="sake.redis.ResourceClient.config" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">config</span>
-
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#sake.redis.ResourceClient.config" class="headerlink" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">config</span><span class="p">()</span>
-</code></pre></div>
-
-  <div class="doc doc-contents ">
-  
-      <p>This client's settings.</p>
-
-  </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-
-<h3 id="sake.redis.ResourceClient.default_expire" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">default_expire</span>
-
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#sake.redis.ResourceClient.default_expire" class="headerlink" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">default_expire</span><span class="p">()</span>
-</code></pre></div>
-
-  <div class="doc doc-contents ">
-  
-      <p>The default expire time used for fields with no actual lifetime.</p>
-<p>If this is <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a> then these cases will have no set expire after.</p>
-
-  </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-
 <h3 id="sake.redis.ResourceClient.dump" class="doc doc-heading">
         <span class="doc doc-object-name doc-function-name">dump</span>
 
@@ -2137,30 +2157,6 @@ linked redis database(s).</p>
         </tr>
     </tbody>
   </table>
-
-  </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-
-<h3 id="sake.redis.ResourceClient.event_manager" class="doc doc-heading">
-        <span class="doc doc-object-name doc-function-name">event_manager</span>
-
-  
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#sake.redis.ResourceClient.event_manager" class="headerlink" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">event_manager</span><span class="p">()</span>
-</code></pre></div>
-
-  <div class="doc doc-contents ">
-  
-      <p>The event manager this resource client is using for managing state.</p>
 
   </div>
 

@@ -111,7 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   chunked.
 
 [Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.6...HEAD
-[1.0.6]: https://github.com/FasterSpeeding/Sake/compare/v1.0.5a1.post1...v1.0.6
+[1.0.6]: https://github.com/FasterSpeeding/Sake/compare/v1.0.5a1...v1.0.6
 [1.0.5a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.4a1.post1...v1.0.5a1
 [1.0.4a1.post1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.4a1...v1.0.4a1.post1
 [1.0.4a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.3a1.post1...v1.0.4a1

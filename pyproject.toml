@@ -25,11 +25,11 @@ classifiers = [
     "Topic :: Utilities",
     "Typing :: Typed",
 ]
-dependencies = ["hikari~=2.0.0.dev112", "redis~=4.2"]
+dependencies = ["hikari>=2.0.0.dev112, <3", "redis~=4.2"]
 dynamic = ["description"]
 
 [project.optional-dependencies]
-tanjun = ["hikari-tanjun>=2.9.0a1, <3.0.0"]
+tanjun = ["hikari-tanjun>=2.9.0a1, <3"]
 
 [project.urls]
 Homepage = "https://github.com/FasterSpeeding/Sake"

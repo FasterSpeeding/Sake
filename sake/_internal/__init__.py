@@ -179,7 +179,7 @@ def as_raw_listener(
 
 def find_listeners(
     obj: typing.Any, /
-) -> tuple[dict[type[hikari.Event], list[ListenerProto[hikari.Event]]], dict[str, list[RawListenerProto]],]:
+) -> tuple[dict[type[hikari.Event], list[ListenerProto[hikari.Event]]], dict[str, list[RawListenerProto]]]:
     """Find all the event and raw-event listener methods on an object.
 
     Parameters

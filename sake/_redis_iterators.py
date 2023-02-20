@@ -37,9 +37,10 @@ __all__: list[str] = ["HashReferenceIterator", "Iterator", "MultiMapIterator", "
 import itertools
 import typing
 
+import hikari
+
 from . import abc
 from . import redis
-import hikari
 
 if typing.TYPE_CHECKING:
     from collections import abc as collections

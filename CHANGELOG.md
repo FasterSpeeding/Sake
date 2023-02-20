@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.7]
 ### Fixed
 - Fix [hikari.errors.UnrecognisedEntityError][] handling in the Redis iterators.
-  This will no-longer lead to an [AttributeError][] being raised.
+  This will no-longer lead to an [NameError][] being raised.
 
 ## [1.0.6]
 ### Fixed

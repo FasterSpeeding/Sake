@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
-- Fix [hikari.errors.UnrecognisedEntityError][] handling in Tanjun adapters.
+- Fix [hikari.errors.UnrecognisedEntityError][] handling in the Redis iterators.
 
 ## [1.0.6]
 ### Fixed

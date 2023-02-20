@@ -962,7 +962,8 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <h2 id="unreleased"><a href="https://github.com/FasterSpeeding/Sake/compare/v1.0.6...HEAD">Unreleased</a><a class="headerlink" href="#unreleased" title="Permanent link">#</a></h2>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">#</a></h3>
 <ul>
-<li>Fix <a class="autorefs autorefs-external" href="https://docs.hikari-py.dev/en/latest/reference/hikari/errors/#hikari.errors.UnrecognisedEntityError">hikari.errors.UnrecognisedEntityError</a> handling in the Redis iterators.</li>
+<li>Fix <a class="autorefs autorefs-external" href="https://docs.hikari-py.dev/en/latest/reference/hikari/errors/#hikari.errors.UnrecognisedEntityError">hikari.errors.UnrecognisedEntityError</a> handling in the Redis iterators.
+  This will no-longer lead to an <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/exceptions.html#AttributeError">AttributeError</a> being raised.</li>
 </ul>
 <h2 id="106"><a href="https://github.com/FasterSpeeding/Sake/compare/v1.0.5a1...v1.0.6">1.0.6</a><a class="headerlink" href="#106" title="Permanent link">#</a></h2>
 <h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Permanent link">#</a></h3>

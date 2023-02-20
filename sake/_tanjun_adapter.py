@@ -304,7 +304,7 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.Guild
         self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: typing.Union[_DefaultT, NoDefault] = NO_DEFAULT
     ) -> typing.Union[_T, _DefaultT]:
         result = await self.get(key, default=default)
-        if result is default or self._verify_guild(guild_id, typing.cast(_T, result)):
+        if result is default or self._verify_guild(guild_id, typing.cast("_T", result)):
             return result
 
         if default is not NO_DEFAULT:

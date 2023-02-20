@@ -137,7 +137,7 @@ class _TanjunLoaderProto(typing.Protocol):
 def _as_tanjun_loader(callback: _TanjunLoaderSigT, /) -> _TanjunLoaderSigT:
     callback.__tanjun_loader__ = True  # type: ignore
     assert isinstance(callback, _TanjunLoaderProto)
-    return typing.cast(_TanjunLoaderSigT, callback)
+    return typing.cast("_TanjunLoaderSigT", callback)
 
 
 # TODO: document that it isn't guaranteed that deletion will be finished before clear command coroutines finish.

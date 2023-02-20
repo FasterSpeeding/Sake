@@ -39,11 +39,11 @@ import typing
 
 from . import abc
 from . import redis
+import hikari
 
 if typing.TYPE_CHECKING:
     from collections import abc as collections
 
-    import hikari
     from redis import asyncio as aioredis
     from typing_extensions import Self
 

@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Async locking when fetching the bot's ID internally and ensure it only
   fetches once.
 - Raise [sake.errors.ClosedClient][] instead of [TypeError][] when the Sake
-  Client is inactive (from get and iter methods).
+  client is inactive (from get and iter methods).
 
 ### Removed
 - The project metadata dunder attributes from [sake][].
@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Client `is_alive` attribute (both on the abstract interface and redit impl).
 
 ### Changed
-- Aioredis dependency minimum version to 2.0.0
+- Aioredis dependency minimum version to 2.0.0.
   This comes with breaking changes to how RedisClient is initialised as
   parameters have been replaced and changed (semantically speaking).
   For more information on this see the documentation.

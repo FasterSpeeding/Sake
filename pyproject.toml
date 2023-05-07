@@ -101,7 +101,7 @@ ignore = [
     "E231",    # missing whitespace after ','
 ]
 per-file-ignores = [
-    "examples/*.py: D103, D104, FA101",
+    "examples/*.py: D103, D104, FA101, TC003",
     "noxfile.py: D100, FA101, F401, F403, INP001",
     "sake/py.typed: D100",
     "tests/*.py: CCE002, D100, D101, D103, D104, FA100, FA101"

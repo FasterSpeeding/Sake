@@ -13,7 +13,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.12">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.9">
     
     
       
@@ -21,10 +21,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.0d440cfe.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.85bb2934.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.2505c338.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.a6bdf11c.min.css">
       
       
   
@@ -100,7 +100,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="cyan" data-md-color-accent="">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="cyan" data-md-color-accent="indigo">
   
     
     
@@ -124,7 +124,9 @@
     
       
 
-<header class="md-header" data-md-component="header">
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="Hikari-Sake docs" class="md-header__button md-logo" aria-label="Hikari-Sake docs" data-md-component="logo">
       
@@ -152,25 +154,31 @@
       </div>
     </div>
     
-      <form class="md-header__option" data-md-component="palette">
-        
+      
+        <form class="md-header__option" data-md-component="palette">
           
-          <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="cyan" data-md-color-accent=""  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+            
+            
+            
+            <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="cyan" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+            
+              <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9v1Z"/></svg>
+              </label>
+            
           
-            <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9v1Z"/></svg>
-            </label>
+            
+            
+            
+            <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="cyan" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+            
+              <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9v1Z"/></svg>
+              </label>
+            
           
-        
-          
-          <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="cyan" data-md-color-accent=""  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
-          
-            <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9v1Z"/></svg>
-            </label>
-          
-        
-      </form>
+        </form>
+      
     
     
     
@@ -994,7 +1002,6 @@
                   
 
 
-
 <h1 id="sakeredis">sake.redis<a class="headerlink" href="#sakeredis" title="Permanent link">#</a></h1>
 
 
@@ -1277,52 +1284,25 @@
   
       <p>Set the default expire time for invite entries added with this client.</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>expire</code></td>
-          <td class="doc-param-details">
-            <p>The default expire time to add for invites in this cache or <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a>
+  <p>Parameters:</p>
+  <ul>
+      <li class="field-body">
+        <b>expire</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<span title="sake._internal">_internal</span>.<span title="sake._internal.ExpireT">ExpireT</span>]</code>)
+        – <p>The default expire time to add for invites in this cache or <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a>
 to set back to the default behaviour.
 This may either be the number of seconds as an int or float (where
 millisecond precision is supported) or a timedelta.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<span title="sake._internal">_internal</span>.<span title="sake._internal.ExpireT">ExpireT</span>]</code>
-                </span>
-            </p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+      </li>
+  </ul>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RETURNS</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-              <span class="doc-returns-annotation">
-                  <code><span title="typing_extensions.Self">Self</span></code>
-              </span>
-          </td>
-          <td class="doc-returns-details">
-            <p>The client this is being called on to enable chained calls.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Returns:</p>
+  <ul>
+      <li class="field-body">
+            <code><span title="typing_extensions.Self">Self</span></code>
+        – <p>The client this is being called on to enable chained calls.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -1424,52 +1404,25 @@ millisecond precision is supported) or a timedelta.</p>
   
       <p>Set the default expire time for message entries added with this client.</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>expire</code></td>
-          <td class="doc-param-details">
-            <p>The default expire time to add for messages in this cache or <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a>
+  <p>Parameters:</p>
+  <ul>
+      <li class="field-body">
+        <b>expire</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<span title="sake._internal">_internal</span>.<span title="sake._internal.ExpireT">ExpireT</span>]</code>)
+        – <p>The default expire time to add for messages in this cache or <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a>
 to set back to the default behaviour.
 This may either be the number of seconds as an int or float (where
 millisecond precision is supported) or a timedelta.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<span title="sake._internal">_internal</span>.<span title="sake._internal.ExpireT">ExpireT</span>]</code>
-                </span>
-            </p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+      </li>
+  </ul>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RETURNS</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-              <span class="doc-returns-annotation">
-                  <code><span title="typing_extensions.Self">Self</span></code>
-              </span>
-          </td>
-          <td class="doc-returns-details">
-            <p>The client this is being called on to enable chained calls.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Returns:</p>
+  <ul>
+      <li class="field-body">
+            <code><span title="typing_extensions.Self">Self</span></code>
+        – <p>The client this is being called on to enable chained calls.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -1709,31 +1662,18 @@ millisecond precision is supported) or a timedelta.</p>
   
       <p>Initialise a resource client.</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>app</code></td>
-          <td class="doc-param-details">
-            <p>The Hikari client all the models returned by this client should be
+  <p>Parameters:</p>
+  <ul>
+      <li class="field-body">
+        <b>app</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.hikari-py.dev/en/latest/reference/hikari/#module-hikari">hikari</a>.<span title="hikari.RESTAware">RESTAware</span></code>)
+        – <p>The Hikari client all the models returned by this client should be
 bound to.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.hikari-py.dev/en/latest/reference/hikari/#module-hikari">hikari</a>.<span title="hikari.RESTAware">RESTAware</span></code>
-                </span>
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td><code>address</code></td>
-          <td class="doc-param-details">
-            <p>The address to use to connect to the Redis backend server this
+      </li>
+      <li class="field-body">
+        <b>address</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#str">str</a></code>)
+        – <p>The address to use to connect to the Redis backend server this
 resource is linked to.</p>
 <p>E.g:
 - <code>"redis://[[username]:[password]]@localhost:6379"</code>
@@ -1745,88 +1685,35 @@ resource is linked to.</p>
 - <code>rediss://</code>: creates a SSL wrapped TCP socket connection. See more at:
 <a href="https://www.iana.org/assignments/uri-schemes/prov/rediss">https://www.iana.org/assignments/uri-schemes/prov/rediss</a>
 - <code>unix://</code>: creates a Unix Domain Socket connection.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#str">str</a></code>
-                </span>
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td><code>event_manager</code></td>
-          <td class="doc-param-details">
-            <p>The event manager to bind this resource client to.</p>
+      </li>
+      <li class="field-body">
+        <b>event_manager</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.hikari-py.dev/en/latest/reference/hikari/#module-hikari">hikari</a>.<a class="autorefs autorefs-external" title="hikari.api" href="https://docs.hikari-py.dev/en/latest/reference/hikari/api/#module-hikari.api">api</a>.<span title="hikari.api.EventManager">EventManager</span>]</code>)
+        – <p>The event manager to bind this resource client to.</p>
 <p>If provided then this client will automatically manage resources
 based on received gateway events.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.hikari-py.dev/en/latest/reference/hikari/#module-hikari">hikari</a>.<a class="autorefs autorefs-external" title="hikari.api" href="https://docs.hikari-py.dev/en/latest/reference/hikari/api/#module-hikari.api">api</a>.<span title="hikari.api.EventManager">EventManager</span>]</code>
-                </span>
-                <span class="doc-param-default">
-                  <b>DEFAULT:</b> 
-                    <code>None</code>
-                </span>
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td><code>event_managed</code></td>
-          <td class="doc-param-details">
-            <p>Whether the client should be started and stopped based on the attached
+      </li>
+      <li class="field-body">
+        <b>event_managed</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#bool">bool</a></code>)
+        – <p>Whether the client should be started and stopped based on the attached
 event_manager's lifetime events.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#bool">bool</a></code>
-                </span>
-                <span class="doc-param-default">
-                  <b>DEFAULT:</b> 
-                    <code>False</code>
-                </span>
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td><code>password</code></td>
-          <td class="doc-param-details">
-            <p>The password to use to connect to the backend Redis server.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#str">str</a>]</code>
-                </span>
-                <span class="doc-param-default">
-                  <b>DEFAULT:</b> 
-                    <code>None</code>
-                </span>
-            </p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+      </li>
+      <li class="field-body">
+        <b>password</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#str">str</a>]</code>)
+        – <p>The password to use to connect to the backend Redis server.</p>
+      </li>
+  </ul>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RAISES</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-            <span class="doc-raises-annotation">
-                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/exceptions.html#ValueError">ValueError</a></code>
-            </span>
-          </td>
-          <td class="doc-raises-details">
-            <p>When <code>event_managed</code> is <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#True">True</a> and <code>event_manager</code> wasn't passed.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Raises:</p>
+  <ul>
+      <li class="field-body">
+            <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/exceptions.html#ValueError">ValueError</a></code>
+          –
+        <p>When <code>event_managed</code> is <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#True">True</a> and <code>event_manager</code> wasn't passed.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -1931,30 +1818,17 @@ implemented but are as follows for each standard resource implementation:</p>
 </li>
 </ul>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>client</code></td>
-          <td class="doc-param-details">
-            <p>The Tanjun client to add this client to.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://tanjun.cursed.solutions/reference/#tanjun">tanjun</a>.<a class="autorefs autorefs-external" title="tanjun.abc" href="https://tanjun.cursed.solutions/reference/abc/#tanjun.abc">abc</a>.<a class="autorefs autorefs-external" title="tanjun.abc.Client" href="https://tanjun.cursed.solutions/reference/abc/#tanjun.abc.Client">Client</a></code>
-                </span>
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td><code>trust_get_for</code></td>
-          <td class="doc-param-details">
-            <p>A collection of resource types which the <a class="autorefs autorefs-external" href="https://tanjun.cursed.solutions/reference/dependencies/#tanjun.dependencies.async_cache">tanjun.dependencies.async_cache</a>
+  <p>Parameters:</p>
+  <ul>
+      <li class="field-body">
+        <b>client</b>
+            (<code><a class="autorefs autorefs-external" href="https://tanjun.cursed.solutions/reference/#tanjun">tanjun</a>.<a class="autorefs autorefs-external" title="tanjun.abc" href="https://tanjun.cursed.solutions/reference/abc/#tanjun.abc">abc</a>.<a class="autorefs autorefs-external" title="tanjun.abc.Client" href="https://tanjun.cursed.solutions/reference/abc/#tanjun.abc.Client">Client</a></code>)
+        – <p>The Tanjun client to add this client to.</p>
+      </li>
+      <li class="field-body">
+        <b>trust_get_for</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" title="collections.abc" href="https://docs.python.org/3.9/library/collections.abc.html#module-collections.abc">collections</a>.<a class="autorefs autorefs-external" title="collections.abc.Collection" href="https://docs.python.org/3.9/library/collections.abc.html#collections.abc.Collection">Collection</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#type">type</a>[<a class="autorefs autorefs-internal" title="sake.abc" href="../abc/#sake.abc">sake_abc</a>.<a class="autorefs autorefs-internal" title="sake.abc.Resource" href="../abc/#sake.abc.Resource">Resource</a>]]]</code>)
+        – <p>A collection of resource types which the <a class="autorefs autorefs-external" href="https://tanjun.cursed.solutions/reference/dependencies/#tanjun.dependencies.async_cache">tanjun.dependencies.async_cache</a>
 adapter "get" methods should raise <a class="autorefs autorefs-external" href="https://tanjun.cursed.solutions/reference/dependencies/#tanjun.dependencies.async_cache.EntryNotFound">tanjun.dependencies.async_cache.EntryNotFound</a>
 if the entry isn't found rather than just
 <a class="autorefs autorefs-external" href="https://tanjun.cursed.solutions/reference/dependencies/#tanjun.dependencies.async_cache.CacheMissError">tanjun.dependencies.async_cache.CacheMissError</a>.</p>
@@ -1969,59 +1843,24 @@ if the entry isn't found rather than just
 <li><a class="autorefs autorefs-internal" href="../abc/#sake.abc.VoiceStateCache">sake.abc.VoiceStateCache</a></li>
 <li><a class="autorefs autorefs-internal" href="../abc/#sake.abc.UserCache">sake.abc.UserCache</a> (if <a class="autorefs autorefs-internal" href="../abc/#sake.abc.MemberCache">sake.abc.MemberCache</a> is also implemented).</li>
 </ul>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" title="collections.abc" href="https://docs.python.org/3.9/library/collections.abc.html#module-collections.abc">collections</a>.<a class="autorefs autorefs-external" title="collections.abc.Collection" href="https://docs.python.org/3.9/library/collections.abc.html#collections.abc.Collection">Collection</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#type">type</a>[<a class="autorefs autorefs-internal" title="sake.abc" href="../abc/#sake.abc">sake_abc</a>.<a class="autorefs autorefs-internal" title="sake.abc.Resource" href="../abc/#sake.abc.Resource">Resource</a>]]]</code>
-                </span>
-                <span class="doc-param-default">
-                  <b>DEFAULT:</b> 
-                    <code>None</code>
-                </span>
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td><code>tanjun_managed</code></td>
-          <td class="doc-param-details">
-            <p>Whether the client should be started and stopped based on the tanjun
+      </li>
+      <li class="field-body">
+        <b>tanjun_managed</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#bool">bool</a></code>)
+        – <p>Whether the client should be started and stopped based on the tanjun
 client's lifecycle.</p>
 <p>This is useful if the client isn't being event managed.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#bool">bool</a></code>
-                </span>
-                <span class="doc-param-default">
-                  <b>DEFAULT:</b> 
-                    <code>False</code>
-                </span>
-            </p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+      </li>
+  </ul>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RAISES</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-            <span class="doc-raises-annotation">
-                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/exceptions.html#RuntimeError">RuntimeError</a></code>
-            </span>
-          </td>
-          <td class="doc-raises-details">
-            <p>If this is called in an environment without Tanjun.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Raises:</p>
+  <ul>
+      <li class="field-body">
+            <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/exceptions.html#RuntimeError">RuntimeError</a></code>
+          –
+        <p>If this is called in an environment without Tanjun.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -2047,26 +1886,13 @@ client's lifecycle.</p>
 <p>This accounts for index overrides.</p>
 </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RETURNS</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-              <span class="doc-returns-annotation">
-                  <code><a class="autorefs autorefs-external" title="collections.abc" href="https://docs.python.org/3.9/library/collections.abc.html#module-collections.abc">collections</a>.<span title="collections.abc.abc">abc</span>.<a class="autorefs autorefs-external" title="collections.abc.MutableSet" href="https://docs.python.org/3.9/library/collections.abc.html#collections.abc.MutableSet">MutableSet</a>[<a class="autorefs autorefs-internal" title="sake.redis.ResourceIndex" href="#sake.redis.ResourceIndex">ResourceIndex</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#int">int</a>]</code>
-              </span>
-          </td>
-          <td class="doc-returns-details">
-            <p>A set of all the Redis client indexes this is using.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Returns:</p>
+  <ul>
+      <li class="field-body">
+            <code><a class="autorefs autorefs-external" title="collections.abc" href="https://docs.python.org/3.9/library/collections.abc.html#module-collections.abc">collections</a>.<span title="collections.abc.abc">abc</span>.<a class="autorefs autorefs-external" title="collections.abc.MutableSet" href="https://docs.python.org/3.9/library/collections.abc.html#collections.abc.MutableSet">MutableSet</a>[<a class="autorefs autorefs-internal" title="sake.redis.ResourceIndex" href="#sake.redis.ResourceIndex">ResourceIndex</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#int">int</a>]</code>
+        – <p>A set of all the Redis client indexes this is using.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -2115,49 +1941,22 @@ linked redis database(s).</p>
   
       <p>Serialize a dict object representation into the form to be stored.</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>data</code></td>
-          <td class="doc-param-details">
-            <p>The dict object to serialize.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><span title="sake.redis._ObjectT">_ObjectT</span></code>
-                </span>
-            </p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Parameters:</p>
+  <ul>
+      <li class="field-body">
+        <b>data</b>
+            (<code><span title="sake.redis._ObjectT">_ObjectT</span></code>)
+        – <p>The dict object to serialize.</p>
+      </li>
+  </ul>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RETURNS</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-              <span class="doc-returns-annotation">
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#bytes">bytes</a></code>
-              </span>
-          </td>
-          <td class="doc-returns-details">
-            <p>The object serialized as bytes.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Returns:</p>
+  <ul>
+      <li class="field-body">
+            <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#bytes">bytes</a></code>
+        – <p>The object serialized as bytes.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -2179,49 +1978,22 @@ linked redis database(s).</p>
   
       <p>Get the override set for an index.</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>index</code></td>
-          <td class="doc-param-details">
-            <p>The index to get the override for.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-internal" title="sake.redis.ResourceIndex" href="#sake.redis.ResourceIndex">ResourceIndex</a></code>
-                </span>
-            </p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Parameters:</p>
+  <ul>
+      <li class="field-body">
+        <b>index</b>
+            (<code><a class="autorefs autorefs-internal" title="sake.redis.ResourceIndex" href="#sake.redis.ResourceIndex">ResourceIndex</a></code>)
+        – <p>The index to get the override for.</p>
+      </li>
+  </ul>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RETURNS</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-              <span class="doc-returns-annotation">
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#int">int</a> | None</code>
-              </span>
-          </td>
-          <td class="doc-returns-details">
-            <p>The found override if set, else <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a>.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Returns:</p>
+  <ul>
+      <li class="field-body">
+            <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#int">int</a> | None</code>
+        – <p>The found override if set, else <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a>.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -2257,26 +2029,13 @@ accurate after inheritance.</p>
 <p>This doesn't account for overrides.</p>
 </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RETURNS</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-              <span class="doc-returns-annotation">
-                  <code><a class="autorefs autorefs-external" title="collections.abc" href="https://docs.python.org/3.9/library/collections.abc.html#module-collections.abc">collections</a>.<span title="collections.abc.abc">abc</span>.<a class="autorefs autorefs-external" title="collections.abc.Sequence" href="https://docs.python.org/3.9/library/collections.abc.html#collections.abc.Sequence">Sequence</a>[<a class="autorefs autorefs-internal" title="sake.redis.ResourceIndex" href="#sake.redis.ResourceIndex">ResourceIndex</a>]</code>
-              </span>
-          </td>
-          <td class="doc-returns-details">
-            <p>The index of the resource this class is linked to.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Returns:</p>
+  <ul>
+      <li class="field-body">
+            <code><a class="autorefs autorefs-external" title="collections.abc" href="https://docs.python.org/3.9/library/collections.abc.html#module-collections.abc">collections</a>.<span title="collections.abc.abc">abc</span>.<a class="autorefs autorefs-external" title="collections.abc.Sequence" href="https://docs.python.org/3.9/library/collections.abc.html#collections.abc.Sequence">Sequence</a>[<a class="autorefs autorefs-internal" title="sake.redis.ResourceIndex" href="#sake.redis.ResourceIndex">ResourceIndex</a>]</code>
+        – <p>The index of the resource this class is linked to.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -2308,26 +2067,13 @@ accurate after inheritance.</p>
 accurate after inheritance.</p>
 </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RETURNS</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-              <span class="doc-returns-annotation">
-                  <code><a class="autorefs autorefs-external" href="https://docs.hikari-py.dev/en/latest/reference/hikari/#module-hikari">hikari</a>.<a class="autorefs autorefs-external" title="hikari.intents" href="https://docs.hikari-py.dev/en/latest/reference/hikari/intents/#module-hikari.intents">intents</a>.<a class="autorefs autorefs-external" title="hikari.intents.Intents" href="https://docs.hikari-py.dev/en/latest/reference/hikari/intents/#hikari.intents.Intents">Intents</a></code>
-              </span>
-          </td>
-          <td class="doc-returns-details">
-            <p>The intents the resource requires to function properly.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Returns:</p>
+  <ul>
+      <li class="field-body">
+            <code><a class="autorefs autorefs-external" href="https://docs.hikari-py.dev/en/latest/reference/hikari/#module-hikari">hikari</a>.<a class="autorefs autorefs-external" title="hikari.intents" href="https://docs.hikari-py.dev/en/latest/reference/hikari/intents/#module-hikari.intents">intents</a>.<a class="autorefs autorefs-external" title="hikari.intents.Intents" href="https://docs.hikari-py.dev/en/latest/reference/hikari/intents/#hikari.intents.Intents">Intents</a></code>
+        – <p>The intents the resource requires to function properly.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -2349,49 +2095,22 @@ accurate after inheritance.</p>
   
       <p>Deserialize a bytes representation to a dict object.</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>data</code></td>
-          <td class="doc-param-details">
-            <p>The bytes representation from the database to a dict object.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#bytes">bytes</a></code>
-                </span>
-            </p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Parameters:</p>
+  <ul>
+      <li class="field-body">
+        <b>data</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#bytes">bytes</a></code>)
+        – <p>The bytes representation from the database to a dict object.</p>
+      </li>
+  </ul>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RETURNS</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-              <span class="doc-returns-annotation">
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3.9/library/typing.html#typing.Any">Any</a>]</code>
-              </span>
-          </td>
-          <td class="doc-returns-details">
-            <p>The deserialized dict object.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Returns:</p>
+  <ul>
+      <li class="field-body">
+            <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3.9/library/typing.html#typing.Any">Any</a>]</code>
+        – <p>The deserialized dict object.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -2413,46 +2132,21 @@ accurate after inheritance.</p>
   
       <p>Add an index override.</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>index</code></td>
-          <td class="doc-param-details">
-            <p>The index to override.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-internal" title="sake.redis.ResourceIndex" href="#sake.redis.ResourceIndex">ResourceIndex</a></code>
-                </span>
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td><code>override</code></td>
-          <td class="doc-param-details">
-            <p>The override to set.</p>
+  <p>Parameters:</p>
+  <ul>
+      <li class="field-body">
+        <b>index</b>
+            (<code><a class="autorefs autorefs-internal" title="sake.redis.ResourceIndex" href="#sake.redis.ResourceIndex">ResourceIndex</a></code>)
+        – <p>The index to override.</p>
+      </li>
+      <li class="field-body">
+        <b>override</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#int">int</a>]</code>)
+        – <p>The override to set.</p>
 <p>If this is left at <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a> then any previous override is unset.
 This will decide which Redis database is targeted for a resource.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/functions.html#int">int</a>]</code>
-                </span>
-                <span class="doc-param-default">
-                  <b>DEFAULT:</b> 
-                    <code>None</code>
-                </span>
-            </p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+      </li>
+  </ul>
 
   </div>
 
@@ -2594,52 +2288,25 @@ This will decide which Redis database is targeted for a resource.</p>
   
       <p>Set the default expire time for user entries added with this client.</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>PARAMETER</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>expire</code></td>
-          <td class="doc-param-details">
-            <p>The default expire time to add for users in this cache or <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a>
+  <p>Parameters:</p>
+  <ul>
+      <li class="field-body">
+        <b>expire</b>
+            (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<span title="sake._internal">_internal</span>.<span title="sake._internal.ExpireT">ExpireT</span>]</code>)
+        – <p>The default expire time to add for users in this cache or <a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/constants.html#None">None</a>
 to set back to the default behaviour.
 This may either be the number of seconds as an int or float (where
 millisecond precision is supported) or a timedelta.</p>
-            <p>
-                <span class="doc-param-annotation">
-                  <b>TYPE:</b>
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3.9/library/typing.html#module-typing">typing</a>.<a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3.9/library/typing.html#typing.Optional">Optional</a>[<span title="sake._internal">_internal</span>.<span title="sake._internal.ExpireT">ExpireT</span>]</code>
-                </span>
-            </p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+      </li>
+  </ul>
 
-  <table>
-    <thead>
-      <tr>
-        <th><b>RETURNS</b></th>
-        <th><b>DESCRIPTION</b></th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-              <span class="doc-returns-annotation">
-                  <code><span title="typing_extensions.Self">Self</span></code>
-              </span>
-          </td>
-          <td class="doc-returns-details">
-            <p>The client this is being called on to enable chained calls.</p>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+  <p>Returns:</p>
+  <ul>
+      <li class="field-body">
+            <code><span title="typing_extensions.Self">Self</span></code>
+        – <p>The client this is being called on to enable chained calls.</p>
+      </li>
+  </ul>
 
   </div>
 
@@ -2738,10 +2405,10 @@ millisecond precision is supported) or a timedelta.</p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.db81ec45.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.4b2c34cd.min.js"></script>
+      <script src="../../assets/javascripts/bundle.fac441b0.min.js"></script>
       
     
   </body>

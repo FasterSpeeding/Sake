@@ -40,13 +40,16 @@ __all__: list[str] = [
 
 import enum
 import typing
-from collections import abc as collections
 
 import hikari
 from tanjun.dependencies import async_cache
 
 from . import abc
 from . import errors
+
+if typing.TYPE_CHECKING:
+    from collections import abc as collections
+
 
 _T = typing.TypeVar("_T")
 _DefaultT = typing.TypeVar("_DefaultT")

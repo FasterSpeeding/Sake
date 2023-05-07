@@ -49,7 +49,7 @@ plugins:
             - https://docs.hikari-py.dev/en/latest/objects.inv
             - https://tanjun.cursed.solutions/objects.inv
           options:
-            docstring_section_style: spacy
+            docstring_section_style: list
             docstring_style: numpy
             inherited_members: true
             merge_init_into_class: false

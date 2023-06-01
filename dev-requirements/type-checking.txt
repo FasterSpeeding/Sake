@@ -337,9 +337,9 @@ frozenlist==1.3.3 ; python_full_version >= "3.9.0" and python_version < "3.12" \
     --hash=sha256:f30f1928162e189091cf4d9da2eac617bfe78ef907a761614ff577ef4edfb3c8 \
     --hash=sha256:f470c92737afa7d4c3aacc001e335062d582053d4dbe73cda126f2d7031068dd \
     --hash=sha256:ff8bf625fe85e119553b5383ba0fb6aa3d0ec2ae980295aaefa552374926b3f4
-hikari-tanjun==2.14.0 ; python_full_version >= "3.9.0" and python_version < "3.12" \
-    --hash=sha256:439279df2c549c1f88975675a8a9c391f578a02d623c5da2c35c74f661c8cfc3 \
-    --hash=sha256:6ff7d3414d16db393dd936fb83529bce2e7b406e5faafb81997a069fa70f3a7a
+hikari-tanjun==2.15.0 ; python_full_version >= "3.9.0" and python_version < "3.12" \
+    --hash=sha256:3bc7b4606834784a897772cb9860b24cf639b0aea315a3d07a3a82289ee530c4 \
+    --hash=sha256:c50460459cc6e8ced82a3edef4b760874b34cf89aaacf3c5701417ebef9d36b2
 hikari==2.0.0.dev119 ; python_full_version >= "3.9.0" and python_version < "3.12" \
     --hash=sha256:1029430df63316983be8e22e565c62b9efea5f6842bd5447b2e2cbd609d205a8 \
     --hash=sha256:15bbfb0d9e4463eca6a4e0e95e4e507de776777e0bc8fedfa5e25089291bd14d
@@ -560,9 +560,9 @@ pydantic==1.10.8 ; python_full_version >= "3.9.0" and python_version < "3.12" \
     --hash=sha256:e82d4566fcd527eae8b244fa952d99f2ca3172b7e97add0b43e2d97ee77f81ab \
     --hash=sha256:f90c1e29f447557e9e26afb1c4dbf8768a10cc676e3781b6a577841ade126b85 \
     --hash=sha256:f9613fadad06b4f3bc5db2653ce2f22e0de84a7c6c293909b48f6ed37b83c61f
-pyright==1.1.310 ; python_full_version >= "3.9.0" and python_version < "3.12" \
-    --hash=sha256:55995ac76bf56cb7a44193b7b1ffafc573abab1f1dbc9f62d327f2a1768b3bda \
-    --hash=sha256:9e95335a678db2717eaa0c867d61f9399e916289f4a9f47d993e0df74e7d7391
+pyright==1.1.311 ; python_full_version >= "3.9.0" and python_version < "3.12" \
+    --hash=sha256:04df30c6b31d05068effe5563411291c876f5e4221d0af225a267b61dce1ca85 \
+    --hash=sha256:554b555d3f770e8da2e76d6bb94e2ac63b3edc7dcd5fb8de202f9dd53e36689a
 pytest-asyncio==0.21.0 ; python_full_version >= "3.9.0" and python_version < "3.12" \
     --hash=sha256:2b38a496aef56f56b0e87557ec313e11e1ab9276fc3863f6a7be0f1d0e415e1b \
     --hash=sha256:f2b3366b7cd501a4056858bd39349d5af19742aed2d81660b7998b6341c7eb9c

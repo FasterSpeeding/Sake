@@ -35,7 +35,7 @@ tanjun = ["hikari-tanjun>=2.9.0a1, <3"]
 Homepage = "https://github.com/FasterSpeeding/Sake"
 Repository = "https://github.com/FasterSpeeding/Sake"
 Documentation = "https://fasterspeeding.github.io/Sake/"
-Changelog = "https://github.com/FasterSpeeding/Sake/blob/master/CHANGELOG.md"
+Changelog = "https://fasterspeeding.github.io/Sake/changelog"
 
 [tool.flit.module]
 name = "sake"

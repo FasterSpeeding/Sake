@@ -1,5 +1,6 @@
 # mkdocs.yml
 site_name: "Hikari-Sake docs"
+repo_url: https://github.com/FasterSpeeding/Sake
 theme:
   name: material
   icon:

@@ -57,7 +57,7 @@ _T = typing.TypeVar("_T")
 
 
 DEFAULT_WINDOW_SIZE: typing.Final[int] = 1_000
-"""The default size used for request chunking during iteraton."""
+"""The default size used for request chunking during iteration."""
 
 
 def _chunk_values(

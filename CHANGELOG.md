@@ -5,16 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-## [1.0.7]
+## [1.0.8] - 2023-12-28
+### Added
+- Support for Python 3.12.
+
+## [1.0.7] - 2023-02-20
 ### Fixed
 - Fix [hikari.errors.UnrecognisedEntityError][] handling in the Redis iterators.
   This will no-longer lead to an [NameError][] being raised.
 
-## [1.0.6]
+## [1.0.6] - 2023-01-01
 ### Fixed
 - Catch and ignore [hikari.errors.UnrecognisedEntityError][] during iteration.
 
-## [1.0.5a1]
+## [1.0.5a1] - 2022-12-08
 ### Added
 - `"tanjun"` feature flag for ensuring this is installed with a Tanjun version that's
   compatible with the Tanjun adapters.
@@ -115,7 +119,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `window_size` parameter from `RedisClient.clear_*` methods as these are no-longer
   chunked.
 
-[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.7...HEAD
+[Unreleased]: https://github.com/FasterSpeeding/Sake/compare/v1.0.8...HEAD
+[1.0.8]: https://github.com/FasterSpeeding/Sake/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/FasterSpeeding/Sake/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/FasterSpeeding/Sake/compare/v1.0.5a1...v1.0.6
 [1.0.5a1]: https://github.com/FasterSpeeding/Sake/compare/v1.0.4a1.post1...v1.0.5a1

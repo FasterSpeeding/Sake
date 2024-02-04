@@ -3,3 +3,5 @@
 
 pytest-asyncio>=0.20.1
 pytest-xdist>=3.1
+# The pytest extensions aren't compatible with v8 yet.
+pytest==7.4.0

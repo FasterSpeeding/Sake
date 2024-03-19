@@ -100,6 +100,7 @@ ignore = [
     "S101",    # Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
     "E203",    # whitespace before ':'
     "E231",    # missing whitespace after ','
+    "ASYNC910", # Return from async function with no guaranteed checkpoint or exception since function definition.
 ]
 per-file-ignores = [
     "examples/*.py: DALL000, D103, D104, FA101, TC003",

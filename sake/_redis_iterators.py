@@ -70,7 +70,7 @@ def _chunk_values(
         yield result
 
 
-async def _iter_keys(
+async def _iter_keys(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
     client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: typing.Optional[str] = None
 ) -> collections.AsyncIterator[list[bytes]]:
     """Asynchronously iterate over slices of the top level keys in a redis resource."""
@@ -86,7 +86,7 @@ async def _iter_keys(
             break
 
 
-async def _iter_values(
+async def _iter_values(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
     client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: typing.Optional[str] = None
 ) -> collections.AsyncIterator[list[typing.Optional[bytes]]]:
     """Asynchronously iterate over slices of the values in a key to string datastore."""
@@ -94,7 +94,7 @@ async def _iter_values(
         yield await client.mget(*window)
 
 
-async def _iter_hash_values(
+async def _iter_hash_values(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
     client: aioredis.Redis[bytes],
     key: _RedisKeyT,
     *,
@@ -114,7 +114,7 @@ async def _iter_hash_values(
             break
 
 
-async def _iter_reference_keys(
+async def _iter_reference_keys(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
     get_connection: collections.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
     key: _RedisKeyT,
     *,
@@ -135,7 +135,7 @@ async def _iter_reference_keys(
             break
 
 
-async def _iter_reference_values(
+async def _iter_reference_values(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
     client: aioredis.Redis[bytes],
     get_connection: collections.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
     key: _RedisKeyT,

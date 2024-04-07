@@ -54,10 +54,15 @@ async def on_message(event: hikari.MessageCreateEvent) -> None:
             await event.message.respond(content="Missing ID.")
 
         else:
+            if member.joined_at:
+                joined_at = member.joined_at.strftime("%d/%m/%y %H:%M %|")
+            else:
+                joined_at = "UNKNOWN"
+
             embed = (
                 hikari.Embed(title=f"Member: {member}")
                 .set_thumbnail(member.avatar_url)
-                .add_field(name="Joined server", value=member.joined_at.strftime("%d/%m/%y %H:%M %|"))
+                .add_field(name="Joined server", value=joined_at)
                 .add_field(name="Roles", value=",".join(map(str, member.role_ids)))
                 .add_field(name="Is bot", value=str(member.is_bot).lower())
             )

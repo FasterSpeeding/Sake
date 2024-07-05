@@ -57,6 +57,7 @@ import enum
 import inspect
 import itertools
 import json
+import logging
 import typing
 import warnings
 
@@ -91,6 +92,8 @@ DEFAULT_SLOW_EXPIRE: typing.Final[int] = 604_800
 """The default expire time (in milliseconds) used for gateway-event deleted resources (1 week)."""
 DEFAULT_INVITE_EXPIRE: typing.Final[int] = 2_592_000_000
 """A special case month long default expire time for invite entries without a set "expire_at"."""
+
+_LOGGER = logging.getLogger("hikari.sake")
 
 
 class ResourceIndex(enum.IntEnum):
@@ -701,7 +704,13 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             # Ensure no dangling clients are left if this fails to start.
             clients = self.__clients
             self.__clients = {}
-            await asyncio.gather(*(client.close() for client in clients.values()), return_exceptions=True)
+            results = await asyncio.gather(  # noqa: ASYNC120
+                *(client.close() for client in clients.values()), return_exceptions=True
+            )
+            for result in results:
+                if isinstance(result, Exception):
+                    _LOGGER.exception("Failed to close client", exc_info=result)
+
             raise
 
         if self.__event_manager:

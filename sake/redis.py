@@ -704,7 +704,9 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             # Ensure no dangling clients are left if this fails to start.
             clients = self.__clients
             self.__clients = {}
-            results = await asyncio.gather(*(client.close() for client in clients.values()), return_exceptions=True)
+            results = await asyncio.gather(  # noqa: ASYNC120
+                *(client.close() for client in clients.values()), return_exceptions=True
+            )
             for result in results:
                 if isinstance(result, Exception):
                     _LOGGER.exception(exc_info=result)

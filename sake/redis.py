@@ -709,7 +709,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             )
             for result in results:
                 if isinstance(result, Exception):
-                    _LOGGER.exception(exc_info=result)
+                    _LOGGER.exception("Failed to close client", exc_info=result)
 
             raise
 

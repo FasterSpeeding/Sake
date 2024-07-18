@@ -50,7 +50,7 @@ from collections import abc as collections
 import hikari
 
 if typing.TYPE_CHECKING:
-    from .. import redis
+    from . import redis
 
 ExpireT = typing.Union["datetime.timedelta", int, float, None]
 """A type hint used to represent expire times.

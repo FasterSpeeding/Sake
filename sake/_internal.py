@@ -240,12 +240,12 @@ class OwnIDStore:
         return own_id
 
     async def await_value(self) -> hikari.Snowflake:
-        if self._lock:
-            async with self._lock:
-                assert self.value is not None
-                return self.value
+        if self.value is not None:
+            return self.value
 
-        self._lock = asyncio.Lock()
+        if not self._lock:
+            self._lock = asyncio.Lock()
+
         async with self._lock:
             if self.value is not None:
                 return self.value

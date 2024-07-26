@@ -73,6 +73,7 @@ from . import errors
 if typing.TYPE_CHECKING:
     import types
     from collections import abc as collections
+    from concurrent import futures
 
     import tanjun
     from typing_extensions import Self
@@ -143,6 +144,33 @@ def _as_tanjun_loader(callback: _TanjunLoaderSigT, /) -> _TanjunLoaderSigT:
     return typing.cast("_TanjunLoaderSigT", callback)
 
 
+class _RestAware(hikari.RESTAware):
+    __slots__ = ("_rest",)
+
+    def __init__(self, rest: hikari.api.RESTClient, /) -> None:
+        self._rest = rest
+
+    @property
+    def rest(self) -> hikari.api.RESTClient:
+        return self._rest
+
+    @property
+    def entity_factory(self) -> hikari.api.EntityFactory:
+        return self._rest.entity_factory
+
+    @property
+    def executor(self) -> typing.Optional[futures.Executor]:
+        return None
+
+    @property
+    def proxy_settings(self) -> hikari.api.ProxySettings:
+        return self._rest.proxy_settings
+
+    @property
+    def http_settings(self) -> hikari.api.HTTPSettings:
+        return self._rest.http_settings
+
+
 # TODO: document that it isn't guaranteed that deletion will be finished before clear command coroutines finish.
 # TODO: may go back to approach where client logic and interface are separate classes
 class ResourceClient(sake_abc.Resource, abc.ABC):
@@ -172,7 +200,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     def __init__(
         self,
         address: str,
-        app: hikari.RESTAware,
+        app: typing.Union[hikari.RESTAware, hikari.api.RESTClient],
         event_manager: typing.Optional[hikari.api.EventManager] = None,
         *,
         config: typing.Optional[collections.MutableMapping[str, typing.Any]] = None,
@@ -188,8 +216,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         Parameters
         ----------
         app
-            The Hikari client all the models returned by this client should be
-            bound to.
+            The Hikari app or REST client all the models returned by
+            this client should be bound to.
         address
             The address to use to connect to the Redis backend server this
             resource is linked to.
@@ -221,6 +249,9 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         ValueError
             When `event_managed` is [True][] and `event_manager` wasn't passed.
         """
+        if isinstance(app, hikari.api.RESTClient):
+            app = _RestAware(app)
+
         self.__address = address
         self.__app = app
         self.__clients: dict[int, aioredis.Redis[bytes]] = {}

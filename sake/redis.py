@@ -293,7 +293,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         exc_val: typing.Optional[BaseException],
         exc_tb: typing.Optional[types.TracebackType],
     ) -> None:
-        await asyncio.shield(self.close())
+        await asyncio.shield(asyncio.wait_for(self.close(), 10))
 
     if not typing.TYPE_CHECKING:
 

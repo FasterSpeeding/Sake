@@ -46,6 +46,7 @@ import inspect
 import math
 import typing
 from collections import abc as collections
+from hikari.internal import fast_protocol
 
 import hikari
 
@@ -87,7 +88,7 @@ def convert_expire_time(expire: ExpireT, /) -> typing.Optional[int]:
 
 
 @typing.runtime_checkable
-class ListenerProto(typing.Protocol[_EventT_inv]):
+class ListenerProto(fast_protocol.FastProtocolChecking, typing.Protocol[_EventT_inv]):
     """Protocol of an event listener method."""
 
     async def __call__(self, event: _EventT_inv, /) -> None:
@@ -107,7 +108,7 @@ class ListenerProto(typing.Protocol[_EventT_inv]):
 
 
 @typing.runtime_checkable
-class RawListenerProto(typing.Protocol):
+class RawListenerProto(fast_protocol.FastProtocolChecking, typing.Protocol):
     """Protocol of a raw event listener method."""
 
     async def __call__(self, event: hikari.ShardPayloadEvent, /) -> None:

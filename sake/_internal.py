@@ -50,8 +50,9 @@ from collections import abc as collections
 import hikari
 
 if typing.TYPE_CHECKING:
-    from . import redis
     import typing_extensions
+
+    from . import redis
 
 ExpireT = typing.Union["datetime.timedelta", int, float, None]
 """A type hint used to represent expire times.
@@ -143,6 +144,7 @@ def is_raw_listener(value: typing.Any, /) -> typing_extensions.TypeGuard[RawList
         return False
 
     return True
+
 
 def as_listener(
     event_type: type[_EventT], /

@@ -76,6 +76,7 @@ if typing.TYPE_CHECKING:
     from concurrent import futures
 
     import tanjun
+    import typing_extensions
     from typing_extensions import Self
 
 _T = typing.TypeVar("_T")
@@ -128,7 +129,6 @@ _TanjunLoaderSigT = typing.TypeVar(
 )
 
 
-@typing.runtime_checkable
 class _TanjunLoaderProto(typing.Protocol):
     def __call__(self, client: tanjun.abc.Client, trust_get_for: set[type[sake_abc.Resource]], /) -> None:
         raise NotImplementedError
@@ -138,9 +138,19 @@ class _TanjunLoaderProto(typing.Protocol):
         raise NotImplementedError
 
 
+def _is_tanjun_loader(value: typing.Any) -> typing_extensions.TypeGuard[_TanjunLoaderProto]:
+    try:
+        value.__tanjun_loader__
+
+    except AttributeError:
+        return False
+
+    return True
+
+
 def _as_tanjun_loader(callback: _TanjunLoaderSigT, /) -> _TanjunLoaderSigT:
     callback.__tanjun_loader__ = True  # type: ignore
-    assert isinstance(callback, _TanjunLoaderProto)
+    assert _is_tanjun_loader(callback)
     return typing.cast("_TanjunLoaderSigT", callback)
 
 
@@ -548,7 +558,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             raise RuntimeError("This can only be called in an environment with Tanjun") from exc
 
         for _, member in inspect.getmembers(self):
-            if isinstance(member, _TanjunLoaderProto):
+            if _is_tanjun_loader(member):
                 member(client, trust_get_for)
 
         for cls in type(self).mro():

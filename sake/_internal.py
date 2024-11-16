@@ -51,6 +51,7 @@ import hikari
 
 if typing.TYPE_CHECKING:
     from . import redis
+    import typing_extensions
 
 ExpireT = typing.Union["datetime.timedelta", int, float, None]
 """A type hint used to represent expire times.
@@ -86,7 +87,6 @@ def convert_expire_time(expire: ExpireT, /) -> typing.Optional[int]:
     raise ValueError(f"Invalid expire time passed; expected a float, int or timedelta but got a {type(expire)!r}")
 
 
-@typing.runtime_checkable
 class ListenerProto(typing.Protocol[_EventT_inv]):
     """Protocol of an event listener method."""
 
@@ -106,7 +106,16 @@ class ListenerProto(typing.Protocol[_EventT_inv]):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
+def is_listener(value: typing.Any, /) -> typing_extensions.TypeGuard[ListenerProto[typing.Any]]:
+    try:
+        value.__sake_event_type__
+
+    except AttributeError:
+        return False
+
+    return True
+
+
 class RawListenerProto(typing.Protocol):
     """Protocol of a raw event listener method."""
 
@@ -126,6 +135,15 @@ class RawListenerProto(typing.Protocol):
         raise NotImplementedError
 
 
+def is_raw_listener(value: typing.Any, /) -> typing_extensions.TypeGuard[RawListenerProto]:
+    try:
+        value.__sake_event_names__
+
+    except AttributeError:
+        return False
+
+    return True
+
 def as_listener(
     event_type: type[_EventT], /
 ) -> collections.Callable[[_CallbackT[_T, _EventT]], _CallbackT[_T, _EventT]]:
@@ -144,7 +162,7 @@ def as_listener(
 
     def decorator(listener: _CallbackT[_T, _EventT], /) -> _CallbackT[_T, _EventT]:
         listener.__sake_event_type__ = event_type  # type: ignore
-        assert isinstance(listener, ListenerProto), "Incorrect attributes set for listener"
+        assert is_listener(listener), "Incorrect attributes set for listener"
         return listener
 
     return decorator
@@ -171,7 +189,7 @@ def as_raw_listener(
 
     def decorator(listener: _CallbackT[_T, hikari.ShardPayloadEvent], /) -> _CallbackT[_T, hikari.ShardPayloadEvent]:
         listener.__sake_event_names__ = event_names  # type: ignore
-        assert isinstance(listener, RawListenerProto), "Incorrect attributes set for raw listener"
+        assert is_raw_listener(listener), "Incorrect attributes set for raw listener"
         return listener
 
     return decorator
@@ -198,14 +216,14 @@ def find_listeners(
     listeners: dict[type[hikari.Event], list[ListenerProto[hikari.Event]]] = {}
     raw_listeners: dict[str, list[RawListenerProto]] = {}
     for _, member in inspect.getmembers(obj):
-        if isinstance(member, ListenerProto):
+        if is_listener(member):
             try:
                 listeners[member.__sake_event_type__].append(member)
 
             except KeyError:
                 listeners[member.__sake_event_type__] = [member]
 
-        if isinstance(member, RawListenerProto):
+        if is_raw_listener(member):
             for name in member.__sake_event_names__:
                 try:
                     raw_listeners[name].append(member)

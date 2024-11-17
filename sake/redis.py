@@ -95,7 +95,7 @@ DEFAULT_INVITE_EXPIRE: typing.Final[int] = 2_592_000_000
 """A special case month long default expire time for invite entries without a set "expire_at"."""
 
 _LOGGER = logging.getLogger("hikari.sake")
-
+_CLOSE_TIMEOUT = datetime.timedelta(minutes=1)
 
 class ResourceIndex(enum.IntEnum):
     """An enum of the indexes used to map cache resources to their redis databases."""
@@ -293,7 +293,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         exc_val: typing.Optional[BaseException],
         exc_tb: typing.Optional[types.TracebackType],
     ) -> None:
-        await self.close()
+        await asyncio.shield(asyncio.wait_for(self.close(), _CLOSE_TIMEOUT.total_seconds()))
 
     if not typing.TYPE_CHECKING:
 

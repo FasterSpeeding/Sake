@@ -103,13 +103,14 @@ ignore = [
     "E231",    # missing whitespace after ','
     #"ASYNC910", # Return from async function with no guaranteed checkpoint or exception since function definition.
     #"ASYNC911", # exit from async iterable with no guaranteed checkpoint since yield
+    #"ASYNC102", #await inside __aexit__ on line 247 must have shielded cancel scope with a timeout.
 ]
 per-file-ignores = [
-    "*.py: ASYNC910, ASYNC911",
-    "examples/*.py: ASYNC910, ASYNC911, DALL000, D103, D104, FA101, TC003",
-    "noxfile.py: ASYNC910, ASYNC911, D100, FA101, F401, F403, INP001",
-    "sake/py.typed: ASYNC910, ASYNC911, D100",
-    "tests/*.py: ASYNC910, ASYNC911, CCE002, DALL000, D100, D101, D103, D104, FA100, FA101"
+    "*.py: ASYNC102, ASYNC910, ASYNC911",
+    "examples/*.py: ASYNC102, ASYNC910, ASYNC911, DALL000, D103, D104, FA101, TC003",
+    "noxfile.py: ASYNC102, ASYNC910, ASYNC911, D100, FA101, F401, F403, INP001",
+    "sake/py.typed: ASYNC102, ASYNC910, ASYNC911, D100",
+    "tests/*.py: ASYNC102, ASYNC910, ASYNC911, CCE002, DALL000, D100, D101, D103, D104, FA100, FA101"
 ]
 
 [tool.isort]

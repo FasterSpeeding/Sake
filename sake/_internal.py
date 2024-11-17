@@ -164,7 +164,7 @@ def as_listener(
 
     def decorator(listener: _CallbackT[_T, _EventT], /) -> _CallbackT[_T, _EventT]:
         listener.__sake_event_type__ = event_type  # type: ignore
-        listener_ =listener
+        listener_ = listener
         assert is_listener(listener_), "Incorrect attributes set for listener"
         return listener
 

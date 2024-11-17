@@ -164,7 +164,8 @@ def as_listener(
 
     def decorator(listener: _CallbackT[_T, _EventT], /) -> _CallbackT[_T, _EventT]:
         listener.__sake_event_type__ = event_type  # type: ignore
-        assert is_listener(listener), "Incorrect attributes set for listener"
+        listener_ =listener
+        assert is_listener(listener_), "Incorrect attributes set for listener"
         return listener
 
     return decorator
@@ -191,7 +192,8 @@ def as_raw_listener(
 
     def decorator(listener: _CallbackT[_T, hikari.ShardPayloadEvent], /) -> _CallbackT[_T, hikari.ShardPayloadEvent]:
         listener.__sake_event_names__ = event_names  # type: ignore
-        assert is_raw_listener(listener), "Incorrect attributes set for raw listener"
+        listener_ = listener
+        assert is_raw_listener(listener_), "Incorrect attributes set for raw listener"
         return listener
 
     return decorator

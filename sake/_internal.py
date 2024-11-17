@@ -108,6 +108,7 @@ class ListenerProto(typing.Protocol[_EventT_inv]):
 
 
 def is_listener(value: typing.Any, /) -> typing_extensions.TypeGuard[ListenerProto[typing.Any]]:
+    """Type guard which checks for [ListenerProto][]."""
     try:
         value.__sake_event_type__
 
@@ -137,6 +138,7 @@ class RawListenerProto(typing.Protocol):
 
 
 def is_raw_listener(value: typing.Any, /) -> typing_extensions.TypeGuard[RawListenerProto]:
+    """Type guard which checks for [RawListenerProto][]."""
     try:
         value.__sake_event_names__
 

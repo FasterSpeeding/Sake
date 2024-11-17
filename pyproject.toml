@@ -103,6 +103,7 @@ ignore = [
     "E231",    # missing whitespace after ','
     #"ASYNC910", # Return from async function with no guaranteed checkpoint or exception since function definition.
     #"ASYNC911", # exit from async iterable with no guaranteed checkpoint since yield
+    "ASYNC102", #await inside __aexit__ on line 247 must have shielded cancel scope with a timeout.
 ]
 per-file-ignores = [
     "*.py: ASYNC910, ASYNC911",

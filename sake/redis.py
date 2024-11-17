@@ -97,6 +97,7 @@ DEFAULT_INVITE_EXPIRE: typing.Final[int] = 2_592_000_000
 _LOGGER = logging.getLogger("hikari.sake")
 _CLOSE_TIMEOUT = datetime.timedelta(minutes=1)
 
+
 class ResourceIndex(enum.IntEnum):
     """An enum of the indexes used to map cache resources to their redis databases."""
 

@@ -52,6 +52,7 @@ import hikari
 if typing.TYPE_CHECKING:
     from . import redis
 
+# / style unions won't work here as it would be a string, not a type value.
 ExpireT = typing.Union["datetime.timedelta", int, float, None]
 """A type hint used to represent expire times.
 
@@ -66,7 +67,7 @@ _EventT = typing.TypeVar("_EventT", bound=hikari.Event)
 _CallbackT = collections.Callable[["_T", _EventT], collections.Coroutine[typing.Any, typing.Any, None]]
 
 
-def convert_expire_time(expire: ExpireT, /) -> typing.Optional[int]:
+def convert_expire_time(expire: ExpireT, /) -> int | None:
     """Convert a timedelta, int or float expire time representation to an integer."""
     if expire is None:
         return None
@@ -247,8 +248,8 @@ class OwnIDStore:
 
     def __init__(self, app: hikari.RESTAware, /) -> None:
         self._app = app
-        self._lock: typing.Optional[asyncio.Lock] = None
-        self.value: typing.Optional[hikari.Snowflake] = None
+        self._lock: asyncio.Lock | None = None
+        self.value: hikari.Snowflake | None = None
 
     @classmethod
     def get_from_client(cls, client: redis.ResourceClient) -> OwnIDStore:

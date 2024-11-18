@@ -83,7 +83,7 @@ _KeyT = typing.TypeVar("_KeyT")
 _ValueT = typing.TypeVar("_ValueT")
 
 _ObjectT = dict[str, typing.Any]
-_RedisValueT = typing.Union[int, str, bytes]
+_RedisValueT = int | str | bytes
 
 DEFAULT_EXPIRE: typing.Final[int] = 3_600_000
 """The default expire time (in milliseconds) used for expiring resources of 60 minutes."""
@@ -168,7 +168,7 @@ class _RestAware(hikari.RESTAware):
         return self._rest.entity_factory
 
     @property
-    def executor(self) -> typing.Optional[futures.Executor]:
+    def executor(self) -> futures.Executor | None:
         return None
 
     @property
@@ -209,13 +209,13 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     def __init__(
         self,
         address: str,
-        app: typing.Union[hikari.RESTAware, hikari.api.RESTClient],
-        event_manager: typing.Optional[hikari.api.EventManager] = None,
+        app: hikari.RESTAware | hikari.api.RESTClient,
+        event_manager: hikari.api.EventManager | None = None,
         *,
-        config: typing.Optional[collections.MutableMapping[str, typing.Any]] = None,
+        config: collections.MutableMapping[str, typing.Any] | None = None,
         default_expire: _internal.ExpireT = DEFAULT_SLOW_EXPIRE,
         event_managed: bool = False,
-        password: typing.Optional[str] = None,
+        password: str | None = None,
         max_connections_per_db: int = 5,
         dumps: collections.Callable[[_ObjectT], bytes] = lambda obj: json.dumps(obj).encode(),
         loads: collections.Callable[[bytes], _ObjectT] = json.loads,
@@ -298,9 +298,9 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     async def __aexit__(
         self,
-        exc_type: typing.Optional[type[BaseException]],
-        exc_val: typing.Optional[BaseException],
-        exc_tb: typing.Optional[types.TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
     ) -> None:
         await self.close()
 
@@ -313,9 +313,9 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
         def __exit__(
             self,
-            exc_type: typing.Optional[type[BaseException]],
-            exc_val: typing.Optional[BaseException],
-            exc_tb: typing.Optional[types.TracebackType],
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None,
         ) -> None:
             return None
 
@@ -333,7 +333,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         return self.__config
 
     @property
-    def default_expire(self) -> typing.Optional[int]:
+    def default_expire(self) -> int | None:
         """The default expire time used for fields with no actual lifetime.
 
         If this is [None][] then these cases will have no set expire after.
@@ -341,7 +341,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         return self.__default_expire  # TODO: , pexpire=self.default_expire
 
     @property
-    def event_manager(self) -> typing.Optional[hikari.api.EventManager]:
+    def event_manager(self) -> hikari.api.EventManager | None:
         """The event manager this resource client is using for managing state."""
         return self.__event_manager
 
@@ -385,7 +385,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         # <<Inherited docstring from sake.abc.Resource>>
         return self.__started
 
-    def all_indexes(self) -> collections.MutableSet[typing.Union[ResourceIndex, int]]:
+    def all_indexes(self) -> collections.MutableSet[ResourceIndex | int]:
         """Get a set of all the Redis client indexes this is using.
 
         !!! note
@@ -399,7 +399,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         results: set[int] = set()
         for sub_class in type(self).mro():
             if issubclass(sub_class, ResourceClient):
-                results.update((self.__index_overrides.get(index, index) for index in sub_class.index()))
+                results.update(self.__index_overrides.get(index, index) for index in sub_class.index())
 
         return results
 
@@ -434,7 +434,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         client: tanjun.abc.Client,
         /,
         *,
-        trust_get_for: typing.Optional[collections.Collection[type[sake_abc.Resource]]] = None,
+        trust_get_for: collections.Collection[type[sake_abc.Resource]] | None = None,
         tanjun_managed: bool = False,
     ) -> None:
         """Add this Redis client to a Tanjun client.
@@ -604,7 +604,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         """
         return self.__load(data)
 
-    def get_index_override(self, index: ResourceIndex, /) -> typing.Optional[int]:
+    def get_index_override(self, index: ResourceIndex, /) -> int | None:
         """Get the override set for an index.
 
         Parameters
@@ -619,7 +619,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         """
         return self.__index_overrides.get(index)
 
-    def with_index_override(self, index: ResourceIndex, /, *, override: typing.Optional[int] = None) -> Self:
+    def with_index_override(self, index: ResourceIndex, /, *, override: int | None = None) -> Self:
         """Add an index override.
 
         Parameters
@@ -942,7 +942,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
         )
         client.set_type_dependency(async_cache.SfCache[hikari.User], adapter)
 
-    def with_user_expire(self, expire: typing.Optional[_internal.ExpireT], /) -> Self:
+    def with_user_expire(self, expire: _internal.ExpireT | None, /) -> Self:
         """Set the default expire time for user entries added with this client.
 
         Parameters
@@ -992,7 +992,7 @@ class UserCache(_MeCache, sake_abc.UserCache):
             window_size=window_size,
         )
 
-    async def set_user(self, payload: _ObjectT, /, *, expire_time: typing.Optional[_internal.ExpireT] = None) -> None:
+    async def set_user(self, payload: _ObjectT, /, *, expire_time: _internal.ExpireT | None = None) -> None:
         # <<Inherited docstring from sake.abc.UserCache>>
         client = self._get_connection(ResourceIndex.USER)
         if expire_time is None:
@@ -1096,7 +1096,7 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
         await client.delete(*emoji_ids)
 
     async def delete_emoji(
-        self, emoji_id: hikari.Snowflakeish, /, *, guild_id: typing.Optional[hikari.Snowflakeish] = None
+        self, emoji_id: hikari.Snowflakeish, /, *, guild_id: hikari.Snowflakeish | None = None
     ) -> None:
         # <<Inherited docstring from sake.abc.EmojiCache>>
         client = self._get_connection(ResourceIndex.EMOJI)
@@ -1332,7 +1332,7 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         await client.delete(*channel_ids)
 
     async def delete_guild_channel(
-        self, channel_id: hikari.Snowflakeish, /, *, guild_id: typing.Optional[hikari.Snowflakeish] = None
+        self, channel_id: hikari.Snowflakeish, /, *, guild_id: hikari.Snowflakeish | None = None
     ) -> None:
         # <<Inherited docstring from sake.abc.GuildChannelCache>>
         client = self._get_connection(ResourceIndex.CHANNEL)
@@ -1429,7 +1429,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
     async def __on_invite_delete_event(self, event: hikari.InviteDeleteEvent, /) -> None:
         await self.delete_invite(event.code)  # TODO: on guild leave?
 
-    def with_invite_expire(self, expire: typing.Optional[_internal.ExpireT], /) -> Self:
+    def with_invite_expire(self, expire: _internal.ExpireT | None, /) -> Self:
         """Set the default expire time for invite entries added with this client.
 
         Parameters
@@ -1480,7 +1480,7 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
             window_size=window_size,
         )
 
-    async def set_invite(self, payload: _ObjectT, /, *, expire_time: typing.Optional[_internal.ExpireT] = None) -> None:
+    async def set_invite(self, payload: _ObjectT, /, *, expire_time: _internal.ExpireT | None = None) -> None:
         # <<Inherited docstring from sake.abc.InviteCache>>
         client = self._get_connection(ResourceIndex.INVITE)
         if expire_time is None and (raw_max_age := payload.get("max_age")):
@@ -1580,7 +1580,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
     async def __bulk_set_members(self, members: collections.Iterator[_ObjectT], /, guild_id: int) -> None:
         client = self._get_connection(ResourceIndex.MEMBER)
         str_guild_id = str(guild_id)
-        members_map: collections.Mapping[typing.Union[str, bytes], bytes] = _to_map(
+        members_map: collections.Mapping[str | bytes, bytes] = _to_map(
             (_add_guild_id(payload, str_guild_id) for payload in members), _get_sub_user_id, self.dump
         )
         if members_map:
@@ -1588,7 +1588,7 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
             user_setter = self._try_bulk_set_users(member["user"] for member in members)
             await asyncio.gather(setter, user_setter)
 
-    def chunk_on_guild_create(self, shard_aware: typing.Optional[hikari.ShardAware], /) -> Self:
+    def chunk_on_guild_create(self, shard_aware: hikari.ShardAware | None, /) -> Self:
         if shard_aware:
             if not self.event_manager:
                 raise ValueError("An event manager-less cache instance cannot request member chunk on guild create")
@@ -1699,7 +1699,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
     async def __on_message_update(self, event: hikari.ShardPayloadEvent, /) -> None:
         await self.update_message(dict(event.payload))
 
-    def with_message_expire(self, expire: typing.Optional[_internal.ExpireT], /) -> Self:
+    def with_message_expire(self, expire: _internal.ExpireT | None, /) -> Self:
         """Set the default expire time for message entries added with this client.
 
         Parameters
@@ -1750,7 +1750,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
         )
 
     async def set_message(
-        self, payload: _ObjectT, /, *, expire_time: typing.Optional[_internal.ExpireT] = None
+        self, payload: _ObjectT, /, *, expire_time: _internal.ExpireT | None = None
     ) -> None:
         # <<Inherited docstring from sake.abc.MessageCache>>
         client = self._get_connection(ResourceIndex.MESSAGE)
@@ -1764,7 +1764,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
         await self._try_set_user(payload["author"])
 
     async def update_message(
-        self, payload: _ObjectT, /, *, expire_time: typing.Optional[_internal.ExpireT] = None
+        self, payload: _ObjectT, /, *, expire_time: _internal.ExpireT | None = None
     ) -> bool:
         # <<Inherited docstring from sake.abc.MessageCache>>
         # This is a special case method for handling the partial message updates we get
@@ -1796,7 +1796,7 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
     async def __bulk_add_presences(self, presences: collections.Iterator[_ObjectT], /, guild_id: int) -> None:
         client = self._get_connection(ResourceIndex.PRESENCE)
         str_guild_id = str(guild_id)
-        presence_map: collections.Mapping[typing.Union[str, bytes], bytes] = _to_map(
+        presence_map: collections.Mapping[str | bytes, bytes] = _to_map(
             (_add_guild_id(payload, str_guild_id) for payload in presences), _get_sub_user_id, self.dump
         )
         if presence_map:
@@ -1962,7 +1962,7 @@ class RoleCache(_Reference, sake_abc.RoleCache):
         await client.delete(*role_ids)
 
     async def delete_role(
-        self, role_id: hikari.Snowflakeish, /, *, guild_id: typing.Optional[hikari.Snowflakeish] = None
+        self, role_id: hikari.Snowflakeish, /, *, guild_id: hikari.Snowflakeish | None = None
     ) -> None:
         # <<Inherited docstring from sake.abc.RoleCache>>
         client = self._get_connection(ResourceIndex.ROLE)
@@ -2051,7 +2051,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
     @staticmethod
     def __generate_references(
-        voice_states: collections.Iterable[_ObjectT], /, *, guild_id: typing.Optional[str] = None
+        voice_states: collections.Iterable[_ObjectT], /, *, guild_id: str | None = None
     ) -> dict[str, set[str]]:
         all_references: dict[str, set[str]] = {}
         for payload in voice_states:
@@ -2093,7 +2093,7 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
 
         voice_states = event.payload["voice_states"]
         members = {int(payload["user"]["id"]): payload for payload in event.payload["members"]}
-        voice_states_map: collections.Mapping[typing.Union[str, bytes], bytes] = _to_map(
+        voice_states_map: collections.Mapping[str | bytes, bytes] = _to_map(
             (_add_voice_fields(payload, str_guild_id, members[int(payload["user_id"])]) for payload in voice_states),
             _get_user_id,
             self.dump,

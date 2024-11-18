@@ -105,6 +105,7 @@ ignore = [
 ]
 per-file-ignores = [
     "*.py: ASYNC102, ASYNC910, ASYNC911",
+    "sake/abc.py: A005",  # A005 the module is shadowing a Python builtin module "abc"
     "examples/*.py: ASYNC102, ASYNC910, ASYNC911, DALL000, D103, D104, FA101, TC003",
     "noxfile.py: ASYNC102, ASYNC910, ASYNC911, D100, FA101, F401, F403, INP001",
     "sake/py.typed: ASYNC102, ASYNC910, ASYNC911, D100",

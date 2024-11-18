@@ -74,9 +74,9 @@ if typing.TYPE_CHECKING:
     import types
     from collections import abc as collections
     from concurrent import futures
+    from typing import Self
 
     import tanjun
-    from typing import Self
 
 _T = typing.TypeVar("_T")
 _KeyT = typing.TypeVar("_KeyT")
@@ -297,10 +297,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         return self
 
     async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: types.TracebackType | None,
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None:
         await self.close()
 
@@ -1749,9 +1746,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
             window_size=window_size,
         )
 
-    async def set_message(
-        self, payload: _ObjectT, /, *, expire_time: _internal.ExpireT | None = None
-    ) -> None:
+    async def set_message(self, payload: _ObjectT, /, *, expire_time: _internal.ExpireT | None = None) -> None:
         # <<Inherited docstring from sake.abc.MessageCache>>
         client = self._get_connection(ResourceIndex.MESSAGE)
         if expire_time is None:
@@ -1763,9 +1758,7 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
         await client.set(str(payload["id"]), self.dump(payload), px=expire_time)
         await self._try_set_user(payload["author"])
 
-    async def update_message(
-        self, payload: _ObjectT, /, *, expire_time: _internal.ExpireT | None = None
-    ) -> bool:
+    async def update_message(self, payload: _ObjectT, /, *, expire_time: _internal.ExpireT | None = None) -> bool:
         # <<Inherited docstring from sake.abc.MessageCache>>
         # This is a special case method for handling the partial message updates we get
         if raw_data := await self._get_connection(ResourceIndex.MESSAGE).get(str(int(payload["id"]))):

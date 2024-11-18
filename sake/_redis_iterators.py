@@ -44,9 +44,9 @@ from . import redis
 
 if typing.TYPE_CHECKING:
     from collections import abc as collections
+    from typing import Self
 
     from redis import asyncio as aioredis
-    from typing import Self
 
     from . import _internal
 
@@ -95,11 +95,7 @@ async def _iter_values(  # noqa: ASYNC900 Async generator without `@asynccontext
 
 
 async def _iter_hash_values(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
-    client: aioredis.Redis[bytes],
-    key: _RedisKeyT,
-    *,
-    window_size: int = DEFAULT_WINDOW_SIZE,
-    match: str | None = None,
+    client: aioredis.Redis[bytes], key: _RedisKeyT, *, window_size: int = DEFAULT_WINDOW_SIZE, match: str | None = None
 ) -> collections.AsyncIterator[collections.Iterable[bytes]]:
     """Asynchronously iterate over slices of the values in a redis hash."""
     cursor = 0

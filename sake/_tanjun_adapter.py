@@ -173,9 +173,7 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _T]):
         self._iterate_all = iterate_all
         self._trust_get = trust_get
 
-    async def get(
-        self, key: _KeyT, /, *, default: _DefaultT | NoDefault = NO_DEFAULT
-    ) -> _T | _DefaultT:
+    async def get(self, key: _KeyT, /, *, default: _DefaultT | NoDefault = NO_DEFAULT) -> _T | _DefaultT:
         try:
             return await self._get(key)
 

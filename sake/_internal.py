@@ -50,8 +50,6 @@ from collections import abc as collections
 import hikari
 
 if typing.TYPE_CHECKING:
-    import typing_extensions
-
     from . import redis
 
 ExpireT = typing.Union["datetime.timedelta", int, float, None]
@@ -107,7 +105,7 @@ class ListenerProto(typing.Protocol[_EventT_inv]):
         raise NotImplementedError
 
 
-def is_listener(value: typing.Any, /) -> typing_extensions.TypeGuard[ListenerProto[typing.Any]]:
+def is_listener(value: typing.Any, /) -> typing.TypeGuard[ListenerProto[typing.Any]]:
     """Type guard which checks for [ListenerProto][]."""
     try:
         value.__sake_event_type__
@@ -137,7 +135,7 @@ class RawListenerProto(typing.Protocol):
         raise NotImplementedError
 
 
-def is_raw_listener(value: typing.Any, /) -> typing_extensions.TypeGuard[RawListenerProto]:
+def is_raw_listener(value: typing.Any, /) -> typing.TypeGuard[RawListenerProto]:
     """Type guard which checks for [RawListenerProto][]."""
     try:
         value.__sake_event_names__

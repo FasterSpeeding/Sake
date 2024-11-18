@@ -76,8 +76,7 @@ if typing.TYPE_CHECKING:
     from concurrent import futures
 
     import tanjun
-    import typing_extensions
-    from typing_extensions import Self
+    from typing import Self
 
 _T = typing.TypeVar("_T")
 _KeyT = typing.TypeVar("_KeyT")
@@ -138,7 +137,7 @@ class _TanjunLoaderProto(typing.Protocol):
         raise NotImplementedError
 
 
-def _is_tanjun_loader(value: typing.Any) -> typing_extensions.TypeGuard[_TanjunLoaderProto]:
+def _is_tanjun_loader(value: typing.Any) -> typing.TypeGuard[_TanjunLoaderProto]:
     try:
         value.__tanjun_loader__
 

@@ -46,7 +46,7 @@ if typing.TYPE_CHECKING:
     from collections import abc as collections
 
     from redis import asyncio as aioredis
-    from typing_extensions import Self
+    from typing import Self
 
     from . import _internal
 

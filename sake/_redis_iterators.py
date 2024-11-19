@@ -44,15 +44,15 @@ from . import redis
 
 if typing.TYPE_CHECKING:
     from collections import abc as collections
+    from typing import Self
 
     from redis import asyncio as aioredis
-    from typing_extensions import Self
 
     from . import _internal
 
 
 _ObjectT = typing.TypeVar("_ObjectT")
-_RedisKeyT = typing.Union[str, bytes]
+_RedisKeyT = str | bytes
 _T = typing.TypeVar("_T")
 
 
@@ -71,7 +71,7 @@ def _chunk_values(
 
 
 async def _iter_keys(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
-    client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: typing.Optional[str] = None
+    client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: str | None = None
 ) -> collections.AsyncIterator[list[bytes]]:
     """Asynchronously iterate over slices of the top level keys in a redis resource."""
     cursor = 0
@@ -87,19 +87,15 @@ async def _iter_keys(  # noqa: ASYNC900 Async generator without `@asynccontextma
 
 
 async def _iter_values(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
-    client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: typing.Optional[str] = None
-) -> collections.AsyncIterator[list[typing.Optional[bytes]]]:
+    client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: str | None = None
+) -> collections.AsyncIterator[list[bytes | None]]:
     """Asynchronously iterate over slices of the values in a key to string datastore."""
     async for window in _iter_keys(client, window_size=window_size, match=match):
         yield await client.mget(*window)
 
 
 async def _iter_hash_values(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
-    client: aioredis.Redis[bytes],
-    key: _RedisKeyT,
-    *,
-    window_size: int = DEFAULT_WINDOW_SIZE,
-    match: typing.Optional[str] = None,
+    client: aioredis.Redis[bytes], key: _RedisKeyT, *, window_size: int = DEFAULT_WINDOW_SIZE, match: str | None = None
 ) -> collections.AsyncIterator[collections.Iterable[bytes]]:
     """Asynchronously iterate over slices of the values in a redis hash."""
     cursor = 0
@@ -119,7 +115,7 @@ async def _iter_reference_keys(  # noqa: ASYNC900 Async generator without `@asyn
     key: _RedisKeyT,
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
-    match: typing.Optional[str] = None,
+    match: str | None = None,
 ) -> collections.AsyncIterator[list[bytes]]:
     """Asynchronously iterate over slices of the keys in a REFERENCE set."""
     reference_client = get_connection(redis.ResourceIndex.REFERENCE)
@@ -141,8 +137,8 @@ async def _iter_reference_values(  # noqa: ASYNC900 Async generator without `@as
     key: _RedisKeyT,
     *,
     window_size: int = DEFAULT_WINDOW_SIZE,
-    match: typing.Optional[str] = None,
-) -> collections.AsyncIterator[list[typing.Optional[bytes]]]:
+    match: str | None = None,
+) -> collections.AsyncIterator[list[bytes | None]]:
     """Asynchronously iterate over slices of the values referenced by a REFERENCE set."""
     async for window in _iter_reference_keys(get_connection, key, window_size=window_size, match=match):
         yield await client.mget(*window)
@@ -180,9 +176,9 @@ class Iterator(abc.CacheIterator[_T]):
         self._buffer: list[bytes] = []
         self._builder = builder
         self._client = client
-        self._len: typing.Optional[int] = None
+        self._len: int | None = None
         self._load = load
-        self._windows: typing.Optional[collections.AsyncIterator[list[typing.Optional[bytes]]]] = None
+        self._windows: collections.AsyncIterator[list[bytes | None]] | None = None
         self._window_size = int(window_size)
 
     def __aiter__(self) -> Iterator[_T]:
@@ -297,9 +293,9 @@ class ReferenceIterator(abc.CacheIterator[_T]):
         self._client = client
         self._get_connection = get_connection
         self._key = key
-        self._len: typing.Optional[int] = None
+        self._len: int | None = None
         self._load = load
-        self._windows: typing.Optional[collections.AsyncIterator[list[typing.Optional[bytes]]]] = None
+        self._windows: collections.AsyncIterator[list[bytes | None]] | None = None
         self._window_size = int(window_size)
 
     def __aiter__(self) -> ReferenceIterator[_T]:
@@ -385,9 +381,9 @@ class HashReferenceIterator(abc.CacheIterator[_T]):
         self._client = client
         self._get_connection = get_connection
         self._key = key
-        self._len: typing.Optional[int] = None
+        self._len: int | None = None
         self._load = load
-        self._windows: typing.Optional[collections.AsyncIterator[list[typing.Optional[bytes]]]] = None
+        self._windows: collections.AsyncIterator[list[bytes | None]] | None = None
         self._window_size = int(window_size)
 
     @staticmethod
@@ -485,9 +481,9 @@ class MultiMapIterator(abc.CacheIterator[_T]):
         self._buffer: list[bytes] = []
         self._builder = builder
         self._client = client
-        self._len: typing.Optional[int] = None
+        self._len: int | None = None
         self._load = load
-        self._top_level_keys: typing.Optional[collections.AsyncIterator[bytes]] = None
+        self._top_level_keys: collections.AsyncIterator[bytes] | None = None
         self._windows: collections.AsyncIterator[collections.Iterable[bytes]] = _EmptyAsyncIterator()
         self._window_size = int(window_size)
 
@@ -568,9 +564,9 @@ class SpecificMapIterator(abc.CacheIterator[_T]):
         self._builder = builder
         self._client = client
         self._key = key
-        self._len: typing.Optional[int] = None
+        self._len: int | None = None
         self._load = load
-        self._windows: typing.Optional[collections.AsyncIterator[collections.Iterable[bytes]]] = None
+        self._windows: collections.AsyncIterator[collections.Iterable[bytes]] | None = None
         self._window_size = window_size
 
     def __aiter__(self) -> SpecificMapIterator[_T]:

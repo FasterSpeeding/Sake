@@ -125,7 +125,7 @@ class SingleStoreAdapter(async_cache.SingleStoreCache[_T]):
         self._get = get
         self._trust_get = trust_get
 
-    async def get(self, *, default: typing.Union[_DefaultT, NoDefault] = NO_DEFAULT) -> typing.Union[_T, _DefaultT]:
+    async def get(self, *, default: _DefaultT | NoDefault = NO_DEFAULT) -> _T | _DefaultT:
         try:
             return await self._get()
 
@@ -173,9 +173,7 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _T]):
         self._iterate_all = iterate_all
         self._trust_get = trust_get
 
-    async def get(
-        self, key: _KeyT, /, *, default: typing.Union[_DefaultT, NoDefault] = NO_DEFAULT
-    ) -> typing.Union[_T, _DefaultT]:
+    async def get(self, key: _KeyT, /, *, default: _DefaultT | NoDefault = NO_DEFAULT) -> _T | _DefaultT:
         try:
             return await self._get(key)
 
@@ -240,8 +238,8 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.GuildBoun
         self._iterate_for_guild = iterate_for_guild
 
     async def get_from_guild(
-        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: typing.Union[_DefaultT, NoDefault] = NO_DEFAULT
-    ) -> typing.Union[_T, _DefaultT]:
+        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: _DefaultT | NoDefault = NO_DEFAULT
+    ) -> _T | _DefaultT:
         try:
             return await self._get_from_guild(guild_id, key)
 
@@ -304,8 +302,8 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.Guild
         self._verify_guild = verify_guild
 
     async def get_from_guild(
-        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: typing.Union[_DefaultT, NoDefault] = NO_DEFAULT
-    ) -> typing.Union[_T, _DefaultT]:
+        self, guild_id: hikari.Snowflakeish, key: _KeyT, /, *, default: _DefaultT | NoDefault = NO_DEFAULT
+    ) -> _T | _DefaultT:
         result = await self.get(key, default=default)
         if result is default or self._verify_guild(guild_id, typing.cast("_T", result)):
             return result

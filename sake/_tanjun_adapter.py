@@ -46,8 +46,9 @@ from . import abc
 from . import errors
 
 if typing.TYPE_CHECKING:
-    import hikari
     from collections import abc as collections
+
+    import hikari
 
 
 _T = typing.TypeVar("_T")

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # BSD 3-Clause License
 #
 # Copyright (c) 2020-2024, Faster Speeding
@@ -70,7 +69,7 @@ def _chunk_values(
         yield result
 
 
-async def _iter_keys(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
+async def _iter_keys(
     client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: str | None = None
 ) -> collections.AsyncIterator[list[bytes]]:
     """Asynchronously iterate over slices of the top level keys in a redis resource."""
@@ -86,7 +85,7 @@ async def _iter_keys(  # noqa: ASYNC900 Async generator without `@asynccontextma
             break
 
 
-async def _iter_values(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
+async def _iter_values(
     client: aioredis.Redis[bytes], *, window_size: int = DEFAULT_WINDOW_SIZE, match: str | None = None
 ) -> collections.AsyncIterator[list[bytes | None]]:
     """Asynchronously iterate over slices of the values in a key to string datastore."""
@@ -94,7 +93,7 @@ async def _iter_values(  # noqa: ASYNC900 Async generator without `@asynccontext
         yield await client.mget(*window)
 
 
-async def _iter_hash_values(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
+async def _iter_hash_values(
     client: aioredis.Redis[bytes], key: _RedisKeyT, *, window_size: int = DEFAULT_WINDOW_SIZE, match: str | None = None
 ) -> collections.AsyncIterator[collections.Iterable[bytes]]:
     """Asynchronously iterate over slices of the values in a redis hash."""
@@ -110,7 +109,7 @@ async def _iter_hash_values(  # noqa: ASYNC900 Async generator without `@asyncco
             break
 
 
-async def _iter_reference_keys(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
+async def _iter_reference_keys(
     get_connection: collections.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
     key: _RedisKeyT,
     *,
@@ -131,7 +130,7 @@ async def _iter_reference_keys(  # noqa: ASYNC900 Async generator without `@asyn
             break
 
 
-async def _iter_reference_values(  # noqa: ASYNC900 Async generator without `@asynccontextmanager` not allowed.
+async def _iter_reference_values(
     client: aioredis.Redis[bytes],
     get_connection: collections.Callable[[redis.ResourceIndex], aioredis.Redis[bytes]],
     key: _RedisKeyT,
@@ -147,7 +146,7 @@ async def _iter_reference_values(  # noqa: ASYNC900 Async generator without `@as
 class Iterator(abc.CacheIterator[_T]):
     """Redis DB iterator."""
 
-    __slots__ = ("_buffer", "_builder", "_client", "_len", "_load", "_windows", "_window_size")
+    __slots__ = ("_buffer", "_builder", "_client", "_len", "_load", "_window_size", "_windows")
 
     def __init__(
         self,
@@ -171,7 +170,8 @@ class Iterator(abc.CacheIterator[_T]):
             How many entries should request at once.
         """
         if window_size <= 0:
-            raise ValueError("Window size must be a positive integer")
+            error_message = "Window size must be a positive integer"
+            raise ValueError(error_message)
 
         self._buffer: list[bytes] = []
         self._builder = builder
@@ -248,14 +248,14 @@ class ReferenceIterator(abc.CacheIterator[_T]):
 
     __slots__ = (
         "_buffer",
-        "_client",
         "_builder",
+        "_client",
         "_get_connection",
         "_key",
         "_len",
         "_load",
-        "_windows",
         "_window_size",
+        "_windows",
     )
 
     def __init__(
@@ -286,7 +286,8 @@ class ReferenceIterator(abc.CacheIterator[_T]):
             How many entries should request at once.
         """
         if window_size <= 0:
-            raise ValueError("Window size must be a positive integer")
+            error_message = "Window size must be a positive integer"
+            raise ValueError(error_message)
 
         self._buffer: list[bytes] = []
         self._builder = builder
@@ -342,8 +343,8 @@ class HashReferenceIterator(abc.CacheIterator[_T]):
         "_key",
         "_len",
         "_load",
-        "_windows",
         "_window_size",
+        "_windows",
     )
 
     def __init__(
@@ -374,7 +375,8 @@ class HashReferenceIterator(abc.CacheIterator[_T]):
             How many entries should request at once.
         """
         if window_size <= 0:
-            raise ValueError("Window size must be a positive integer")
+            error_message = "Window size must be a positive integer"
+            raise ValueError(error_message)
 
         self._buffer: list[bytes] = []
         self._builder = builder
@@ -405,7 +407,8 @@ class HashReferenceIterator(abc.CacheIterator[_T]):
                 break
 
             else:
-                raise LookupError("Couldn't find reference key")
+                error_message = "Couldn't find reference key"
+                raise LookupError(error_message)
 
             windows = (
                 await self._client.hmget(hash_key, *window)
@@ -452,7 +455,7 @@ class _EmptyAsyncIterator:
 class MultiMapIterator(abc.CacheIterator[_T]):
     """Cache iterator of the nested values of hash map entries."""
 
-    __slots__ = ("_buffer", "_builder", "_client", "_len", "_load", "_top_level_keys", "_windows", "_window_size")
+    __slots__ = ("_buffer", "_builder", "_client", "_len", "_load", "_top_level_keys", "_window_size", "_windows")
 
     def __init__(
         self,
@@ -476,7 +479,8 @@ class MultiMapIterator(abc.CacheIterator[_T]):
             How many entries should request at once.
         """
         if window_size <= 0:
-            raise ValueError("Window size must be a positive integer")
+            error_message = "Window size must be a positive integer"
+            raise ValueError(error_message)
 
         self._buffer: list[bytes] = []
         self._builder = builder
@@ -529,7 +533,7 @@ class MultiMapIterator(abc.CacheIterator[_T]):
 class SpecificMapIterator(abc.CacheIterator[_T]):
     """Cache iterator of a specific hash map's values."""
 
-    __slots__ = ("_buffer", "_builder", "_client", "_key", "_len", "_load", "_windows", "_window_size")
+    __slots__ = ("_buffer", "_builder", "_client", "_key", "_len", "_load", "_window_size", "_windows")
 
     def __init__(
         self,
@@ -558,7 +562,8 @@ class SpecificMapIterator(abc.CacheIterator[_T]):
             How many entries should request at once.
         """
         if window_size <= 0:
-            raise ValueError("Window size must be a positive integer")
+            error_message = "Window size must be a positive integer"
+            raise ValueError(error_message)
 
         self._buffer: list[bytes] = []
         self._builder = builder

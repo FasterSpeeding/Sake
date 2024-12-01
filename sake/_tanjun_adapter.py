@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # BSD 3-Clause License
 #
 # Copyright (c) 2020-2024, Faster Speeding
@@ -41,13 +40,13 @@ __all__: list[str] = [
 import enum
 import typing
 
-import hikari
 from tanjun.dependencies import async_cache
 
 from . import abc
 from . import errors
 
 if typing.TYPE_CHECKING:
+    import hikari
     from collections import abc as collections
 
 
@@ -110,7 +109,7 @@ class SingleStoreAdapter(async_cache.SingleStoreCache[_T]):
 
     __slots__ = ("_get", "_trust_get")
 
-    def __init__(self, get: collections.Callable[[], collections.Awaitable[_T]], trust_get: bool) -> None:
+    def __init__(self, get: collections.Callable[[], collections.Awaitable[_T]], *, trust_get: bool) -> None:
         """Initialise a single store adapter.
 
         Parameters
@@ -154,6 +153,7 @@ class AsyncCacheAdapter(async_cache.AsyncCache[_KeyT, _T]):
         self,
         get: collections.Callable[[_KeyT], collections.Awaitable[_T]],
         iterate_all: collections.Callable[[], abc.CacheIterator[_T]],
+        *,
         trust_get: bool,
     ) -> None:
         """Initialise an async cache adapter.
@@ -214,6 +214,7 @@ class GuildBoundCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.GuildBoun
         get_from_guild: collections.Callable[[hikari.Snowflakeish, _KeyT], collections.Awaitable[_T]],
         iterate_all: collections.Callable[[], abc.CacheIterator[_T]],
         iterate_for_guild: collections.Callable[[hikari.Snowflakeish], abc.CacheIterator[_T]],
+        *,
         trust_get: bool,
     ) -> None:
         """Initialise a guild-bound cache adapter.
@@ -277,6 +278,7 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.Guild
         iterate_all: collections.Callable[[], abc.CacheIterator[_T]],
         iterate_for_guild: collections.Callable[[hikari.Snowflakeish], abc.CacheIterator[_T]],
         verify_guild: collections.Callable[[hikari.Snowflakeish, _T], bool],
+        *,
         trust_get: bool,
     ) -> None:
         """Initialise a guild and global cache adapter.

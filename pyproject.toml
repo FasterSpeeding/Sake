@@ -233,6 +233,7 @@ ignore = [
     "D101",    # Missing docstring in public class
     "D102",    # Missing docstring in public method
     "D103",    # Missing docstring in public function
+    "D104",    # Missing docstring in public package
     "FBT001",  # Boolean-typed positional argument in function definition
     "PIE790",  # [*] Unnecessary `...` literal
     "PYI013",  # [*] Non-empty class body must not contain `...`

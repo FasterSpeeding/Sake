@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # BSD 3-Clause License
 #
 # Copyright (c) 2020-2024, Faster Speeding
@@ -84,7 +83,8 @@ def convert_expire_time(expire: ExpireT, /) -> int | None:
 
         return round(expire * 1000)
 
-    raise ValueError(f"Invalid expire time passed; expected a float, int or timedelta but got a {type(expire)!r}")
+    error_message = f"Invalid expire time passed; expected a float, int or timedelta but got a {type(expire)!r}"
+    raise ValueError(error_message)
 
 
 class ListenerProto(typing.Protocol[_EventT_inv]):
@@ -109,7 +109,7 @@ class ListenerProto(typing.Protocol[_EventT_inv]):
 def is_listener(value: typing.Any, /) -> typing.TypeGuard[ListenerProto[typing.Any]]:
     """Type guard which checks for [ListenerProto][]."""
     try:
-        value.__sake_event_type__
+        value.__sake_event_type__  # noqa: B018
 
     except AttributeError:
         return False
@@ -139,7 +139,7 @@ class RawListenerProto(typing.Protocol):
 def is_raw_listener(value: typing.Any, /) -> typing.TypeGuard[RawListenerProto]:
     """Type guard which checks for [RawListenerProto][]."""
     try:
-        value.__sake_event_names__
+        value.__sake_event_names__  # noqa: B018
 
     except AttributeError:
         return False
@@ -164,7 +164,7 @@ def as_listener(
     """
 
     def decorator(listener: _CallbackT[_T, _EventT], /) -> _CallbackT[_T, _EventT]:
-        listener.__sake_event_type__ = event_type  # type: ignore
+        listener.__sake_event_type__ = event_type  # type: ignore  # noqa: PGH003
         listener_ = listener
         assert is_listener(listener_), "Incorrect attributes set for listener"
         return listener
@@ -192,7 +192,7 @@ def as_raw_listener(
     event_names = (event_name.upper(), *(name.upper() for name in event_names))
 
     def decorator(listener: _CallbackT[_T, hikari.ShardPayloadEvent], /) -> _CallbackT[_T, hikari.ShardPayloadEvent]:
-        listener.__sake_event_names__ = event_names  # type: ignore
+        listener.__sake_event_names__ = event_names  # type: ignore  # noqa: PGH003
         listener_ = listener
         assert is_raw_listener(listener_), "Incorrect attributes set for raw listener"
         return listener

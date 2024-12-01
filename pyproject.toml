@@ -77,6 +77,8 @@ type-checking = [
     "nox",
     "pyright>=1.1.285",
     {include-group = "tests"},
+    # From `tanjun` group
+    "hikari-tanjun>=2.9.0a1, <3",
 ]
 
 [tool.flit.module]

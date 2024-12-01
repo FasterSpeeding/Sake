@@ -531,6 +531,7 @@ tests = [
     { name = "pytest-xdist" },
 ]
 type-checking = [
+    { name = "hikari-tanjun" },
     { name = "mypy" },
     { name = "nox" },
     { name = "pyright" },
@@ -583,6 +584,7 @@ tests = [
     { name = "pytest-xdist", specifier = ">=3.1" },
 ]
 type-checking = [
+    { name = "hikari-tanjun", specifier = ">=2.9.0a1,<3" },
     { name = "mypy", specifier = ">=0.991" },
     { name = "nox" },
     { name = "pyright", specifier = ">=1.1.285" },

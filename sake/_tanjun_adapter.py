@@ -300,7 +300,7 @@ class GuildAndGlobalCacheAdapter(AsyncCacheAdapter[_KeyT, _T], async_cache.Guild
             the entry isn't found to indicate that it doesn't exist, rather
             than just [tanjun.async_cache.CacheMissError][]
         """
-        super().__init__(get, iterate_all, trust_get)
+        super().__init__(get, iterate_all, trust_get=trust_get)
         self._iterate_for_guild = iterate_for_guild
         self._verify_guild = verify_guild
 

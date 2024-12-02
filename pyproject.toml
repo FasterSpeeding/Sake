@@ -145,7 +145,7 @@ project_name = "sake"
 top_level_targets = ["./examples", "./noxfile.py", "./sake", "./tests"]
 
 [tool.piped.extra_installs]
-slot_check = [".[yuyo]"]
+slot_check = [".[tanjun]"]
 test =[".[tanjun]"]
 
 [tool.piped.github_actions.freeze_for_pr]

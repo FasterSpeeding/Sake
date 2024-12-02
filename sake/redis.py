@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # BSD 3-Clause License
 #
 # Copyright (c) 2020-2024, Faster Speeding
@@ -139,7 +138,7 @@ class _TanjunLoaderProto(typing.Protocol):
 
 def _is_tanjun_loader(value: typing.Any) -> typing.TypeGuard[_TanjunLoaderProto]:
     try:
-        value.__tanjun_loader__
+        value.__tanjun_loader__  # noqa: B018
 
     except AttributeError:
         return False
@@ -148,7 +147,7 @@ def _is_tanjun_loader(value: typing.Any) -> typing.TypeGuard[_TanjunLoaderProto]
 
 
 def _as_tanjun_loader(callback: _TanjunLoaderSigT, /) -> _TanjunLoaderSigT:
-    callback.__tanjun_loader__ = True  # type: ignore
+    callback.__tanjun_loader__ = True  # type: ignore  # noqa: PGH003
     assert _is_tanjun_loader(callback)
     return typing.cast("_TanjunLoaderSigT", callback)
 
@@ -284,7 +283,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
                 self.__check_intents(event_manager.intents)
 
         elif event_managed:
-            raise ValueError("Client cannot be event_managed when not attached to an event manager")
+            error_message = "Client cannot be event_managed when not attached to an event manager"
+            raise ValueError(error_message)
 
     async def __on_starting_event(self, _: hikari.StartingEvent, /) -> None:
         await self.open()
@@ -306,7 +306,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
         def __enter__(self) -> typing.NoReturn:
             # This is async only.
             cls = type(self)
-            raise TypeError(f"{cls.__module__}.{cls.__qualname__} is async-only, did you mean 'async with'?") from None
+            error_message = f"{cls.__module__}.{cls.__qualname__} is async-only, did you mean 'async with'?"
+            raise TypeError(error_message) from None
 
         def __exit__(
             self,
@@ -326,7 +327,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     @property
     def config(self) -> collections.MutableMapping[str, typing.Any]:
-        """This client's settings."""
+        """Get the client's settings."""
         return self.__config
 
     @property
@@ -345,7 +346,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     @classmethod
     @abc.abstractmethod
     def index(cls) -> collections.Sequence[ResourceIndex]:
-        """The index for the resource which this class is linked to.
+        """Get the index for the resource this class is linked to.
 
         !!! note
             This should be called on specific base classes and will not be
@@ -364,7 +365,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
     @classmethod
     @abc.abstractmethod
     def intents(cls) -> hikari.Intents:
-        """The intents the resource requires to function properly.
+        """Get the intents the resource requires to function properly.
 
         !!! note
             This should be called on specific base classes and will not be
@@ -402,7 +403,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
 
     @classmethod
     def all_intents(cls) -> hikari.Intents:
-        """The intents required for a client to be sufficient event managed.
+        """Get the intents required for a client to be sufficient event managed.
 
         If not all these intents are present in the linked event manager
         then this client won't be able to reliably fill and manage the
@@ -551,7 +552,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             import tanjun
 
         except ImportError as exc:
-            raise RuntimeError("This can only be called in an environment with Tanjun") from exc
+            error_message = "This can only be called in an environment with Tanjun"
+            raise RuntimeError(error_message) from exc
 
         for _, member in inspect.getmembers(self):
             if _is_tanjun_loader(member):
@@ -630,7 +632,8 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             This will decide which Redis database is targeted for a resource.
         """
         if self.__started:
-            raise ValueError("Cannot set an index override while the client is active")
+            error_message = "Cannot set an index override while the client is active"
+            raise ValueError(error_message)
 
         if override is not None:
             self.__index_overrides[index] = override
@@ -661,12 +664,14 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             When you pass an invalid resource for the client.
         """
         if not self.__started:
-            raise errors.ClosedClient("Cannot use an inactive client")
+            error_message = "Cannot use an inactive client"
+            raise errors.ClosedClient(error_message)
 
         try:
             return self.__clients[self.__index_overrides.get(resource, resource)]
         except KeyError:
-            raise ValueError(f"Resource index `{resource}` isn't valid for this client") from None
+            error_message = f"Resource index `{resource}` isn't valid for this client"
+            raise ValueError(error_message) from None
 
     async def _get_connection_status(self, resource: ResourceIndex, /) -> bool:
         """Get the status of the internal connection for a specific resource.
@@ -741,9 +746,7 @@ class ResourceClient(sake_abc.Resource, abc.ABC):
             # Ensure no dangling clients are left if this fails to start.
             clients = self.__clients
             self.__clients = {}
-            results = await asyncio.gather(  # noqa: ASYNC120
-                *(client.close() for client in clients.values()), return_exceptions=True
-            )
+            results = await asyncio.gather(*(client.close() for client in clients.values()), return_exceptions=True)
             for result in results:
                 if isinstance(result, Exception):
                     _LOGGER.exception("Failed to close client", exc_info=result)
@@ -905,7 +908,8 @@ class _MeCache(ResourceClient, sake_abc.MeCache):
         if payload := await self._get_connection(ResourceIndex.USER).get(self.__ME_KEY):
             return self.app.entity_factory.deserialize_my_user(self.load(payload))
 
-        raise errors.EntryNotFound("Own user not found")
+        error_message = "Own user not found"
+        raise errors.EntryNotFound(error_message)
 
     async def set_me(self, payload: _ObjectT, /) -> None:
         # <<Inherited docstring from sake.abc.MeCache>>
@@ -976,7 +980,8 @@ class UserCache(_MeCache, sake_abc.UserCache):
         if payload := await self._get_connection(ResourceIndex.USER).get(str(user_id)):
             return self.app.entity_factory.deserialize_user(self.load(payload))
 
-        raise errors.EntryNotFound("User not found")
+        error_message = "User not found"
+        raise errors.EntryNotFound(error_message)
 
     def iter_users(
         self, *, window_size: int = _redis_iterators.DEFAULT_WINDOW_SIZE
@@ -1113,7 +1118,8 @@ class EmojiCache(_Reference, sake_abc.RefEmojiCache):
         if payload := await self._get_connection(ResourceIndex.EMOJI).get(str(emoji_id)):
             return self.__deserialize_known_custom_emoji(self.load(payload))
 
-        raise errors.EntryNotFound("Emoji not found")
+        error_message = "Emoji not found"
+        raise errors.EntryNotFound(error_message)
 
     def __deserialize_known_custom_emoji(self, payload: _ObjectT, /) -> hikari.KnownCustomEmoji:
         guild_id = hikari.Snowflake(payload["guild_id"])
@@ -1216,7 +1222,8 @@ class GuildCache(ResourceClient, sake_abc.GuildCache):
 
             return self.__deserialize_guild(self.load(payload), user_id=own_id_value)
 
-        raise errors.EntryNotFound("Guild not found")
+        error_message = "Guild not found"
+        raise errors.EntryNotFound(error_message)
 
     def iter_guilds(
         self, *, window_size: int = _redis_iterators.DEFAULT_WINDOW_SIZE
@@ -1349,7 +1356,8 @@ class GuildChannelCache(_Reference, sake_abc.RefGuildChannelCache):
         if payload := await self._get_connection(ResourceIndex.CHANNEL).get(str(channel_id)):
             return self.__deserialize_guild_channel(self.load(payload))
 
-        raise errors.EntryNotFound("Guild channel not found")
+        error_message = "Guild channel not found"
+        raise errors.EntryNotFound(error_message)
 
     def __deserialize_guild_channel(self, payload: _ObjectT, /) -> hikari.PermissibleGuildChannel:
         channel = self.app.entity_factory.deserialize_channel(payload)
@@ -1464,7 +1472,8 @@ class InviteCache(ResourceClient, sake_abc.InviteCache):
         if payload := await self._get_connection(ResourceIndex.INVITE).get(str(invite_code)):
             return self.app.entity_factory.deserialize_invite_with_metadata(self.load(payload))
 
-        raise errors.EntryNotFound("Invite not found")
+        error_message = "Invite not found"
+        raise errors.EntryNotFound(error_message)
 
     def iter_invites(
         self, *, window_size: int = _redis_iterators.DEFAULT_WINDOW_SIZE
@@ -1588,10 +1597,12 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
     def chunk_on_guild_create(self, shard_aware: hikari.ShardAware | None, /) -> Self:
         if shard_aware:
             if not self.event_manager:
-                raise ValueError("An event manager-less cache instance cannot request member chunk on guild create")
+                error_message = "An event manager-less cache instance cannot request member chunk on guild create"
+                raise ValueError(error_message)
 
             if not (shard_aware.intents & hikari.Intents.GUILD_MEMBERS):
-                raise ValueError("Cannot request guild member chunks without the GUILD_MEMBERS intents declared")
+                error_message = "Cannot request guild member chunks without the GUILD_MEMBERS intents declared"
+                raise ValueError(error_message)
 
             presences = (shard_aware.intents & hikari.Intents.GUILD_PRESENCES) == hikari.Intents.GUILD_PRESENCES
             self.config["chunk_on_create"] = shard_aware
@@ -1619,7 +1630,8 @@ class MemberCache(ResourceClient, sake_abc.MemberCache):
         if payload := await self._get_connection(ResourceIndex.MEMBER).hget(str(guild_id), str(user_id)):
             return self.app.entity_factory.deserialize_member(self.load(payload))
 
-        raise errors.EntryNotFound("Member not found")
+        error_message = "Member not found"
+        raise errors.EntryNotFound(error_message)
 
     def iter_members(
         self, *, window_size: int = _redis_iterators.DEFAULT_WINDOW_SIZE
@@ -1733,7 +1745,8 @@ class MessageCache(ResourceClient, sake_abc.MessageCache):
         if payload := await self._get_connection(ResourceIndex.MESSAGE).get(str(message_id)):
             return self.app.entity_factory.deserialize_message(self.load(payload))
 
-        raise errors.EntryNotFound("Message not found")
+        error_message = "Message not found"
+        raise errors.EntryNotFound(error_message)
 
     def iter_messages(
         self, *, window_size: int = _redis_iterators.DEFAULT_WINDOW_SIZE
@@ -1849,7 +1862,8 @@ class PresenceCache(ResourceClient, sake_abc.PresenceCache):
         if payload := await self._get_connection(ResourceIndex.PRESENCE).hget(str(guild_id), str(user_id)):
             return self.app.entity_factory.deserialize_member_presence(self.load(payload))
 
-        raise errors.EntryNotFound("Presence not found")
+        error_message = "Presence not found"
+        raise errors.EntryNotFound(error_message)
 
     def iter_presences(
         self, *, window_size: int = _redis_iterators.DEFAULT_WINDOW_SIZE
@@ -1975,7 +1989,8 @@ class RoleCache(_Reference, sake_abc.RoleCache):
         if payload := await self._get_connection(ResourceIndex.ROLE).get(str(role_id)):
             return self.__deserialize_role(self.load(payload))
 
-        raise errors.EntryNotFound("Role not found")
+        error_message = "Role not found"
+        raise errors.EntryNotFound(error_message)
 
     def __deserialize_role(self, payload: _ObjectT, /) -> hikari.Role:
         guild_id = hikari.Snowflake(payload["guild_id"])
@@ -2123,7 +2138,8 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
                 keys.remove(key)
                 return key[4:], keys
 
-        raise ValueError("Couldn't find reference key")
+        error_message = "Couldn't find reference key"
+        raise ValueError(error_message)
 
     async def clear_voice_states(self) -> None:
         # <<Inherited docstring from sake.abc.VoiceStateCache>>
@@ -2194,7 +2210,8 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         if payload := await self._get_connection(ResourceIndex.VOICE_STATE).hget(str(guild_id), str(user_id)):
             return self.app.entity_factory.deserialize_voice_state(self.load(payload))
 
-        raise errors.EntryNotFound("Voice state not found")
+        error_message = "Voice state not found"
+        raise errors.EntryNotFound(error_message)
 
     def iter_voice_states(
         self, *, window_size: int = _redis_iterators.DEFAULT_WINDOW_SIZE
@@ -2238,7 +2255,8 @@ class VoiceStateCache(_Reference, sake_abc.VoiceStateCache):
         client = self._get_connection(ResourceIndex.VOICE_STATE)
         channel_id = payload.get("channel_id")
         if not channel_id:
-            raise ValueError("Cannot set a voice state which isn't bound to a channel")
+            error_message = "Cannot set a voice state which isn't bound to a channel"
+            raise ValueError(error_message)
 
         channel_id = int(channel_id)
         str_guild_id = str(guild_id)

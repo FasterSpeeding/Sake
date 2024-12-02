@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Sake Examples - A collection of examples for Sake.
 # Written in 2021 by Faster Speeding Lucina@lmbyrne.dev
 #

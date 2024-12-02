@@ -146,7 +146,7 @@ top_level_targets = ["./examples", "./noxfile.py", "./sake", "./tests"]
 
 [tool.piped.extra_installs]
 slot_check = [".[tanjun]"]
-test =[".[tanjun]"]
+test = [".[tanjun]"]
 
 [tool.piped.github_actions.freeze_for_pr]
 [tool.piped.github_actions.lint]

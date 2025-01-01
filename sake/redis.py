@@ -147,7 +147,7 @@ def _is_tanjun_loader(value: typing.Any) -> typing.TypeGuard[_TanjunLoaderProto]
 
 
 def _as_tanjun_loader(callback: _TanjunLoaderSigT, /) -> _TanjunLoaderSigT:
-    callback.__tanjun_loader__ = True  # type: ignore  # noqa: PGH003
+    callback.__tanjun_loader__ = True  # type: ignore
     assert _is_tanjun_loader(callback)
     return typing.cast("_TanjunLoaderSigT", callback)
 

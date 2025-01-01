@@ -207,6 +207,7 @@ ignore = [
     "FIX002",  # Line contains TODO, consider resolving the issue
     "I001",    # [*] Import block is un-sorted or un-formatted
     "N818",    # Exception name `FailedModuleUnload` should be named with an Error suffix
+    "PGH003",  # Use specific rule codes when ignoring type issues
     "PYI041",  # Use `float` instead of `int | float`
     "S101",    # Use of `assert` detected
     "SIM105",  # Use `contextlib.suppress(Error)` instead of `try`-`except`-`pass`
@@ -255,7 +256,6 @@ ignore = [
     "FBT002",   # Boolean default positional argument in function definition
     "FBT003",   # Boolean positional value in function call
     "PLR0915",  # Too many statements
-    "PGH003",   # Use specific rule codes when ignoring type issues
     "PLR2004",  # Magic value used in comparison, consider replacing `` with a constant variable
     "SLF001",   # Private member accessed: ``
 ]

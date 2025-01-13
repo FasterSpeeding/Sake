@@ -246,6 +246,9 @@ ignore = [
 "noxfile.py" = [
     "F403",  # `from noxfile import *` used; unable to detect undefined name
 ]
+"sake/abc.py" = [
+    "A005",  # Module `abc` shadows a Python standard-library module
+]
 "tests/**/*.py" = [
     "D100",     # Missing docstring in public module
     "D101",     # Missing docstring in public class

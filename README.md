@@ -16,7 +16,7 @@ your own requirements as this just provides an acceptable range for the requirem
 
 # Support
 
-Go to the [support server](https://discord.gg/bZ7BrYJ63g) for support with Tanjun.
+Go to the [support server](https://discord.gg/bZ7BrYJ63g) for support.
 
 # Quick Usage.
 

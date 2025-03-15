@@ -16,7 +16,7 @@ your own requirements as this just provides an acceptable range for the requirem
 
 # Support
 
-[Hikari's support guild](https://discord.gg/hikari) provides for support for Sake.
+Go to the [support server](https://discord.gg/bZ7BrYJ63g) for support with Tanjun.
 
 # Quick Usage.
 
